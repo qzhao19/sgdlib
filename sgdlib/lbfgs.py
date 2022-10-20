@@ -12,8 +12,9 @@ class LBFGS(object):
         max_step = 1.0e+20, 
         min_step = 1.0e-20, 
         verbose = True,
+        line_search_params = None,
         loss = None,
-        line_search_policy = None):
+        linesearch = None):
             self.x0 = x0,
             self.mem_size = mem_size
             self.tol = tol
@@ -25,22 +26,26 @@ class LBFGS(object):
             self.max_step = max_step
             self.min_step = min_step
             self.verbose = verbose
+            self.line_search_params = line_search_params
             self.loss = loss
-            self.line_search_policy = line_search_policy
+            self.linesearch = linesearch
 
     def optimize(self, X, y):
         """
         Optimize the parameters of the model.
         """
-        num_dims = self.x0.shape[0]
+        # the intial parameters to be optimized
+        x = self.x0
+        
+        num_dims = x.shape[0]
         mem_size = self.mem_size
 
         # intermediate variables
-        prev_x = np.zeros((num_dims))
-        grad = np.zeros((num_dims))
-        prev_grad = np.zeros((num_dims))
-        diection = np.zeros((num_dims))
-        losses = np.zeros((max(1, self.past)))
+        xp = np.zeros((num_dims))
+        g = np.zeros((num_dims))
+        gp = np.zeros((num_dims))
+        d = np.zeros((num_dims))
+        fx = np.zeros((max(1, self.past)))
 
         # Initialize the limited memory
         mem_alpha = np.zeros((num_dims))
@@ -49,15 +54,72 @@ class LBFGS(object):
         mem_ys = np.zeros((mem_size))
 
         # Evaluate the function value and its gradient
-        loss = self.loss.evaluate(X, y, self.x0)
-        grad = self.loss.gradient(X, y, self.x0)
+        fx0 = self.loss.evaluate(X, y, x)
+        g = self.loss.gradient(X, y, x)
 
         # Store the initial value of the cost function.
-        losses[0] = loss
+        fx[0] = fx0
 
         # Compute the direction we assume the initial hessian matrix H_0 as the identity matrix.
-        diection = -grad
-        
+        d = -g
+
+
+        # make sure the intial points are not sationary points (minimizer).
+        xnorm = np.linalg.norm(x, ord = 2)
+        gnorm = np.linalg.norm(g, ord = 2)
+
+        if (gnorm / max(1.0, xnorm)) <= self.tol:
+            print("LBFGS_CONVERGENCE")
+            return
+        else:
+            #  compute intial step
+            step = 1.0 / np.linalg.norm(d, ord = 2)
+            
+            num_iters = 1
+            end = 0
+            bound = 0
+
+            while(True):
+                # store current x and gradient value
+                xp = x
+                gp = g
+
+                min_step = self.min_step
+                max_step = self.max_step
+
+                # apply line search function to find optimized step
+                ls = self.linesearch.search(x, fx0, g, step, d, xp, gp, max_step, min_step, self.loss, self.line_search_params)
+
+                if ls < 0:
+                    x = xp
+                    g = gp
+                    print("lbfgs exit")
+                    break
+                
+                # print the progress
+                if self.verbose:
+                    print("Iteration = {}, function value = {}".format(num_iters, fx0))
+
+                # Convergence test -- gradient
+                # criterion is given by the following formula:
+                # ||g(x)|| / max(1, ||x||) < tol
+                xnorm = np.linalg.norm(x, ord = 2)
+                gnorm = np.linalg.norm(g, ord = 2)
+
+                if (gnorm / max(1.0, xnorm)) <= self.tol:
+                    print("LBFGS_CONVERGENCE")
+                    break
+
+                # Convergence test -- objective function value
+                # The criterion is given by the following formula:
+                # |f(past_x) - f(x)| / max(1, |f(x)|) < \delta.
+                if self.past >= 0:
+                    rate = abs(fx[num_iters % self.past] - fx0) / max(1.0, abs(fx0))
+                    if rate < self.delta:
+                        print("LBFGS_STOP")
+                        break
+                    # Store the current value of the cost function
+                    fx[num_iters % self.past] = fx0
 
 
 
