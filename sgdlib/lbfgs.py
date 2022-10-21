@@ -121,13 +121,43 @@ class LBFGS(object):
                     # Store the current value of the cost function
                     fx[num_iters % self.past] = fx0
 
+                if self.max_iters != 0 and self.max_iters <= num_iters:
+                    print("LBFGSERR_MAXIMUMITERATION")
+                    break
 
+                # Update vectors s and y:
+                # s_{k+1} = x_{k+1} - x_{k} = \step * d_{k}.
+                # y_{k+1} = g_{k+1} - g_{k}.
+                mem_s[:, end] = x - xp
+                mem_y[:, end] = g - gp
 
+                # Compute scalars ys and yy:
+                # ys = y^t \cdot s = 1 / \rho.
+                # yy = y^t \cdot y.
+                # Notice that yy is used for scaling the hessian matrix H_0 (Cholesky factor).
+                ys = np.dot(mem_y[:, end], mem_s[:, end])
+                yy = np.dot(mem_y[:, end], mem_y[:, end])
+                mem_ys[end] = ys
 
+                # Compute the negative of gradients
+                d = -g
 
+                bound += 1
+                bound = self.mem_size if self.mem_size < bound else bound
+                end = (end + 1) % self.mem_size
 
+                j = end
+                for i in range(bound):
+                    # if (--j == -1) j = m-1
+                    j = (j + self.mem_size - 1) % self.mem_size
+                    # \alpha_{j} = \rho_{j} s^{t}_{j} \cdot q_{k+1}
+                    mem_alpha[j] = np.dot(mem_s[:, j], d) / mem_ys[j]
+                    # q_{i} = q_{i+1} - \alpha_{i} y_{i}
+                    d += (-mem_alpha[j]) * mem_y[:, j]
 
+                d *= ys / yy
 
+                
 
 
 
