@@ -157,9 +157,14 @@ class LBFGS(object):
 
                 d *= ys / yy
 
+                for i in range(bound):
+                    beta = np.dot(mem_y[:, i], mem_ys[i])
+                    d += (mem_alpha[j] - beta) *mem_s[:, i]
+                    j = (j + 1) % self.mem_size
                 
-
-
+            step = 1.0
+        
+        return x
 
 
 
