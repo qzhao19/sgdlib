@@ -1,4 +1,5 @@
 import numpy as np
+from line_search.backtracking import LineSearchBacktracking
 
 class LBFGS(object):
     def __init__(self, x0,
@@ -12,9 +13,9 @@ class LBFGS(object):
         max_step = 1.0e+20, 
         min_step = 1.0e-20, 
         verbose = True,
-        line_search_params = None,
-        loss = None,
-        linesearch = None):
+        linesearch_params = None,
+        loss = None, 
+        linesearch_policy = None):
             self.x0 = x0,
             self.mem_size = mem_size
             self.tol = tol
@@ -26,9 +27,12 @@ class LBFGS(object):
             self.max_step = max_step
             self.min_step = min_step
             self.verbose = verbose
-            self.line_search_params = line_search_params
+            self.linesearch_params = linesearch_params
             self.loss = loss
-            self.linesearch = linesearch
+            self.linesearch_policy = linesearch_policy
+
+            if self.linesearch_policy == "backtracking":
+                self.linesearch = LineSearchBacktracking(loss, linesearch_policy)
 
     def optimize(self, X, y):
         """
