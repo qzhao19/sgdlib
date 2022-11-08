@@ -22,13 +22,15 @@ class LineSearchBacktracking(object):
         if dg_init > 0:
             raise RuntimeError("Moving direction increases the objective function value")
         
-        test_decrease_factor = self.linesearch_params.ftol * dg_init
+        dg_test = self.linesearch_params.ftol * dg_init
         width = 0
 
         iter = 0
         for iter in range(self.linesearch_params.max_linesearch):
             x = xp + step * d
 
-            fx0 = self.loss.evaluate(x, g) 
+            # fx0 = self.loss.evaluate(x, g) 
+
+        
 
             
