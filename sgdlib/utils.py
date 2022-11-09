@@ -60,3 +60,13 @@ class StepDecay(object):
         lr = self.base_lr * math.pow(self.gamma,  
                 math.floor((1 + epoch) / self.step_size))
         return lr
+
+
+class ExponentialDecay(object):
+    def __init__(self, lr, gamma = 0.5):
+        self.base_lr = lr
+        self.gamma = gamma
+
+    def compute(self, epoch):
+        lr = self.base_lr * np.exp(self.gamma * epoch)
+        return lr
