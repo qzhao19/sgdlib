@@ -1,11 +1,13 @@
 import numpy as np
 
 class LineSearchBacktracking(object):
-    def __init__(self, loss, linesearch_params):
-        self.loss = loss
+    def __init__(self, X, y, loss_fn, linesearch_params):
+        self.X = X
+        self.y = y
+        self.loss_fn = loss_fn
         self.linesearch_params = linesearch_params
 
-    def search(self, x, fx0, g, step, d, xp, gp, max_step, min_step):
+    def search(self, x, fx0, g, step, d, xp, gp):
 
         # Decreasing and increasing factors
         decrease_factor = self.linesearch_params.decrease_factor
@@ -29,8 +31,9 @@ class LineSearchBacktracking(object):
         for iter in range(self.linesearch_params.max_linesearch):
             x = xp + step * d
 
-            # fx0 = self.loss.evaluate(x, g) 
+            # fx0 = self.loss_fn.evaluate(x, g) 
+            fx0 = self.loss_func.evaluate(self.X, self.y, x)
+            g = self.loss_func.gradient(self.X, self.y, x)
 
-        
 
             

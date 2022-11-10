@@ -10,12 +10,12 @@ class LBFGS(object):
         past = 3, 
         max_iters = 0, 
         max_linesearch = 64, 
-        max_step = 1.0e+20, 
-        min_step = 1.0e-20, 
+        # max_step = 1.0e+20, 
+        # min_step = 1.0e-20, 
         verbose = True,
         linesearch_params = None,
-        loss = None, 
-        linesearch_policy = None):
+        loss_func = None, 
+        linesearch_policy = "backtracking_linesearch"):
             self.x0 = x0,
             self.mem_size = mem_size
             self.tol = tol
@@ -24,15 +24,13 @@ class LBFGS(object):
             self.past = past
             self.max_iters = max_iters
             self.max_linesearch = max_linesearch
-            self.max_step = max_step
-            self.min_step = min_step
             self.verbose = verbose
             self.linesearch_params = linesearch_params
-            self.loss = loss
+            self.loss_func = loss_func
             self.linesearch_policy = linesearch_policy
 
-            if self.linesearch_policy == "backtracking":
-                self.linesearch = LineSearchBacktracking(loss, linesearch_policy)
+            # if self.linesearch_policy == "backtracking":
+            #     self.linesearch = LineSearchBacktracking(loss, linesearch_policy)
 
     def optimize(self, X, y):
         """
@@ -58,8 +56,8 @@ class LBFGS(object):
         mem_ys = np.zeros((mem_size))
 
         # Evaluate the function value and its gradient
-        fx0 = self.loss.evaluate(X, y, x)
-        g = self.loss.gradient(X, y, x)
+        fx0 = self.loss_func.evaluate(X, y, x)
+        g = self.loss_func.gradient(X, y, x)
 
         # Store the initial value of the cost function.
         fx[0] = fx0
@@ -67,6 +65,11 @@ class LBFGS(object):
         # Compute the direction we assume the initial hessian matrix H_0 as the identity matrix.
         d = -g
 
+        # define step search policy
+        if self.linesearch_policy == "backtracking":
+            linesearch = LineSearchBacktracking(X, y, self.loss_func, self.linesearch_params)
+        else:
+            raise ValueError("Cannot find line search policy.")
 
         # make sure the intial points are not sationary points (minimizer).
         xnorm = np.linalg.norm(x, ord = 2)
@@ -88,11 +91,11 @@ class LBFGS(object):
                 xp = x
                 gp = g
 
-                min_step = self.min_step
-                max_step = self.max_step
+                # min_step = self.min_step
+                # max_step = self.max_step
 
                 # apply line search function to find optimized step
-                ls = self.linesearch.search(x, fx0, g, step, d, xp, gp, max_step, min_step, self.loss, self.line_search_params)
+                ls, x, fx0, g, step = linesearch.search(x, fx0, g, step, d, xp, gp)
 
                 if ls < 0:
                     x = xp
