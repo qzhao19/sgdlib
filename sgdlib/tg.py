@@ -4,7 +4,7 @@ MAX_DLOSS = 1e+10
 
 class TruncatedGradient(object):
     def __init__(self,
-        loss, 
+        loss_func, 
         lr_decay, 
         regularizer, 
         tol = 0.001, 
@@ -18,7 +18,7 @@ class TruncatedGradient(object):
             self.max_iters = max_iters
             self.tol = tol
             self.l1_ratio = l1_ratio
-            self.loss = loss
+            self.loss_func = loss_func
             self.lr_decay = lr_decay
             self.regularizer = regularizer
             self.num_iters_no_change = num_iters_no_change
@@ -72,7 +72,7 @@ class TruncatedGradient(object):
                 X_batch = X_y_batch[:, :-1]
                 y_batch = X_y_batch[:, -1:]
 
-                grad = self.loss_fn.gradient(X_batch, y_batch, W)
+                grad = self.loss_func.gradient(X_batch, y_batch, W)
 
                 np.clip(grad, -MAX_DLOSS, MAX_DLOSS, out = grad)
 
@@ -81,7 +81,7 @@ class TruncatedGradient(object):
                 max_cum_l1 += self.l1_ratio * lr * 0.0001
                 W = self.update(W, cum_l1, max_cum_l1)
 
-                loss = self.loss_fn.evaluate(X_batch, y_batch, W)
+                loss = self.loss_func.evaluate(X_batch, y_batch, W)
                 error_history.append(loss)
             
             sum_loss = np.sum(error_history)
