@@ -10,8 +10,6 @@ class LBFGS(object):
         past = 3, 
         max_iters = 0, 
         max_linesearch = 64, 
-        # max_step = 1.0e+20, 
-        # min_step = 1.0e-20, 
         verbose = True,
         linesearch_params = None,
         loss_func = None, 
@@ -28,9 +26,6 @@ class LBFGS(object):
             self.linesearch_params = linesearch_params
             self.loss_func = loss_func
             self.linesearch_policy = linesearch_policy
-
-            # if self.linesearch_policy == "backtracking":
-            #     self.linesearch = LineSearchBacktracking(loss, linesearch_policy)
 
     def optimize(self, X, y):
         """
@@ -93,7 +88,6 @@ class LBFGS(object):
 
                 # min_step = self.min_step
                 # max_step = self.max_step
-
                 # apply line search function to find optimized step
                 ls, x, fx0, g, step = linesearch.search(x, fx0, g, step, d, xp, gp)
 
