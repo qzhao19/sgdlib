@@ -4,7 +4,7 @@ MAX_DLOSS = 1e+10
 
 class SAG(object):
     def __init__(self,
-        loss, 
+        loss_func, 
         lr_decay, 
         regularizer, 
         tol = 0.001, 
@@ -16,7 +16,7 @@ class SAG(object):
             self.batch_size = batch_size
             self.max_iters = max_iters
             self.tol = tol
-            self.loss = loss
+            self.loss_func = loss_func
             self.lr_decay = lr_decay
             self.regularizer = regularizer
             self.num_iters_no_change = num_iters_no_change
@@ -51,7 +51,7 @@ class SAG(object):
                 X_batch = X_y_batch[:, :-1]
                 y_batch = X_y_batch[:, -1:]
 
-                grad = self.loss_fn.gradient(X_batch, y_batch, W)
+                grad = self.loss_func.gradient(X_batch, y_batch, W)
                 grad = grad.squeeze()
                 
                 np.clip(grad, -MAX_DLOSS, MAX_DLOSS, out = grad)
@@ -60,7 +60,7 @@ class SAG(object):
                 grad_history[:, index] = grad
 
                 W = W - lr * avg_grad[:, np.newaxis]
-                loss = self.loss_fn.evaluate(X_batch, y_batch, W)
+                loss = self.loss_func.evaluate(X_batch, y_batch, W)
                 # print(loss)
 
                 error_history.append(loss)
