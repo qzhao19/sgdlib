@@ -70,99 +70,101 @@ class LBFGS(object):
         xnorm = np.linalg.norm(x, ord = 2)
         gnorm = np.linalg.norm(g, ord = 2)
 
+        if xnorm < 1.0: 
+            xnorm = 1.0
         if (gnorm / max(1.0, xnorm)) <= self.tol:
-            print("LBFGS_CONVERGENCE")
+            print("LBFGS_ALREADY_MINIMIZED")
             return
-        else:
-            #  compute intial step
-            step = 1.0 / np.linalg.norm(d, ord = 2)
+        
+        #  compute intial step
+        step = 1.0 / np.linalg.norm(d, ord = 2)
+        
+        num_iters = 1
+        end = 0
+        bound = 0
+
+        while(True):
+            # store current x and gradient value
+            xp = x
+            gp = g
+
+            # min_step = self.min_step
+            # max_step = self.max_step
+            # apply line search function to find optimized step
+            ls, x, fx0, g, d, step = linesearch.search(x, fx0, g, step, d, xp, gp)
+
+            if ls < 0:
+                x = xp
+                g = gp
+                print("lbfgs exit")
+                break
             
-            num_iters = 1
-            end = 0
-            bound = 0
+            # print the progress
+            if self.verbose:
+                print("Iteration = {}, function value = {}".format(num_iters, fx0))
 
-            while(True):
-                # store current x and gradient value
-                xp = x
-                gp = g
+            # Convergence test -- gradient
+            # criterion is given by the following formula:
+            # ||g(x)|| / max(1, ||x||) < tol
+            xnorm = np.linalg.norm(x, ord = 2)
+            gnorm = np.linalg.norm(g, ord = 2)
 
-                # min_step = self.min_step
-                # max_step = self.max_step
-                # apply line search function to find optimized step
-                ls, x, fx0, g, step = linesearch.search(x, fx0, g, step, d, xp, gp)
+            if (gnorm / max(1.0, xnorm)) <= self.tol:
+                print("LBFGS_CONVERGENCE")
+                break
 
-                if ls < 0:
-                    x = xp
-                    g = gp
-                    print("lbfgs exit")
+            # Convergence test -- objective function value
+            # The criterion is given by the following formula:
+            # |f(past_x) - f(x)| / max(1, |f(x)|) < \delta.
+            if self.past >= 0:
+                rate = abs(fx[num_iters % self.past] - fx0) / max(1.0, abs(fx0))
+                if rate < self.delta:
+                    print("LBFGS_STOP")
                     break
-                
-                # print the progress
-                if self.verbose:
-                    print("Iteration = {}, function value = {}".format(num_iters, fx0))
+                # Store the current value of the cost function
+                fx[num_iters % self.past] = fx0
 
-                # Convergence test -- gradient
-                # criterion is given by the following formula:
-                # ||g(x)|| / max(1, ||x||) < tol
-                xnorm = np.linalg.norm(x, ord = 2)
-                gnorm = np.linalg.norm(g, ord = 2)
+            if self.max_iters != 0 and self.max_iters <= num_iters:
+                print("LBFGSERR_MAXIMUMITERATION")
+                break
 
-                if (gnorm / max(1.0, xnorm)) <= self.tol:
-                    print("LBFGS_CONVERGENCE")
-                    break
+            # Update vectors s and y:
+            # s_{k+1} = x_{k+1} - x_{k} = \step * d_{k}.
+            # y_{k+1} = g_{k+1} - g_{k}.
+            mem_s[:, end] = x - xp
+            mem_y[:, end] = g - gp
 
-                # Convergence test -- objective function value
-                # The criterion is given by the following formula:
-                # |f(past_x) - f(x)| / max(1, |f(x)|) < \delta.
-                if self.past >= 0:
-                    rate = abs(fx[num_iters % self.past] - fx0) / max(1.0, abs(fx0))
-                    if rate < self.delta:
-                        print("LBFGS_STOP")
-                        break
-                    # Store the current value of the cost function
-                    fx[num_iters % self.past] = fx0
+            # Compute scalars ys and yy:
+            # ys = y^t \cdot s = 1 / \rho.
+            # yy = y^t \cdot y.
+            # Notice that yy is used for scaling the hessian matrix H_0 (Cholesky factor).
+            ys = np.dot(mem_y[:, end], mem_s[:, end])
+            yy = np.dot(mem_y[:, end], mem_y[:, end])
+            mem_ys[end] = ys
 
-                if self.max_iters != 0 and self.max_iters <= num_iters:
-                    print("LBFGSERR_MAXIMUMITERATION")
-                    break
+            # Compute the negative of gradients
+            d = -g
 
-                # Update vectors s and y:
-                # s_{k+1} = x_{k+1} - x_{k} = \step * d_{k}.
-                # y_{k+1} = g_{k+1} - g_{k}.
-                mem_s[:, end] = x - xp
-                mem_y[:, end] = g - gp
+            bound += 1
+            bound = self.mem_size if self.mem_size < bound else bound
+            end = (end + 1) % self.mem_size
 
-                # Compute scalars ys and yy:
-                # ys = y^t \cdot s = 1 / \rho.
-                # yy = y^t \cdot y.
-                # Notice that yy is used for scaling the hessian matrix H_0 (Cholesky factor).
-                ys = np.dot(mem_y[:, end], mem_s[:, end])
-                yy = np.dot(mem_y[:, end], mem_y[:, end])
-                mem_ys[end] = ys
+            j = end
+            for i in range(bound):
+                # if (--j == -1) j = m-1
+                j = (j + self.mem_size - 1) % self.mem_size
+                # \alpha_{j} = \rho_{j} s^{t}_{j} \cdot q_{k+1}
+                mem_alpha[j] = np.dot(mem_s[:, j], d) / mem_ys[j]
+                # q_{i} = q_{i+1} - \alpha_{i} y_{i}
+                d += (-mem_alpha[j]) * mem_y[:, j]
 
-                # Compute the negative of gradients
-                d = -g
+            d *= ys / yy
 
-                bound += 1
-                bound = self.mem_size if self.mem_size < bound else bound
-                end = (end + 1) % self.mem_size
+            for i in range(bound):
+                beta = np.dot(mem_y[:, i], mem_ys[i])
+                d += (mem_alpha[j] - beta) *mem_s[:, i]
+                j = (j + 1) % self.mem_size
 
-                j = end
-                for i in range(bound):
-                    # if (--j == -1) j = m-1
-                    j = (j + self.mem_size - 1) % self.mem_size
-                    # \alpha_{j} = \rho_{j} s^{t}_{j} \cdot q_{k+1}
-                    mem_alpha[j] = np.dot(mem_s[:, j], d) / mem_ys[j]
-                    # q_{i} = q_{i+1} - \alpha_{i} y_{i}
-                    d += (-mem_alpha[j]) * mem_y[:, j]
-
-                d *= ys / yy
-
-                for i in range(bound):
-                    beta = np.dot(mem_y[:, i], mem_ys[i])
-                    d += (mem_alpha[j] - beta) *mem_s[:, i]
-                    j = (j + 1) % self.mem_size
-                
             step = 1.0
         
         return x
