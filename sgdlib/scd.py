@@ -1,9 +1,9 @@
 import numpy as np
 
 class SCD(object):
-    def __init__(self, loss, max_iters = 50, rho = 1.0, alpha = 0.001):
+    def __init__(self, loss_func, max_iters = 50, rho = 1.0, alpha = 0.001):
         self.max_iters = 50
-        self.loss = loss
+        self.loss_func = loss_func
         self.rho = 1.0
         self.alpha = 0.001
 
@@ -16,7 +16,7 @@ class SCD(object):
         i = 0
         eta = 0
         for iters in range(self.max_iters):
-            grad = self.loss.gradient(X, y, W)
+            grad = self.loss_func.gradient(X, y, W)
             print(grad)
 
             pred_descent = 0
