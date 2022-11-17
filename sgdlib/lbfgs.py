@@ -9,7 +9,6 @@ class LBFGS(object):
         cau_factor = 1.0e-6, 
         past = 3, 
         max_iters = 0, 
-        max_linesearch = 64, 
         verbose = True,
         linesearch_params = None,
         loss_func = None, 
@@ -21,7 +20,6 @@ class LBFGS(object):
             self.cau_factor = cau_factor
             self.past = past
             self.max_iters = max_iters
-            self.max_linesearch = max_linesearch
             self.verbose = verbose
             self.linesearch_params = linesearch_params
             self.loss_func = loss_func
@@ -127,6 +125,8 @@ class LBFGS(object):
             if self.max_iters != 0 and self.max_iters <= num_iters:
                 print("LBFGSERR_MAXIMUMITERATION")
                 break
+            #  Count the iteration number. 
+            num_iters += 1
 
             # Update vectors s and y:
             # s_{k+1} = x_{k+1} - x_{k} = \step * d_{k}.

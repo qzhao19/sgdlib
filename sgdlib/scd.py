@@ -2,8 +2,8 @@ import numpy as np
 
 class SCD(object):
     def __init__(self, loss_func, max_iters = 50, rho = 1.0, alpha = 0.001):
-        self.max_iters = 50
         self.loss_func = loss_func
+        self.max_iters = 50
         self.rho = 1.0
         self.alpha = 0.001
 
