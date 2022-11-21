@@ -7,7 +7,7 @@ class LineSearchBacktracking(object):
         self.loss_func = loss_func
         self.linesearch_params = linesearch_params
 
-    def search(self, x, fx0, g,  d, step, xp):
+    def search(self, x, fx, g, d, step, xp):
         # Decreasing and increasing factors
         decrease_factor = self.linesearch_params["decrease_factor"]
         increase_factor = self.linesearch_params['increase_factor']
@@ -16,7 +16,7 @@ class LineSearchBacktracking(object):
             print("'step' must be positive")
             return -1
         
-        fx0_init = fx0
+        fx_init = fx
 
         # Compute the initial gradient in the search direction
         dg_init = np.dot(g, d)
@@ -34,14 +34,14 @@ class LineSearchBacktracking(object):
             # x_{k+1} = x_k + step * d_k
             x = xp + step * d
 
-            # fx0 = self.loss_fn.evaluate(x, g) 
-            fx0 = self.loss_func.evaluate(self.X, self.y, x)
+            # fx = self.loss_fn.evaluate(x, g) 
+            fx = self.loss_func.evaluate(self.X, self.y, x)
             g = self.loss_func.gradient(self.X, self.y, x)
 
             # increment count
             count += 1
 
-            if fx0 > fx0_init + step * dg_test:
+            if fx > fx_init + step * dg_test:
                 width = decrease_factor
             else:
                 # Armijo condition
@@ -75,4 +75,4 @@ class LineSearchBacktracking(object):
             
             step *= width
         
-        return count, x, fx0, g, d, step
+        return count, x, fx, g, d, step

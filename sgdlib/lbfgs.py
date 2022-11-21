@@ -32,37 +32,38 @@ class LBFGS(object):
         # the intial parameters to be optimized
         x = self.x0
         
-        num_dims = x.shape[0]
+        num_samples, _ = X.shape
         mem_size = self.mem_size
 
         # intermediate variables
-        xp = np.zeros((num_dims))
-        g = np.zeros((num_dims))
-        gp = np.zeros((num_dims))
-        d = np.zeros((num_dims))
-        fx = np.zeros((max(1, self.past)))
-
-        # Initialize the limited memory
-        mem_alpha = np.zeros((num_dims))
-        mem_s = np.zeros((num_dims, mem_size))
-        mem_y = np.zeros((num_dims, mem_size))
-        mem_ys = np.zeros((mem_size))
-
-        # Evaluate the function value and its gradient
-        fx0 = self.loss_func.evaluate(X, y, x)
-        g = self.loss_func.gradient(X, y, x)
-
-        # Store the initial value of the cost function.
-        fx[0] = fx0
-
-        # Compute the direction we assume the initial hessian matrix H_0 as the identity matrix.
-        d = -g
+        xp = np.zeros((num_samples))
+        g = np.zeros((num_samples))
+        gp = np.zeros((num_samples))
+        d = np.zeros((num_samples))
+        # an array for storing previous values of the objective function
+        pfx = np.zeros((max(1, self.past)))
 
         # define step search policy
         if self.linesearch_policy == "backtracking":
             linesearch = LineSearchBacktracking(X, y, self.loss_func, self.linesearch_params)
         else:
             raise ValueError("Cannot find line search policy.")
+
+        # Initialize the limited memory
+        mem_alpha = np.zeros((num_samples))
+        mem_s = np.zeros((num_samples, mem_size))
+        mem_y = np.zeros((num_samples, mem_size))
+        mem_ys = np.zeros((mem_size))
+
+        # Evaluate the function value and its gradient
+        fx = self.loss_func.evaluate(X, y, x)
+        g = self.loss_func.gradient(X, y, x)
+
+        # Store the initial value of the cost function.
+        pfx[0] = fx
+
+        # Compute the direction we assume the initial hessian matrix H_0 as the identity matrix.
+        d = -g
 
         # make sure the intial points are not sationary points (minimizer).
         xnorm = np.linalg.norm(x, ord = 2)
@@ -74,13 +75,12 @@ class LBFGS(object):
             print("LBFGS_ALREADY_MINIMIZED")
             return
         
-        #  compute intial step
+        #  compute intial step step = 1.0 / norm2(d)
         step = 1.0 / np.linalg.norm(d, ord = 2)
         
         num_iters = 1
         end = 0
         bound = 0
-
         while(True):
             # store current x and gradient value
             xp = x
@@ -88,8 +88,8 @@ class LBFGS(object):
 
             # min_step = self.min_step
             # max_step = self.max_step
-            # apply line search function to find optimized step
-            ls, x, fx0, g, d, step = linesearch.search(x, fx0, g, step, d, xp, gp)
+            # apply line search function to find optimized step, search for an optimal step
+            ls, x, fx, g, d, step = linesearch.search(x, fx, g, step, d, xp, gp)
 
             if ls < 0:
                 x = xp
@@ -99,7 +99,7 @@ class LBFGS(object):
             
             # print the progress
             if self.verbose:
-                print("Iteration = {}, function value = {}".format(num_iters, fx0))
+                print("Iteration = {}, function value = {}".format(num_iters, fx))
 
             # Convergence test -- gradient
             # criterion is given by the following formula:
@@ -115,12 +115,12 @@ class LBFGS(object):
             # The criterion is given by the following formula:
             # |f(past_x) - f(x)| / max(1, |f(x)|) < \delta.
             if self.past >= 0:
-                rate = abs(fx[num_iters % self.past] - fx0) / max(1.0, abs(fx0))
+                rate = abs(pfx[num_iters % self.past] - fx) / max(1.0, abs(fx))
                 if rate < self.delta:
                     print("LBFGS_STOP")
                     break
                 # Store the current value of the cost function
-                fx[num_iters % self.past] = fx0
+                pfx[num_iters % self.past] = fx
 
             if self.max_iters != 0 and self.max_iters <= num_iters:
                 print("LBFGSERR_MAXIMUMITERATION")
