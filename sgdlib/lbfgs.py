@@ -1,5 +1,7 @@
 import numpy as np
 from line_search.backtracking import LineSearchBacktracking
+# from line_search.bracketing import LineSearchBracketing
+# from line_search.backtracking import LineSearchBacktracking
 
 class LBFGS(object):
     def __init__(self, x0,
@@ -12,8 +14,8 @@ class LBFGS(object):
         verbose = True,
         linesearch_params = None,
         loss_func = None, 
-        linesearch_policy = "backtracking_linesearch"):
-            self.x0 = x0,
+        linesearch_policy = "backtracking"):
+            self.x0 = x0
             self.mem_size = mem_size
             self.tol = tol
             self.delta = delta
@@ -32,14 +34,14 @@ class LBFGS(object):
         # the intial parameters to be optimized
         x = self.x0
         
-        num_samples, _ = X.shape
-        mem_size = self.mem_size
+        num_dims = len(x)
+        # mem_size = self.mem_size
 
         # intermediate variables
-        xp = np.zeros((num_samples))
-        g = np.zeros((num_samples))
-        gp = np.zeros((num_samples))
-        d = np.zeros((num_samples))
+        xp = np.zeros((num_dims))
+        g = np.zeros((num_dims))
+        gp = np.zeros((num_dims))
+        d = np.zeros((num_dims))
         # an array for storing previous values of the objective function
         pfx = np.zeros((max(1, self.past)))
 
@@ -50,10 +52,10 @@ class LBFGS(object):
             raise ValueError("Cannot find line search policy.")
 
         # Initialize the limited memory
-        mem_alpha = np.zeros((num_samples))
-        mem_s = np.zeros((num_samples, mem_size))
-        mem_y = np.zeros((num_samples, mem_size))
-        mem_ys = np.zeros((mem_size))
+        mem_alpha = np.zeros((num_dims))
+        mem_s = np.zeros((num_dims, self.mem_size))
+        mem_y = np.zeros((num_dims, self.mem_size))
+        mem_ys = np.zeros((self.mem_size))
 
         # Evaluate the function value and its gradient
         fx = self.loss_func.evaluate(X, y, x)
@@ -83,13 +85,14 @@ class LBFGS(object):
         bound = 0
         while(True):
             # store current x and gradient value
-            xp = x
-            gp = g
+            xp = x.copy()
+            gp = g.copy()
 
             # min_step = self.min_step
             # max_step = self.max_step
             # apply line search function to find optimized step, search for an optimal step
-            ls, x, fx, g, d, step = linesearch.search(x, fx, g, step, d, xp, gp)
+            # search(x, fx, g, d, step, xp)
+            ls, x, fx, g, d, step = linesearch.search(x, fx, g, d, step, xp)
 
             if ls < 0:
                 x = xp
@@ -113,7 +116,7 @@ class LBFGS(object):
 
             # Convergence test -- objective function value
             # The criterion is given by the following formula:
-            # |f(past_x) - f(x)| / max(1, |f(x)|) < \delta.
+            # |f(past_x) - f(x)| / max(1, |f(x)|) < delta.
             if self.past >= 0:
                 rate = abs(pfx[num_iters % self.past] - fx) / max(1.0, abs(fx))
                 if rate < self.delta:
@@ -168,8 +171,3 @@ class LBFGS(object):
             step = 1.0
         
         return x
-
-
-
-
-
