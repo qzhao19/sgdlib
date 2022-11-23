@@ -9,7 +9,7 @@ class LineSearchBacktracking(object):
 
     def search(self, x, fx, g, d, step, xp):
 
-        result = {'status': 0, 'x': x, 'fx': fx, "g": g,'step': step} 
+        result = {'status': 0, 'x': x, 'fx': fx, "g": g, 'step': step} 
 
         # Decreasing and increasing factors
         decrease_factor = self.linesearch_params["decrease_factor"]
@@ -59,18 +59,18 @@ class LineSearchBacktracking(object):
                 dg = np.dot(g, d)
                 if dg < self.linesearch_params["wolfe"] * dg_init:
                     print("[INFO] dg = %r < lbfgs_parameters.wolfe * dginit = %r" %(dg, self.linesearch_params["wolfe"] * dg_init))
-                    print("[INFO]not satisfy wolf condition.")
+                    print("[INFO] not satisfy wolf condition.")
                     width = increase_factor
                 else:
                     # check wolf condition
-                    if self.linesearch_params["condition"] == "LINESEARCH_BACKTRACKING_WOLFE":
-                        result = {'status': count, 'x': x, 'fx': fx, "g": g,'step': step}
-                        return result
+                    # if self.linesearch_params["condition"] == "LINESEARCH_BACKTRACKING_WOLFE":
+                    #     result = {'status': count, 'x': x, 'fx': fx, "g": g, 'step': step}
+                    #     return result
                     
                     if dg > -self.linesearch_params["wolfe"] * dg_init:
                         width = decrease_factor
                     else:
-                        result = {'status': count, 'x': x, 'fx': fx, "g": g,'step': step}
+                        result = {'status': count, 'x': x, 'fx': fx, "g": g, 'step': step}
                         return result
 
             if step < self.linesearch_params["min_step"]:
@@ -85,7 +85,7 @@ class LineSearchBacktracking(object):
         
             if count >= self.linesearch_params["max_linesearch"]:
                 print("the line search step reached the max number of iterations")
-                result["status"] = -1
+                result = {'status': 0, 'x': x, 'fx': fx, "g": g, 'step': step}
                 return result
             
             step *= width
