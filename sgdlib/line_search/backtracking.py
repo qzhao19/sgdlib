@@ -10,7 +10,6 @@ class LineSearchBacktracking(object):
     def search(self, x, fx, g, d, step, xp):
 
         result = {'status': 0, 'x': x, 'fx': fx, "g": g, 'step': step} 
-
         # Decreasing and increasing factors
         decrease_factor = self.linesearch_params["decrease_factor"]
         increase_factor = self.linesearch_params['increase_factor']
@@ -21,7 +20,6 @@ class LineSearchBacktracking(object):
             return result
         
         fx_init = fx
-
         # Compute the initial gradient in the search direction
         dg_init = np.dot(g, d)
 
@@ -39,15 +37,14 @@ class LineSearchBacktracking(object):
             x = xp + step * d
 
             # fx = self.loss_fn.evaluate(x, g) 
-            fx = self.loss_func.evaluate(self.X, self.y, x)
-            g = self.loss_func.gradient(self.X, self.y, x)
-            print("[INFO] Evaluate fx = %r step = %r." %(fx, step))
+            # fx = self.loss_func.evaluate(self.X, self.y, x)
+            # g = self.loss_func.gradient(self.X, self.y, x)
+            fx, g = self.loss_func.compute(x)
 
             # increment count
             count += 1
 
             if fx > fx_init + step * dg_test:
-                print("[INFO] Not satisfy sufficient decrease condition.")
                 width = decrease_factor
             else:
                 # check Armijo condition
@@ -58,14 +55,12 @@ class LineSearchBacktracking(object):
                 # compute the project of d on the direction d
                 dg = np.dot(g, d)
                 if dg < self.linesearch_params["wolfe"] * dg_init:
-                    print("[INFO] dg = %r < lbfgs_parameters.wolfe * dginit = %r" %(dg, self.linesearch_params["wolfe"] * dg_init))
-                    print("[INFO] not satisfy wolf condition.")
                     width = increase_factor
                 else:
                     # check wolf condition
-                    # if self.linesearch_params["condition"] == "LINESEARCH_BACKTRACKING_WOLFE":
-                    #     result = {'status': count, 'x': x, 'fx': fx, "g": g, 'step': step}
-                    #     return result
+                    if self.linesearch_params["condition"] == "LINESEARCH_BACKTRACKING_WOLFE":
+                        result = {'status': count, 'x': x, 'fx': fx, "g": g, 'step': step}
+                        return result
                     
                     if dg > -self.linesearch_params["wolfe"] * dg_init:
                         width = decrease_factor
