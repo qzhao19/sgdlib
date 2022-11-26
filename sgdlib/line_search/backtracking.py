@@ -36,10 +36,8 @@ class LineSearchBacktracking(object):
             # x_{k+1} = x_k + step * d_k
             x = xp + step * d
 
-            # fx = self.loss_fn.evaluate(x, g) 
-            # fx = self.loss_func.evaluate(self.X, self.y, x)
-            # g = self.loss_func.gradient(self.X, self.y, x)
-            fx, g = self.loss_func.compute(x)
+            fx = self.loss_func.evaluate(self.X, self.y, x)
+            g = self.loss_func.gradient(self.X, self.y, x)
 
             # increment count
             count += 1
@@ -48,7 +46,7 @@ class LineSearchBacktracking(object):
                 width = decrease_factor
             else:
                 # check Armijo condition
-                if self.linesearch_params["condition"] == "LINESEARCH_BACKTRACKING_ARMIJO":
+                if self.linesearch_params["condition"] == "ARMIJO":
                     result = {'status': count, 'x': x, 'fx': fx, "g": g,'step': step}
                     return result
 
@@ -58,7 +56,7 @@ class LineSearchBacktracking(object):
                     width = increase_factor
                 else:
                     # check wolf condition
-                    if self.linesearch_params["condition"] == "LINESEARCH_BACKTRACKING_WOLFE":
+                    if self.linesearch_params["condition"] == "WOLFE":
                         result = {'status': count, 'x': x, 'fx': fx, "g": g, 'step': step}
                         return result
                     

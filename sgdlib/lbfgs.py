@@ -1,6 +1,6 @@
 import numpy as np
-from line_search.backtracking import LineSearchBacktracking
-from line_search.bracketing import LineSearchBracketing
+from .line_search.backtracking import LineSearchBacktracking
+from .line_search.bracketing import LineSearchBracketing
 
 class LBFGS(object):
     def __init__(self, x0,
@@ -53,9 +53,8 @@ class LBFGS(object):
         mem_ys = np.zeros((self.mem_size))
 
         # Evaluate the function value and its gradient
-        # fx = self.loss_func.evaluate(X, y, x)
-        # g = self.loss_func.gradient(X, y, x)
-        fx, g = self.loss_func.compute(x)
+        fx = self.loss_func.evaluate(X, y, x)
+        g = self.loss_func.gradient(X, y, x)
 
         # Store the initial value of the cost function.
         pfx[0] = fx
@@ -70,7 +69,7 @@ class LBFGS(object):
         if xnorm < 1.0: 
             xnorm = 1.0
         if (gnorm / xnorm) <= self.tol:
-            print("LBFGS_ALREADY_MINIMIZED")
+            print("ERROR: The initial variables already minimize the objective function.")
             return
         
         # compute intial step step = 1.0 / norm2(d)
@@ -84,8 +83,6 @@ class LBFGS(object):
             xp = x.copy()
             gp = g.copy()
 
-            # min_step = self.min_step
-            # max_step = self.max_step
             # apply line search function to find optimized step, search for an optimal step
             # search(x, fx, g, d, step, xp)
             ls = linesearch.search(x, fx, g, d, step, xp)
@@ -93,7 +90,7 @@ class LBFGS(object):
             if ls["status"] < 0:
                 x = xp.copy()
                 g = gp.copy()
-                print("lbfgs exit: the point return to the privious point")
+                print("ERROR: lbfgs exit: the point return to the privious point")
                 return ls['status']
 
             fx = ls['fx']
@@ -114,7 +111,7 @@ class LBFGS(object):
             if xnorm < 1.0:
                 xnorm = 1.0
             if (gnorm / xnorm) <= self.tol:
-                print("LBFGS_CONVERGENCE")
+                print("INFO: success to reached convergence (g_epsilon).")
                 break
 
             # Convergence test -- objective function value
@@ -123,13 +120,13 @@ class LBFGS(object):
             if self.past <= k:
                 rate = (pfx[k % self.past] - fx) / fx
                 if abs(rate) < self.delta:
-                    print("LBFGS_STOP")
+                    print("INFO: success to meet stopping criteria (ftol)")
                     break
                 # Store the current value of the cost function
                 pfx[k % self.past] = fx
 
             if self.max_iters != 0 and self.max_iters < k + 1:
-                print("LBFGSERR_MAXIMUMITERATION")
+                print("INFO: the algorithm routine reaches the maximum number of iterations")
                 break
             
             # Update vectors s and y:
