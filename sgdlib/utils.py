@@ -30,8 +30,6 @@ class Regularizer(object):
     def evaluate(self, W, num_samples):
         if not self.penalty:
             reg = 0.0
-        elif self.penalty == "L1":
-            reg = np.sum(np.abs(W))
         elif self.penalty == "L2":
             reg = np.dot(W.T, W)
         else:
@@ -41,8 +39,6 @@ class Regularizer(object):
     def gradient(self, W, num_samples):
         if not self.penalty:
             grad = 0.0
-        elif self.penalty == "L1":
-            grad = self.alpha * np.sign(W) 
         elif self.penalty == "L2":
             grad = self.alpha * W 
         else:
@@ -70,3 +66,24 @@ class ExponentialDecay(object):
     def compute(self, epoch):
         lr = self.base_lr * np.exp(self.gamma * epoch)
         return lr
+
+
+def check_linesearch_params(params):
+    if params["decrease_factor"] < 0:
+        raise ValueError("ERROR: 'decrease_factor' must be non-negative")
+    if params["increase_factor"] < 0:
+        raise ValueError("ERROR: 'increase_factor' must be non-negative")
+    if params["max_iterations"] < 0:
+        raise ValueError("ERROR: 'max_iterations' must be non-negative")
+    if params["condition"] != "ARMIJO" or params["condition"] != "WOLFE":
+        raise ValueError("ERROR: unsupported line search termination condition")
+    if params["max_linesearch"] <= 0:
+        raise ValueError("ERROR: 'max_linesearch' must be positive")
+    if params["min_step"] < 0:
+        raise ValueError("ERROR: 'min_step' must be positive")
+    if params["max_step"] < params["min_step"]:
+        raise ValueError("ERROR: 'max_step' must be greater than 'min_step'")
+    if params["ftol"] <= 0 or params["ftol"] >= 0.5:
+        raise ValueError("ERROR: 'ftol' must satisfy 0 < ftol < 0.5")
+    if params["wolfe"] <= params["ftol"] or params["wolfe"] >= 1:
+        raise ValueError("ERROR: 'wolfe' must satisfy ftol < wolfe < 1")

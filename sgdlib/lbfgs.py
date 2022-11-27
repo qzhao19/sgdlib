@@ -1,6 +1,9 @@
 import numpy as np
+
+from .utils import check_linesearch_params
 from .line_search.backtracking import LineSearchBacktracking
 from .line_search.bracketing import LineSearchBracketing
+from .line_search.morethuente import LineSearchMorethuente
 
 class LBFGS(object):
     def __init__(self, x0,
@@ -24,6 +27,8 @@ class LBFGS(object):
             self.loss_func = loss_func
             self.linesearch_policy = linesearch_policy
 
+            check_linesearch_params(linesearch_params)
+        
     def optimize(self, X, y):
         """
         Optimize the parameters of the model.
@@ -43,6 +48,10 @@ class LBFGS(object):
         # define step search policy
         if self.linesearch_policy == "backtracking":
             linesearch = LineSearchBacktracking(X, y, self.loss_func, self.linesearch_params)
+        elif self.linesearch_policy == "bracketing":
+            linesearch = LineSearchBracketing(X, y, self.loss_func, self.linesearch_params)
+        elif self.linesearch_params == "morethuente":
+            linesearch = LineSearchMorethuente(X, y, self.loss_func, self.linesearch_params)
         else:
             raise ValueError("Cannot find line search policy.")
 
