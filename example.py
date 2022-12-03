@@ -1,6 +1,7 @@
 
 import numpy as np
 
+from sgdlib import tg
 from sgdlib import sgd
 from sgdlib import sag
 from sgdlib import scd
@@ -9,9 +10,11 @@ from sgdlib.loss import log_loss
 from sgdlib.utils import load_data
 from sgdlib.utils import Regularizer, StepDecay
 
-
 def test_sgd(X, y):
+    w = np.random.rand(X.shape[1], 1)
+    # w = np.ones((X.shape[1], 1))
     optimizer = sgd.SGD(
+        x0 = w,
         loss_func = log_loss.LogLoss(), 
         lr_decay = StepDecay(lr = 0.1), 
         regularizer = Regularizer(penalty = None, alpha = 0.0)
@@ -20,7 +23,10 @@ def test_sgd(X, y):
     return opt_w
 
 def test_sag(X, y):
+    w = np.random.rand(X.shape[1], 1)
+    # w = np.ones((X.shape[1], 1))
     optimizer = sag.SAG(
+        x0 = w,
         loss_func = log_loss.LogLoss(), 
         lr_decay = StepDecay(lr = 0.1), 
         regularizer = Regularizer(penalty = None, alpha = 0.0)
@@ -28,8 +34,25 @@ def test_sag(X, y):
     opt_w = optimizer.optimize(X, y)
     return opt_w
 
+def test_tg(X, y):
+    w = np.random.rand(X.shape[1], 1)
+    # w = np.ones((X.shape[1], 1))
+    optimizer = tg.TruncatedGradient(
+        x0 = w,
+        loss_func = log_loss.LogLoss(), 
+        lr_decay = StepDecay(lr = 0.1), 
+        regularizer = Regularizer(penalty = None, alpha = 0.0)
+    )
+    opt_w = optimizer.optimize(X, y)
+    return opt_w
+
+
 def test_scd(X, y):
+    # w = np.random.rand(X.shape[1], 1)
+    # w = np.ones((X.shape[1], 1))
+    w = np.zeros((X.shape[1]))
     optimizer = scd.SCD(
+        x0 = w,
         loss_func = log_loss.LogLoss()
     )
     opt_w = optimizer.optimize(X, y)
@@ -59,8 +82,21 @@ def test_lbfgs(X, y):
 def main():
     X, y = load_data("./data/ionosphere.data", sep = ",")
 
-    test_lbfgs(X, y)
-    
+    print("SGD")
+    opt_w = test_sgd(X, y)
+    print(opt_w)
+
+    print("SAG")
+    opt_w = test_sag(X, y)
+    print(opt_w)
+
+    print("TruncatedGradient")
+    opt_w = test_tg(X, y)
+    print(opt_w)
+
+    print("SCD")
+    opt_w = test_scd(X, y)
+    print(opt_w)
 
 if __name__ == '__main__':
     main()

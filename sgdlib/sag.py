@@ -1,9 +1,9 @@
 import numpy as np
-MAX_DLOSS = 1e+10
+from .base import BaseOptimizer
 
-
-class SAG(object):
-    def __init__(self,
+class SAG(BaseOptimizer):
+    def __init__(self, 
+        x0,
         loss_func, 
         lr_decay, 
         regularizer, 
@@ -13,33 +13,32 @@ class SAG(object):
         num_iters_no_change = 5, 
         shuffle = True, 
         verbose = True):
-            self.batch_size = batch_size
-            self.max_iters = max_iters
-            self.tol = tol
-            self.loss_func = loss_func
-            self.lr_decay = lr_decay
-            self.regularizer = regularizer
-            self.num_iters_no_change = num_iters_no_change
-            self.shuffle = shuffle
-            self.verbose = verbose
-            self.opt_w = None
+            super(SAG, self).__init__(x0 = x0, 
+                loss_func = loss_func, 
+                lr_decay = lr_decay, 
+                regularizer = regularizer, 
+                tol = tol, 
+                batch_size = batch_size, 
+                max_iters = max_iters,
+                num_iters_no_change = num_iters_no_change,
+                shuffle = shuffle,
+                verbose = verbose)
 
     def optimize(self, X, y):
         best_loss = np.Inf
         
-        W = np.random.rand(X.shape[1], 1)
-        # W = np.ones((X.shape[1], 1))
+        # self.x0 = np.random.rand(X.shape[1], 1)
+        # self.x0 = np.ones((X.shape[1], 1))
         X_y = np.c_[X, y]
-
         is_converged = False
         no_improvement_count = 0
         
         num_batchs = X.shape[0] // self.batch_size
-        num_samples, num_features = X.shape
+        _, num_features = X.shape
 
         grad_history = np.zeros((num_features, num_batchs))
         avg_grad = np.mean(grad_history, axis = 1)
-        # avg_grad = avg_grad[np.newaxis, :]
+        # avg_grad = avg_grad[np.neself.x0axis, :]
 
         for iters in range(self.max_iters):
             if self.shuffle:
@@ -51,16 +50,16 @@ class SAG(object):
                 X_batch = X_y_batch[:, :-1]
                 y_batch = X_y_batch[:, -1:]
 
-                grad = self.loss_func.gradient(X_batch, y_batch, W)
+                grad = self.loss_func.gradient(X_batch, y_batch, self.x0)
                 grad = grad.squeeze()
                 
-                np.clip(grad, -MAX_DLOSS, MAX_DLOSS, out = grad)
+                np.clip(grad, self.MIN_DLOSS, self.MAX_DLOSS, out = grad)
 
                 avg_grad += (grad - grad_history[:, index]) / self.batch_size
                 grad_history[:, index] = grad
 
-                W = W - lr * avg_grad[:, np.newaxis]
-                loss = self.loss_func.evaluate(X_batch, y_batch, W)
+                self.x0 = self.x0 - lr * avg_grad[:, np.newaxis]
+                loss = self.loss_func.evaluate(X_batch, y_batch, self.x0)
                 # print(loss)
 
                 error_history.append(loss)
@@ -79,7 +78,7 @@ class SAG(object):
 
             if no_improvement_count >= self.num_iters_no_change:
                 is_converged = True
-                self.opt_w = W
+                self.opt_x = self.x0
                 break
             if self.verbose:
                 if iters % 1 == 0:
@@ -88,5 +87,5 @@ class SAG(object):
         if not is_converged:
             raise ValueError("Not converged!")
 
-        return self.opt_w
+        return self.opt_x
 
