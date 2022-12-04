@@ -1,8 +1,7 @@
 import numpy as np
+from .base import BaseOptimizer
 
-MAX_DLOSS = 1e+10
-
-class SGD(object):
+class SGD(BaseOptimizer):
     """Mini-batch stochastic gradient descent algorithm
 
     Parameters
@@ -11,6 +10,7 @@ class SGD(object):
         _description_
     """
     def __init__(self, 
+        x0,
         loss_func, 
         lr_decay, 
         regularizer, 
@@ -20,20 +20,20 @@ class SGD(object):
         num_iters_no_change = 5, 
         shuffle = True, 
         verbose = True):
-            self.batch_size = batch_size
-            self.max_iters = max_iters
-            self.tol = tol
-            self.loss_func = loss_func
-            self.lr_decay = lr_decay
-            self.regularizer = regularizer
-            self.num_iters_no_change = num_iters_no_change
-            self.shuffle = shuffle
-            self.verbose = verbose
-            self.opt_w = None
+            super(SGD, self).__init__(x0 = x0, 
+                loss_func = loss_func, 
+                lr_decay = lr_decay, 
+                regularizer = regularizer, 
+                tol = tol, 
+                batch_size = batch_size, 
+                max_iters = max_iters,
+                num_iters_no_change = num_iters_no_change,
+                shuffle = shuffle,
+                verbose = verbose)
 
     def optimize(self, X, y):
         best_loss = np.Inf
-        W = np.random.rand(X.shape[1], 1)
+        # self.x0 = np.random.rand(X.shape[1], 1)
         
         X_y = np.c_[X, y]
         is_converged = False
@@ -49,17 +49,17 @@ class SGD(object):
                 X_batch = X_y_batch[:, :-1]
                 y_batch = X_y_batch[:, -1:]
 
-                grad = self.loss_func.gradient(X_batch, y_batch, W)
-                grad += self.regularizer.gradient(W, self.batch_size)
+                grad = self.loss_func.gradient(X_batch, y_batch, self.x0)
+                grad += self.regularizer.gradient(self.x0, self.batch_size)
 
-                # clip gradient with large value 
-                np.clip(grad, -MAX_DLOSS, MAX_DLOSS, out = grad)
+                # clip gradient self.x0ith large value 
+                np.clip(grad, self.MIN_DLOSS, self.MAX_DLOSS, out = grad)
 
                 # update policy
-                W = W - lr * grad
+                self.x0 = self.x0 - lr * grad
 
-                loss = self.loss_func.evaluate(X_batch, y_batch, W)
-                loss += self.regularizer.evaluate(W, self.batch_size)
+                loss = self.loss_func.evaluate(X_batch, y_batch, self.x0)
+                loss += self.regularizer.evaluate(self.x0, self.batch_size)
 
                 error_history.append(loss)
 
@@ -76,7 +76,7 @@ class SGD(object):
 
             if no_improvement_count >= self.num_iters_no_change:
                 is_converged = True
-                self.opt_w = W
+                self.opt_x = self.x0
                 break
             
             if self.verbose:
@@ -86,4 +86,4 @@ class SGD(object):
         if not is_converged:
             raise ValueError("Not converged!")
 
-        return self.opt_w
+        return self.opt_x
