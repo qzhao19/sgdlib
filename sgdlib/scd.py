@@ -11,9 +11,6 @@ class SCD(BaseOptimizer):
 
     def optimize(self, X, y):
         num_features = X.shape[1]
-        X_y = np.c_[X, y]
-        # W = np.random.rand(X.shape[1], 1)
-        # W = np.zeros((X.shape[1]))
         i = 0
         eta = 0
         for iters in range(self.max_iters):
@@ -42,5 +39,11 @@ class SCD(BaseOptimizer):
             i = best_index
             eta = best_eta
             self.x0[i] += eta
+
+            if self.verbose:
+                if iters % 5 == 0:
+                    w_norm = np.linalg.norm(self.x0, ord = 2)
+                    loss = self.loss_func.evaluate(X, y, self.x0)
+                    print("-- Epoch = {}, weight norm = {}, loss value = {}".format(iters, w_norm, (loss/num_features)))
         
         return self.x0
