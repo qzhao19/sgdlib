@@ -1,11 +1,12 @@
 import numpy as np
 
+from .base import BaseOptimizer
 from .utils import check_linesearch_params
 from .line_search.backtracking import LineSearchBacktracking
 from .line_search.bracketing import LineSearchBracketing
 from .line_search.morethuente import LineSearchMorethuente
 
-class LBFGS(object):
+class LBFGS(BaseOptimizer):
     def __init__(self, x0,
         mem_size = 8, 
         tol = 1e-5, 
@@ -16,15 +17,15 @@ class LBFGS(object):
         linesearch_params = None,
         loss_func = None, 
         linesearch_policy = "backtracking"):
-            self.x0 = x0
+            super(LBFGS, self).__init__(x0 = x0, 
+                loss_func = loss_func,  
+                max_iters = max_iters, 
+                tol = tol,
+                verbose = verbose)
             self.mem_size = mem_size
-            self.tol = tol
             self.delta = delta
             self.past = past
-            self.max_iters = max_iters
-            self.verbose = verbose
             self.linesearch_params = linesearch_params
-            self.loss_func = loss_func
             self.linesearch_policy = linesearch_policy
 
             check_linesearch_params(linesearch_params)
@@ -127,8 +128,8 @@ class LBFGS(object):
             # The criterion is given by the following formula:
             # |f(past_x) - f(x)| / max(1, |f(x)|) < delta.
             if self.past <= k:
-                rate = (pfx[k % self.past] - fx) / fx
-                if abs(rate) < self.delta:
+                rate = abs(pfx[k % self.past] - fx) / max(abs(fx), 1.0)
+                if rate < self.delta:
                     print("INFO: success to meet stopping criteria (ftol)")
                     break
                 # Store the current value of the cost function
