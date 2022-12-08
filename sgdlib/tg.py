@@ -60,7 +60,8 @@ class TruncatedGradient(BaseOptimizer):
         no_improvement_count = 0
 
         for iters in range(self.max_iters):
-            np.random.shuffle(X_y)
+            if self.shuffle:
+                np.random.shuffle(X_y)
             error_history = []
             lr = self.lr_decay.compute(iters)
             # print(X_y.shape[0] // self.batch_size)
