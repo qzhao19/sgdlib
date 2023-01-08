@@ -30,7 +30,5 @@ class BaseOptimizer(object):
 
     def check_params(self):
         pass
-
-    def get_opt_w(self):
-        return self.opt_w    
+    
     

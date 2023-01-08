@@ -90,12 +90,16 @@ def main():
     opt_w = test_sag(X, y)
     print(opt_w)
 
-    print("TruncatedGradient")
+    print("Truncated Gradient")
     opt_w = test_tg(X, y)
     print(opt_w)
 
     print("SCD")
     opt_w = test_scd(X, y)
+    print(opt_w)
+
+    print("lbfgs")
+    opt_w = test_lbfgs(X, y)
     print(opt_w)
 
 if __name__ == '__main__':

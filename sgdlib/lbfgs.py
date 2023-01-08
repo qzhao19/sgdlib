@@ -57,7 +57,7 @@ class LBFGS(BaseOptimizer):
             raise ValueError("Cannot find line search policy.")
 
         # Initialize the limited memory
-        mem_alpha = np.zeros((num_dims))
+        mem_alpha = np.zeros((self.mem_size))
         mem_s = np.zeros((num_dims, self.mem_size))
         mem_y = np.zeros((num_dims, self.mem_size))
         mem_ys = np.zeros((self.mem_size))
@@ -156,7 +156,7 @@ class LBFGS(BaseOptimizer):
             # Compute the negative of gradients
             d = -g
 
-            bound = self.mem_size if self.mem_size < k else k
+            bound = self.mem_size if self.mem_size <= k else k
             k += 1
             end = (end + 1) % self.mem_size
 

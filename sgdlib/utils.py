@@ -73,9 +73,7 @@ def check_linesearch_params(params):
         raise ValueError("ERROR: 'decrease_factor' must be non-negative")
     if params["increase_factor"] < 0:
         raise ValueError("ERROR: 'increase_factor' must be non-negative")
-    if params["max_iterations"] < 0:
-        raise ValueError("ERROR: 'max_iterations' must be non-negative")
-    if params["condition"] != "ARMIJO" or params["condition"] != "WOLFE":
+    if params["condition"] != "ARMIJO" and params["condition"] != "WOLFE":
         raise ValueError("ERROR: unsupported line search termination condition")
     if params["max_linesearch"] <= 0:
         raise ValueError("ERROR: 'max_linesearch' must be positive")
