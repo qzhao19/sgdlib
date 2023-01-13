@@ -7,8 +7,8 @@ from sgdlib import sag
 from sgdlib import scd
 from sgdlib import lbfgs
 from sgdlib.loss import log_loss
-from sgdlib.utils import load_data
-from sgdlib.utils import Regularizer, StepDecay
+from sgdlib.common import load_data
+from sgdlib.common import Regularizer, StepDecay
 
 def test_sgd(X, y):
     w = np.random.rand(X.shape[1], 1)

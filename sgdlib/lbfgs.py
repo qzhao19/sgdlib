@@ -1,7 +1,7 @@
 import numpy as np
 
 from .base import BaseOptimizer
-from .utils import check_linesearch_params
+from .common import check_linesearch_params
 from .line_search.backtracking import LineSearchBacktracking
 from .line_search.bracketing import LineSearchBracketing
 from .line_search.morethuente import LineSearchMorethuente
