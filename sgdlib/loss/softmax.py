@@ -1,21 +1,5 @@
 import numpy as np
-
-def _softmax(x, axis = None):
-    if len(x.shape) != 2:
-        raise ValueError("Input ndarray should be 2 dimension.")
-    
-    if axis is None:
-        c = np.max(x, axis = axis)
-    else:
-        c = np.expand_dims(np.max(x, axis = axis), axis)
-    exp_x = np.exp(x - c)
-
-    if axis is None:
-        div = np.sum(exp_x, axis = axis)
-    else:
-        div = np.expand_dims(np.sum(exp_x, axis = axis), axis)
-    return exp_x / div
-
+from ..common import _softmax
 
 class Softmax(object):
     def __init__(self, mu):
