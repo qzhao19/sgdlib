@@ -7,8 +7,21 @@ from sgdlib import sag
 from sgdlib import scd
 from sgdlib import lbfgs
 from sgdlib.loss import log_loss
+from sgdlib.loss import softmax_loss
 from sgdlib.common import load_data
 from sgdlib.common import Regularizer, StepDecay
+
+def test_sgd_softmax(X, y):
+    w = np.random.rand(X.shape[1], 1)
+    # w = np.ones((X.shape[1], 1))
+    optimizer = sgd.SGD(
+        x0 = w,
+        loss_func = softmax_loss.Softmax(), 
+        lr_decay = StepDecay(lr = 0.1), 
+        regularizer = Regularizer(penalty = None, alpha = 0.0)
+    )
+    opt_w = optimizer.optimize(X, y)
+    return opt_w
 
 def test_sgd(X, y):
     w = np.random.rand(X.shape[1], 1)
