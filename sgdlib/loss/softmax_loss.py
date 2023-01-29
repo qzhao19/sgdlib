@@ -2,7 +2,7 @@ import numpy as np
 from ..common import _softmax
 
 class Softmax(object):
-    def __init__(self, mu):
+    def __init__(self, mu = 0.0):
         self._mu = mu
 
     def evaluate(self, X, y, W):
