@@ -17,3 +17,4 @@ class HuberLoss(object):
         else:
             grad =  self.delta * np.dot(X.T, np.sign(np.dot(X, W) - y)) / y.shape[0]
 
+        return grad
