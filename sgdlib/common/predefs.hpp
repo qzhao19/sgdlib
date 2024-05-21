@@ -3,10 +3,8 @@
 
 #include "common/prereqs.hpp"
 
-namespace sgdlib {
-
-// const double MAX_DLOSS = 1e+20;
-// const double MIN_DLOSS = 1e-20;
+using FeatureType = double;
+using LabelType = long;
 
 constexpr double max_dloss = 1e+20;
 constexpr double min_dloss = 1e-20;
@@ -55,6 +53,5 @@ static const char* DemangleType() {
 #endif
 }
 
-} // namespace sgdlib;
 
 #endif // COMMON_PREDEFS_HPP_
