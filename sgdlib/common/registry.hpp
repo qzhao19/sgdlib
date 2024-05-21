@@ -76,37 +76,37 @@ public:
     }
 };
 
-#define DECLARE_TYPED_REGISTRY(RegistryName, ObjectType, PtrType, ...)            \
-    ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* RegistryName();                 \
-    typedef ::sgdlib::Registerer<PtrType<ObjectType>, ##__VA_ARGS__>                        \
+#define DECLARE_TYPED_REGISTRY(RegistryName, ObjectType, PtrType, ...)                 \
+    ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* RegistryName();            \
+    typedef ::sgdlib::Registerer<PtrType<ObjectType>, ##__VA_ARGS__>                   \
        Registerer##RegistryName;
 
-#define DEFINE_TYPED_REGISTRY(RegistryName, ObjectType, PtrType, ...)             \
-    ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* RegistryName() {                \
-        static ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* registry =             \
-            new ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>();                       \
-        return registry;                                                            \
+#define DEFINE_TYPED_REGISTRY(RegistryName, ObjectType, PtrType, ...)                  \
+    ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* RegistryName() {           \
+        static ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* registry =      \
+            new ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>();              \
+        return registry;                                                               \
     }
 
-#define REGISTER_TYPED_CLASS(RegistryName, key, ...)                              \
-    namespace {                                                                   \
-      static ::sgdlib::Registerer##RegistryName ANONYMOUS_VARIABLE(g_##RegistryName)(       \
-        key,                                                                     \
-        RegistryName(),                                                          \
-        ::sgdlib::Registerer##RegistryName::DefaultCreator<__VA_ARGS__>,                   \
-        DemangleType<__VA_ARGS__>());                                            \
+#define REGISTER_TYPED_CLASS(RegistryName, key, ...)                                   \
+    namespace {                                                                        \
+      static ::sgdlib::Registerer##RegistryName ANONYMOUS_VARIABLE(g_##RegistryName)(  \
+        key,                                                                           \
+        RegistryName(),                                                                \
+        ::sgdlib::Registerer##RegistryName::DefaultCreator<__VA_ARGS__>,               \
+        DemangleType<__VA_ARGS__>());                                                  \
     }
 
-#define DECLARE_REGISTRY(RegistryName, ObjectType, ...)                           \
-    DECLARE_TYPED_REGISTRY(                                                       \
+#define DECLARE_REGISTRY(RegistryName, ObjectType, ...)                                \
+    DECLARE_TYPED_REGISTRY(                                                            \
         RegistryName, ObjectType, std::unique_ptr, ##__VA_ARGS__)
 
-#define DEFINE_REGISTRY(RegistryName, ObjectType, ...)                            \
-    DEFINE_TYPED_REGISTRY(                                                        \
+#define DEFINE_REGISTRY(RegistryName, ObjectType, ...)                                 \
+    DEFINE_TYPED_REGISTRY(                                                             \
         RegistryName, ObjectType, std::unique_ptr, ##__VA_ARGS__)
 
 // key is the name, the second is derived class
-#define REGISTER_CLASS(RegistryName, key, ...)                                    \
+#define REGISTER_CLASS(RegistryName, key, ...)                                         \
     REGISTER_TYPED_CLASS(RegistryName, #key, __VA_ARGS__)
 
 
