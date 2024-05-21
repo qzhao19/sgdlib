@@ -16,13 +16,12 @@
 #include <stack>
 #include <string>
 #include <stdexcept>
+#include <typeinfo>
+#include <type_traits>
 #include <utility>
 #include <unordered_set>
 #include <vector>
 
 #include <cxxabi.h>
-
-using FeatureType = double;
-using LabelType = long;
 
 #endif // COMMON_PREREQS_HPP_
