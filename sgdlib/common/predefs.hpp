@@ -6,13 +6,16 @@
 using FeatureType = double;
 using LabelType = long;
 
-constexpr double max_dloss = 1e+20;
-constexpr double min_dloss = 1e-20;
-#define MAX_DLOSS max_dloss;
-#define MIN_DLOSS min_dloss;
+constexpr double max_dloss = 1e+10;
+constexpr double min_dloss = 1e-10;
+#define MAX_DLOSS max_dloss
+#define MIN_DLOSS min_dloss
+
+constexpr double inf = std::numeric_limits<double>::infinity();
+#define INF inf
 
 #ifndef M_PI
-#define M_PI 3.14159265358979323846
+    #define M_PI 3.141592653589793238462643383279
 #endif
 
 // disable copy and assign a class 
