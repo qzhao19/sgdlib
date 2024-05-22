@@ -37,7 +37,9 @@ public:
     }
     std::vector<std::string> Keys() {
         std::vector<std::string> keys;
-        for (const auto& it : registry_) keys.push_back(it.first);
+        for (const auto& it : registry_) {
+            keys.push_back(it.first);
+        }
         return keys;
     }
 
