@@ -35,24 +35,24 @@ constexpr double inf = std::numeric_limits<double>::infinity();
 #define USED __attribute__((__used__))
 
 std::string Demangle(const char* name) {
-  int status;
-  auto demangled = ::abi::__cxa_demangle(name, nullptr, nullptr, &status);
-  if (demangled) {
-    std::string ret;
-    ret.assign(demangled);
-    free(demangled);
-    return ret;
-  }
-  return name;
+    int status;
+    auto demangled = ::abi::__cxa_demangle(name, nullptr, nullptr, &status);
+    if (demangled) {
+        std::string ret;
+        ret.assign(demangled);
+        free(demangled);
+        return ret;
+    }
+    return name;
 }
 
 template <typename Type>
 static const char* DemangleType() {
 #ifdef __GXX_RTTI
-  static const std::string name = Demangle(typeid(Type).name());
-  return name.c_str();
+    static const std::string name = Demangle(typeid(Type).name());
+    return name.c_str();
 #else
-  return "(RTTI disabled, cannot show name)";
+    return "(RTTI disabled, cannot show name)";
 #endif
 }
 
