@@ -9,12 +9,8 @@
 namespace sgdlib {
 
 class LogLoss : public LossFunction {
-protected:
-    double alpha_;
-
 public:
-    LogLoss(double alpha): LossFunction(), 
-        alpha_(alpha) {};
+    LogLoss(LossParamType loss_param): LossFunction(loss_param) {};
     ~LogLoss() {};
 
     /**
@@ -51,7 +47,7 @@ public:
                                         w.begin(), 0.0);
         reg /= static_cast<double>(num_samples);
         
-        return loss + reg * alpha_;
+        return loss + reg * this->loss_param_.at("alpha");
     }
 
     /**
@@ -87,13 +83,16 @@ public:
                               (y_hat[i] - static_cast<FeatureType>(y[i]));
             }
             grad[fx_index] = inner_prod / static_cast<FeatureType>(num_samples) + 
-                             alpha_ * 2.0 * w[fx_index];
+                             this->loss_param_.at("alpha") * 2.0 * w[fx_index];
             ++fx_index;
             inner_prod = 0.0;
         }
     }
 
 };
+
+// Create registries for log loss function
+REGISTER_CLASS(LossFunctionRegistry, LogLoss, LogLoss);
 
 } // namespace sgdlib
 
