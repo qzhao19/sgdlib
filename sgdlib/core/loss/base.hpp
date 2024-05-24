@@ -3,12 +3,15 @@
 
 #include "common/prereqs.hpp"
 #include "common/predefs.hpp"
+#include "common/registry.hpp"
 
 namespace sgdlib {
 
 class LossFunction {
+protected:
+    LossParamType loss_param_;
 public:
-    LossFunction() {};
+    LossFunction(LossParamType loss_param): loss_param_(loss_param) {};
     virtual ~LossFunction() {};
 
     virtual double evaluate(const std::vector<FeatureType>& X, 
@@ -20,6 +23,10 @@ public:
                           const std::vector<FeatureType>& w,
                           std::vector<FeatureType>& grad) const = 0;
 };
+
+// Create registries for base loss function
+DECLARE_REGISTRY(LossFunctionRegistry, LossFunction, LossParamType);
+DEFINE_REGISTRY(LossFunctionRegistry, LossFunction, LossParamType);
 
 } // namespace sgdlib
 
