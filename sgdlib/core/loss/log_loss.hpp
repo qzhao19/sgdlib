@@ -8,7 +8,7 @@
 
 namespace sgdlib {
 
-class LogLoss : public LossFunction {
+class LogLoss final: public LossFunction {
 public:
     LogLoss(LossParamType loss_param): LossFunction(loss_param) {};
     ~LogLoss() {};
