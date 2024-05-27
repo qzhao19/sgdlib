@@ -57,5 +57,6 @@ static const char* DemangleType() {
 #endif
 }
 
+const std::unordered_set<std::string> CRITERIA_CLF = {"log_loss"};
 
 #endif // COMMON_PREDEFS_HPP_
