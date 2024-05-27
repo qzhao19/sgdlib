@@ -6,7 +6,7 @@
 namespace sgdlib {
 namespace internal {
 
-class RandomState {
+class RandomState final {
 protected:
     // random eigine 
     std::mt19937  engine_;
