@@ -7,7 +7,7 @@
 namespace sgdlib {
 
 template <typename ObjectPtrType, typename... Args>
-class Registry {
+class Registry final {
 public:
     using Creator = std::function<ObjectPtrType(Args...)>;
 
