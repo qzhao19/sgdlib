@@ -54,12 +54,12 @@ public:
         std::size_t num_samples = y.size();
         std::size_t num_features = X.size() / y.size();
 
-        std::size_t new_num_features;
+        // std::size_t update_num_features;
         if (this->fit_intercept_) {
-            new_num_features = num_features + 1;
+            this->num_features_ = num_features + 1;
         }
         else {
-            new_num_features = num_features;
+            this->num_features_ = num_features;
         }
 
         std::size_t step_per_iter = num_samples / this->batch_size_;
@@ -69,12 +69,14 @@ public:
         double best_loss = INF;
 
         // initialize a lookup table for training X, y
-        std::vector<std::size_t> sample_indices(this->batch_size_);
-        std::iota(sample_indices.begin(), sample_indices.end(), 0);
+        std::vector<std::size_t> X_data_ptr(num_samples);
+        std::iota(X_data_ptr.begin(), X_data_ptr.end(), 0);
 
-        // initialize weight, X_batch, y_batch
-        std::vector<FeatureType> w(new_num_features, 1.0);
-        std::vector<FeatureType> X_batch(new_num_features*this->batch_size_, 1.0), y_batch(this->batch_size_, 0);
+        // initialize loss, gradient, x0 (weight)
+        double loss;
+        std::vector<FeatureType> grad(this->num_features_, 0.0);
+        std::vector<FeatureType> x0(this->num_features_, 1.0);
+        std::copy(this->x0_.begin(), this->x0_.end(), x0.begin());
         
         // initialize loss function 
         std::unique_ptr<sgdlib::LossFunction> loss_fn = LossFunctionRegistry()->Create("LogLoss", 0.0);
@@ -82,19 +84,39 @@ public:
         for (std::size_t iter = 0; iter < this->max_iters_; iter++) {
             // enable to shuffle mask of data for on batch
             if (this->shuffle_) {
-                this->random_state_.shuffle<FeatureType>(sample_indices);
+                this->random_state_.shuffle<FeatureType>(X_data_ptr);
             }
 
-            // copy X, y to X_batch and y_batch
+            // initialize X_batch, y_batch
+            std::vector<FeatureType> X_batch(this->num_features_*this->batch_size_, 1.0);
+            std::vector<FeatureType> y_batch(this->batch_size_, 0);
+            std::vector<std::size_t> X_batch_data_ptr(this->batch_size_);
+
             for (std::size_t i = 0; i < step_per_iter; ++i) {
-                std::copy(&X[sample_indices[i] * num_features], 
-                          &X[(sample_indices[i] + 1) * num_features], 
-                          X_batch.begin() + (i * new_num_features));
-                y_batch[i] = y[sample_indices[i]];
+                // copy batch data indices to X_batch_data_ptr
+                std::copy(&X_data_ptr[i], 
+                          &X_data_ptr[i] + this->batch_size_, 
+                          X_batch_data_ptr);
+                
+                // copy X_batch and y_batch data
+                for (std::size_t j = 0; j < this->batch_size_; ++j) {
+                    std::copy(&X[X_batch_data_ptr[j] * num_features], 
+                              &X[(X_batch_data_ptr[j] + 1) * num_features], 
+                              X_batch.begin() + (j * this->num_features_));
+                    y_batch[j] = y[X_batch_data_ptr[j]];
+                };
+
+                loss = loss_fn->evaluate(X_batch, y_batch, x0);
+
+                loss_fn->gradient(X_batch, y_batch, x0, grad);
+
+                // gradient clipping
+                sgdlib::internal::clip<FeatureType>(grad, MIN_DLOSS, MAX_DLOSS);
+
+                // update x0
+                
+
             }
-
-            loss_fn->gradient(X_batch, y_batch, w, grad);
-
 
 
         }
