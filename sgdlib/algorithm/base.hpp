@@ -16,7 +16,7 @@ private:
     double alpha_;
     double eta0_;
     double tol_;
-    double power_t_;
+    double decay_;
 
     std::size_t max_iters_;
     std::size_t batch_size_;
@@ -42,7 +42,7 @@ public:
                   double alpha,
                   double eta0,
                   double tol,
-                  double power_t,
+                  double decay,
                   std::size_t max_iters, 
                   std::size_t batch_size,
                   std::size_t num_iters_no_change,
@@ -51,21 +51,21 @@ public:
                   bool multi_class,
                   bool shuffle = true, 
                   bool verbose = true): x0_(x0), 
-                    loss_(loss), 
-                    penalty_(penalty),
-                    lr_policy_(lr_policy),
-                    alpha_(alpha),
-                    eta0_(eta0),
-                    tol_(tol),
-                    power_t_(power_t),
-                    max_iters_(max_iters), 
-                    batch_size_(batch_size),
-                    num_iters_no_change_(num_iters_no_change),
-                    random_seed_(random_seed),
-                    fit_intercept_(fit_intercept),
-                    multi_class_(multi_class),
-                    shuffle_(shuffle),
-                    verbose_(verbose) {
+            loss_(loss), 
+            penalty_(penalty),
+            lr_policy_(lr_policy),
+            alpha_(alpha),
+            eta0_(eta0),
+            tol_(tol),
+            decay_(decay),
+            max_iters_(max_iters), 
+            batch_size_(batch_size),
+            num_iters_no_change_(num_iters_no_change),
+            random_seed_(random_seed),
+            fit_intercept_(fit_intercept),
+            multi_class_(multi_class),
+            shuffle_(shuffle),
+            verbose_(verbose) {
         if (random_seed_ == -1) {
             random_state_ = decisiontree::RandomState();
         }
