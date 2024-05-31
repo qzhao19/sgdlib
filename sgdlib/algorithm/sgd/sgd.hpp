@@ -5,14 +5,16 @@
 #include "common/predefs.hpp"
 #include "algorithm/base.hpp"
 #include "core/loss/base.hpp"
-#include "core/loss/log_loss.hpp"
+#include "core/decay_policy/base.hpp"
+#include "core/decay_policy/invscaling_decay.hpp"
+#include "core/decay_policy/exponential_decay.hpp"
 
 namespace sgdlib {
 
 /**
  * @file sgd.hpp
  * 
- * @brief A stochastic gradient descent classifier.
+ * @brief A stochastic gradient descent optimizer.
  * 
  * 
 */
@@ -25,7 +27,7 @@ public:
         double alpha,
         double eta0,
         double tol,
-        double power_t,
+        double decay,
         std::size_t max_iters, 
         std::size_t batch_size,
         std::size_t num_iters_no_change,
@@ -37,7 +39,7 @@ public:
             loss, penalty, 
             lr_policy, alpha, 
             eta0, tol, 
-            power_t,
+            decay,
             max_iters, 
             batch_size, 
             num_iters_no_change,
@@ -69,41 +71,56 @@ public:
         double best_loss = INF;
 
         // initialize a lookup table for training X, y
-        std::vector<std::size_t> X_data_ptr(num_samples);
-        std::iota(X_data_ptr.begin(), X_data_ptr.end(), 0);
+        std::vector<std::size_t> X_data_index(num_samples);
+        std::iota(X_data_index.begin(), X_data_index.end(), 0);
 
         // initialize loss, gradient, x0 (weight)
         double loss;
         std::vector<FeatureType> grad(this->num_features_, 0.0);
         std::vector<FeatureType> x0(this->num_features_, 1.0);
         std::copy(this->x0_.begin(), this->x0_.end(), x0.begin());
+
+        // initialize X_batch, y_batch and batch_data_index
+        std::vector<FeatureType> X_batch(this->num_features_*this->batch_size_, 1.0);
+        std::vector<FeatureType> y_batch(this->batch_size_, 0);
+        std::vector<std::size_t> batch_data_index(this->batch_size_);
         
         // initialize loss function 
-        std::unique_ptr<sgdlib::LossFunction> loss_fn = LossFunctionRegistry()->Create("LogLoss", 0.0);
+        std::unique_ptr<sgdlib::LossFunction> loss_fn = LossFunctionRegistry()->Create(loss, 0.0);
 
+        // initialize learning rate scheduler
+        if (lr_policy == "invscaling") {
+            lr_decay = std::make_shared<sgdlib::internal::InvscalingDecay>(
+                this->eta0_, this->decay_
+            );
+        }
+        else if (lr_policy == "exponential") {
+            lr_decay = std::make_shared<sgdlib::internal::ExponentialDecay>(
+                this->eta0_, this->decay_
+            );
+        }
+
+        // 
         for (std::size_t iter = 0; iter < this->max_iters_; iter++) {
             // enable to shuffle mask of data for on batch
             if (this->shuffle_) {
-                this->random_state_.shuffle<FeatureType>(X_data_ptr);
+                this->random_state_.shuffle<FeatureType>(X_data_index);
             }
 
-            // initialize X_batch, y_batch
-            std::vector<FeatureType> X_batch(this->num_features_*this->batch_size_, 1.0);
-            std::vector<FeatureType> y_batch(this->batch_size_, 0);
-            std::vector<std::size_t> X_batch_data_ptr(this->batch_size_);
-
+            // apply lr decay policy to compute eta
+            double eta = lr_decay->compute(iter);
             for (std::size_t i = 0; i < step_per_iter; ++i) {
-                // copy batch data indices to X_batch_data_ptr
-                std::copy(&X_data_ptr[i], 
-                          &X_data_ptr[i] + this->batch_size_, 
-                          X_batch_data_ptr);
+                // copy batch data indices to batch_data_index
+                std::copy(&X_data_index[i] * this->batch_size_, 
+                          (&X_data_index[i] + 1) * this->batch_size_, 
+                          batch_data_index);
                 
                 // copy X_batch and y_batch data
                 for (std::size_t j = 0; j < this->batch_size_; ++j) {
-                    std::copy(&X[X_batch_data_ptr[j] * num_features], 
-                              &X[(X_batch_data_ptr[j] + 1) * num_features], 
+                    std::copy(&X[batch_data_index[j] * num_features], 
+                              &X[(batch_data_index[j] + 1) * num_features], 
                               X_batch.begin() + (j * this->num_features_));
-                    y_batch[j] = y[X_batch_data_ptr[j]];
+                    y_batch[j] = y[batch_data_index[j]];
                 };
 
                 loss = loss_fn->evaluate(X_batch, y_batch, x0);
