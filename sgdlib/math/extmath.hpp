@@ -9,6 +9,7 @@ namespace internal {
 /**
  * @brief compute sigmoid function 
  *      f(x) = 1/(1 + e^-x)
+ * @param x input value
 */
 template <typename Type>
 Type sigmoid(Type x) {
@@ -17,6 +18,9 @@ Type sigmoid(Type x) {
 
 /**
  * @brief Clip (limit) the values in a vector.
+ * 
+ * @param x vector containing elements to clip.
+ * @param min, max minimum and maximum value
 */
 template<typename Type>
 void clip(std::vector<Type>& x, Type min, Type max) {
@@ -26,7 +30,6 @@ void clip(std::vector<Type>& x, Type min, Type max) {
         }
     );
 }
-
 
 } // namespace internal
 } // namespace sgdlib
