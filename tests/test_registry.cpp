@@ -28,15 +28,29 @@ public:
 };
 REGISTER_CLASS(FooRegistry, Bar, Bar);
 
-TEST(TestRegistry, CanRunCreator) {
+class AnotherBar : public Foo {
+public:
+    explicit AnotherBar(const std::vector<int>& x) : Foo(x) {};
+
+    virtual void Say() {
+        std::cout <<  "I am AnotherBar" << std::endl;
+    }
+
+};
+REGISTER_CLASS(FooRegistry, AnotherBar, AnotherBar);
+
+TEST(TestRegistry, CreatorForFoo) {
     std::vector<int> x = {1};
     std::unique_ptr<Foo> bar = FooRegistry()->Create("Bar", x);
     bar->Say();
     EXPECT_TRUE(bar != nullptr) << "Cannot create bar";
+    std::unique_ptr<Foo> another_bar = FooRegistry()->Create("AnotherBar", x);
+    another_bar->Say();
+    EXPECT_TRUE(another_bar != nullptr);
 }
 
 
-TEST(TestRegistry, CanRunCreatorForLogLoss) {
+TEST(TestRegistry, CreatorForLogLoss) {
     std::vector<double> X = {5.2, 3.3, 1.2, 0.3,
                             4.8, 3.1 , 1.6, 0.2,
                             4.75, 3.1, 1.32, 0.1,
@@ -62,9 +76,8 @@ TEST(TestRegistry, CanRunCreatorForLogLoss) {
     std::vector<double> expect ={2.2939883890082928, 1.3441739235904036, 
                                  0.9131519457304953, 0.19995927206507597};
     EXPECT_EQ(grad, expect);
-    
-}
 
+}
 
 } // end of namespace
 
