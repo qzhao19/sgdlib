@@ -19,6 +19,9 @@ namespace sgdlib {
  * 
 */
 class SGD: public BaseOptimizer {
+portected:
+    std::size_t num_features_;
+
 public:
     SGD(const std::vector<FeatureType>& x0, 
         std::string loss, 
@@ -58,10 +61,10 @@ public:
 
         // std::size_t update_num_features;
         if (this->fit_intercept_) {
-            this->num_features_ = num_features + 1;
+            num_features_ = num_features + 1;
         }
         else {
-            this->num_features_ = num_features;
+            num_features_ = num_features;
         }
 
         std::size_t step_per_iter = num_samples / this->batch_size_;
@@ -74,14 +77,15 @@ public:
         std::vector<std::size_t> X_data_index(num_samples);
         std::iota(X_data_index.begin(), X_data_index.end(), 0);
 
-        // initialize loss, gradient, x0 (weight)
+        // initialize loss, loss_history, gradient, x0 (weight)
         double loss;
-        std::vector<FeatureType> grad(this->num_features_, 0.0);
-        std::vector<FeatureType> x0(this->num_features_, 1.0);
+        std::vector<double> loss_history(step_per_iter, 0);
+        std::vector<FeatureType> grad(num_features_, 0.0);
+        std::vector<FeatureType> x0(num_features_, 1.0);
         std::copy(this->x0_.begin(), this->x0_.end(), x0.begin());
 
         // initialize X_batch, y_batch and batch_data_index
-        std::vector<FeatureType> X_batch(this->num_features_*this->batch_size_, 1.0);
+        std::vector<FeatureType> X_batch(num_features_*this->batch_size_, 1.0);
         std::vector<FeatureType> y_batch(this->batch_size_, 0);
         std::vector<std::size_t> batch_data_index(this->batch_size_);
         
@@ -119,7 +123,7 @@ public:
                 for (std::size_t j = 0; j < this->batch_size_; ++j) {
                     std::copy(&X[batch_data_index[j] * num_features], 
                               &X[(batch_data_index[j] + 1) * num_features], 
-                              X_batch.begin() + (j * this->num_features_));
+                              X_batch.begin() + (j * num_features_));
                     y_batch[j] = y[batch_data_index[j]];
                 };
 
@@ -130,9 +134,33 @@ public:
                 // gradient clipping
                 sgdlib::internal::clip<FeatureType>(grad, MIN_DLOSS, MAX_DLOSS);
 
-                // update x0
-                
+                // update x0: w = w - lr * grad
+                for (std::size_t k = 0; k < num_features_; ++k) {
+                    x0[k] -= eta * grad[k]; 
+                }
 
+                // store loss value into loss_history
+                loss_history[i] = loss;
+            }
+
+            double sum_loss = std::accumulate(loss_history.begin(), loss_history.end(), 0);
+            // std::fill(loss_history.begin(), loss_history.end(), 0);
+
+            if (sum_loss > best_loss - this->tol_ * this->batch_size_) {
+                no_improvement_count +=1;
+            }
+            else {
+                no_improvement_count = 0;
+            }
+
+            if (sum_loss < best_loss) {
+                best_loss = sum_loss;
+            }
+
+            if (no_improvement_count >= this->num_iters_no_change_) {
+                is_converged = true;
+                this->opt_x_ = x0;
+                break;
             }
 
 
