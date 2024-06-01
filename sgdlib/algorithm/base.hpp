@@ -28,8 +28,6 @@ private:
     bool shuffle_;
     bool verbose_;
 
-    std::size_t num_features_;
-
 protected:
     sgdlib::internal::RandomState random_state_;
 
