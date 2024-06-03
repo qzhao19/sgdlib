@@ -1,18 +1,17 @@
-#ifndef CORE_DECAY_POLICY_EXPONENTIAL_DECAY_HPP_
-#define CORE_DECAY_POLICY_EXPONENTIAL_DECAY_HPP_
+#ifndef CORE_LR_DECAY_EXPONENTIAL_DECAY_HPP_
+#define CORE_LR_DECAY_EXPONENTIAL_DECAY_HPP_
 
 #include "common/prereqs.hpp"
 #include "common/predefs.hpp"
 #include "base.hpp"
 
 namespace sgdlib {
-namespace internal {
 
-class ExponentialDecay: public LRDecay{
+class Exponential: public LRDecay{
 public:
-    ExponentialDecay(double eta0, 
+    Exponential(double eta0, 
                      double decay): LRDecay(eta0, decay) {};
-    ~ExponentialDecay() {};
+    ~Exponential() {};
 
     /**
      * eta = eta0 * exp(-decay * epoch) 
@@ -22,8 +21,6 @@ public:
     }
 };
 
-} // namespace internal
 } // namespace sgdlib
 
-
-#endif // CORE_DECAY_POLICY_EXPONENTIAL_DECAY_HPP_
+#endif // CORE_LR_DECAY_EXPONENTIAL_DECAY_HPP_

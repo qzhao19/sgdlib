@@ -1,11 +1,11 @@
-#ifndef CORE_DECAY_POLICY_BASE_HPP_
-#define CORE_DECAY_POLICY_BASE_HPP_
+#ifndef CORE_LR_DECAY_BASE_HPP_
+#define CORE_LR_DECAY_BASE_HPP_
 
 #include "common/prereqs.hpp"
 #include "common/predefs.hpp"
+#include "common/registry.hpp"
 
 namespace sgdlib {
-namespace internal {
 
 class LRDecay {
 protected:
@@ -19,7 +19,10 @@ public:
     virtual double compute(std::size_t epoch) = 0;
 };
 
-} // namespace internal
+// Create registries for base LR Decay function
+DECLARE_REGISTRY(LRDecayRegistry, LRDecay, double, double);
+DEFINE_REGISTRY(LRDecayRegistry, LRDecay, double, double);
+
 } // namespace sgdlib
 
-#endif // CORE_DECAY_POLICY_BASE_HPP_
+#endif // CORE_LR_DECAY_BASE_HPP_
