@@ -7,7 +7,7 @@
 
 namespace sgdlib {
 
-class Invscaling: public LRDecay{
+class Invscaling final: public LRDecay{
 public:
     Invscaling(double eta0, 
                     double decay): LRDecay(eta0, decay) {};
