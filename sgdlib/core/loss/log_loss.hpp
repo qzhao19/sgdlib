@@ -88,12 +88,8 @@ public:
             inner_prod = 0.0;
         }
     }
-
 };
-
-// Create registries for log loss function
-REGISTER_CLASS(LossFunctionRegistry, LogLoss, LogLoss);
 
 } // namespace sgdlib
 
-#endif // _CORE_LOSS_LOG_LOSS_
+#endif // CORE_LOSS_LOG_LOSS_HPP_
