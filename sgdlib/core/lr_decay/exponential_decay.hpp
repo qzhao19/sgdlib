@@ -7,7 +7,7 @@
 
 namespace sgdlib {
 
-class Exponential: public LRDecay{
+class Exponential final: public LRDecay{
 public:
     Exponential(double eta0, 
                      double decay): LRDecay(eta0, decay) {};
