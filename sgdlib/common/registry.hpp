@@ -81,7 +81,7 @@ public:
 #define DECLARE_TYPED_REGISTRY(RegistryName, ObjectType, PtrType, ...)                 \
     ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* RegistryName();            \
     typedef ::sgdlib::Registerer<PtrType<ObjectType>, ##__VA_ARGS__>                   \
-       Registerer##RegistryName;
+        Registerer##RegistryName;
 
 #define DEFINE_TYPED_REGISTRY(RegistryName, ObjectType, PtrType, ...)                  \
     ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* RegistryName() {           \
@@ -92,7 +92,7 @@ public:
 
 #define REGISTER_TYPED_CLASS(RegistryName, key, ...)                                   \
     namespace {                                                                        \
-      static ::sgdlib::Registerer##RegistryName ANONYMOUS_VARIABLE(g_##RegistryName)(  \
+      static ::sgdlib::Registerer##RegistryName ANONYMOUS_VARIABLE(anon##RegistryName)(  \
         key,                                                                           \
         RegistryName(),                                                                \
         ::sgdlib::Registerer##RegistryName::DefaultCreator<__VA_ARGS__>,               \
