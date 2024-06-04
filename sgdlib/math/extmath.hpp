@@ -29,6 +29,21 @@ void clip(std::vector<Type>& x, Type min, Type max) {
             return std::clamp(i, min, max); 
         }
     );
+};
+
+/**
+ * @brief check if any element of vector is infinite.
+ * 
+ * @param x vector containing elements to check infinity.
+*/
+template<typename Type>
+bool isinf(const std::vector<Type>& x) {
+    for (std::size_t i = 0; i < x.size(); ++i) {
+        if (std::isinf(x[i])) {
+            return true;
+        }
+    }
+    return false;
 }
 
 } // namespace internal
