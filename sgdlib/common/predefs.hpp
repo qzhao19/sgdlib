@@ -57,6 +57,9 @@ static const char* DemangleType() {
 #endif
 }
 
-const std::unordered_set<std::string> CRITERIA_CLF = {"log_loss"};
+const std::unordered_map<std::string, std::string> LOSS_FUNCTION = {{"log_loss", "LogLoss"}};
+const std::unordered_map<std::string, std::string> LEARNING_RATE = {{"invscaling", "Invscaling"}, 
+                                                                    {"exponential", "Exponential"}};
+const std::unordered_set<std::string> PENALTY_TYPES = {"none", "l1", "l2"};
 
 #endif // COMMON_PREDEFS_HPP_
