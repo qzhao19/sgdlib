@@ -46,6 +46,19 @@ bool isinf(const std::vector<Type>& x) {
     return false;
 }
 
+/**
+ * @brief calculate the L2 norm of a vector.
+ * 
+ * @param x a vector of type T.
+ * @return The L2 norm of the vector as a double.
+ */
+template<typename Type>
+double sqnorm2(const std::vector<Type>& x) {
+    return std::sqrt(
+        std::inner_product(x.begin(), x.end(), x.begin(), 0.0)
+    );
+}
+
 } // namespace internal
 } // namespace sgdlib
 
