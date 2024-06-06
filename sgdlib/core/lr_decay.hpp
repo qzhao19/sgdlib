@@ -6,9 +6,7 @@
 
 namespace sgdlib {
 
-// Create registries for log loss function
 REGISTER_CLASS(LRDecayRegistry, Invscaling, Invscaling);
-// Create registries for log loss function
 REGISTER_CLASS(LRDecayRegistry, Exponential, Exponential);
 
 }
