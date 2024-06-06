@@ -9,15 +9,14 @@ namespace sgdlib {
 
 class Invscaling final: public LRDecay{
 public:
-    Invscaling(double eta0, 
-                    double decay): LRDecay(eta0, decay) {};
+    Invscaling(LRDecayParamType lr_decay_param): LRDecay(lr_decay_param) {};
     ~Invscaling() {};
 
     /**
-     * eta = eta0 / pow(epoch, power_t) 
+     * eta = eta0 / pow(epoch, gamma) 
     */
     double compute(std::size_t epoch) override {
-        return this->eta0_ / std::pow(epoch, this->decay_);
+        return this->lr_decay_param_.at("eta0") / std::pow(epoch, this->lr_decay_param_.at("gamma"));
     }
 };
 

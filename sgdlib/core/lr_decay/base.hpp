@@ -9,19 +9,18 @@ namespace sgdlib {
 
 class LRDecay {
 protected:
-    double eta0_;
-    double decay_;
+    LRDecayParamType lr_decay_param_;
 
 public:
-    LRDecay(double eta0, double decay): eta0_(eta0), decay_(decay) {};
+    LRDecay(LRDecayParamType lr_decay_param): lr_decay_param_(lr_decay_param) {};
     ~LRDecay() {};
 
     virtual double compute(std::size_t epoch) = 0;
 };
 
 // Create registries for base LR Decay function
-DECLARE_REGISTRY(LRDecayRegistry, LRDecay, double, double);
-DEFINE_REGISTRY(LRDecayRegistry, LRDecay, double, double);
+DECLARE_REGISTRY(LRDecayRegistry, LRDecay, LRDecayParamType);
+DEFINE_REGISTRY(LRDecayRegistry, LRDecay, LRDecayParamType);
 
 } // namespace sgdlib
 

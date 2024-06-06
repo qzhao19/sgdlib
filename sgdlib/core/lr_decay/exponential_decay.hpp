@@ -9,15 +9,15 @@ namespace sgdlib {
 
 class Exponential final: public LRDecay{
 public:
-    Exponential(double eta0, 
-                     double decay): LRDecay(eta0, decay) {};
+    Exponential(LRDecayParamType lr_decay_param): LRDecay(lr_decay_param) {};
     ~Exponential() {};
 
     /**
-     * eta = eta0 * exp(-decay * epoch) 
+     * eta = eta0 * exp(-gamma * epoch) 
     */
     double compute(std::size_t epoch) override {
-        return this->eta0_ * std::exp((-this->decay_) * static_cast<double>(epoch));
+        return this->lr_decay_param_.at("eta0") * \
+            std::exp((-this->lr_decay_param_.at("gamma")) * static_cast<double>(epoch));
     }
 };
 
