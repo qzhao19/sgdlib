@@ -6,9 +6,7 @@
 
 namespace sgdlib {
 
-// Create registries for log loss function
 REGISTER_CLASS(LossFunctionRegistry, LogLoss, LogLoss);
-// Create registries for log loss function
 REGISTER_CLASS(LossFunctionRegistry, HuberLoss, HuberLoss);
 
 }
