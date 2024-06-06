@@ -11,8 +11,9 @@ namespace sgdlib {
 class LRDecayTest : public ::testing::Test {
 public:
     virtual void SetUp(std::string lr_decay_policy) {
-        double eta0 = 0.0001, decay = 0.0025;
-        lr_decay = LRDecayRegistry()->Create(lr_decay_policy, eta0, decay);
+        double eta0 = 0.0001, gamma = 0.0025;
+        LRDecayParamType lr_decay_param = {{"eta0", eta0}, {"gamma", gamma}};
+        lr_decay = LRDecayRegistry()->Create(lr_decay_policy, lr_decay_param);
     }
 
     virtual void TearDown() {}
