@@ -18,7 +18,7 @@ protected:
     double l1_ratio_;
     double eta0_;
     double tol_;
-    double decay_;
+    double gamma_;
 
     std::size_t max_iters_;
     std::size_t batch_size_;
@@ -29,6 +29,7 @@ protected:
     bool verbose_;
 
     LossParamType loss_params_;
+    LRDecayParamType lr_decay_params_;
     std::vector<FeatureType> x_opt_;
     sgdlib::internal::RandomState random_state_;
 
@@ -40,7 +41,7 @@ public:
                   double alpha,
                   double eta0,
                   double tol,
-                  double decay,
+                  double gamma,
                   std::size_t max_iters, 
                   std::size_t batch_size,
                   std::size_t num_iters_no_change,
@@ -52,7 +53,7 @@ public:
             alpha_(alpha),
             eta0_(eta0),
             tol_(tol),
-            decay_(decay),
+            gamma_(gamma),
             max_iters_(max_iters), 
             batch_size_(batch_size),
             num_iters_no_change_(num_iters_no_change),
@@ -66,6 +67,8 @@ public:
             random_state_ = sgdlib::internal::RandomState(random_seed_);
         }
         loss_params_["alpha"] = alpha;
+        lr_decay_params_["eta0"] = eta0;
+        lr_decay_params_["gamma"] = gamma;
     };
     
     ~BaseOptimizer() {};
