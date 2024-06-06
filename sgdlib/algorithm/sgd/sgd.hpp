@@ -24,7 +24,7 @@ public:
         double alpha,
         double eta0,
         double tol,
-        double decay,
+        double gamma,
         std::size_t max_iters, 
         std::size_t batch_size,
         std::size_t num_iters_no_change,
@@ -33,14 +33,14 @@ public:
         bool verbose = true): BaseOptimizer(x0, 
             loss, lr_policy, 
             alpha, eta0, 
-            tol, decay,
+            tol, gamma,
             max_iters, 
             batch_size, 
             num_iters_no_change,
             random_seed,
             shuffle, 
             verbose) {};
-    ~SGD () {};
+    ~SGD() {};
 
     void optimize(const std::vector<FeatureType>& X, 
                   const std::vector<LabelType>& y) override {
@@ -78,7 +78,7 @@ public:
 
         // initialize learning rate scheduler
         std::unique_ptr<sgdlib::LRDecay> lr_decay = LRDecayRegistry()->Create(
-            this->lr_policy_, this->eta0_, this->decay_
+            this->lr_policy_, this->lr_decay_params_
         );
 
         // 
@@ -94,19 +94,20 @@ public:
                 // copy batch data indices to batch_data_index
                 std::copy_n(X_data_index.begin() + (i * this->batch_size_), 
                             this->batch_size_, 
-                            std::back_inserter(batch_data_index));
-                
+                            batch_data_index.begin());
+
                 // copy X_batch and y_batch data
                 for (std::size_t j = 0; j < this->batch_size_; ++j) {
-                    std::copy(&X[batch_data_index[j] * num_features], 
-                              &X[(batch_data_index[j] + 1) * num_features], 
-                              X_batch.begin() + (j * num_features));
+                    std::copy_n(&X[batch_data_index[j] * num_features], 
+                                num_features, 
+                                X_batch.begin() + (j * num_features));
                     y_batch[j] = y[batch_data_index[j]];
                 };
 
                 // evaluate the loss on X_batch
                 loss = loss_fn->evaluate(X_batch, y_batch, x0);
 
+                // compute gradient on X_batch
                 loss_fn->gradient(X_batch, y_batch, x0, grad);
 
                 // gradient clipping
@@ -128,9 +129,11 @@ public:
                 break;
             }
 
-            // evaluate the loss on the training dataset
-            double sum_loss = std::accumulate(loss_history.begin(), loss_history.end(), 0);
-            if ((this->tol_ > -INF) && (sum_loss > best_loss - this->tol_ * this->batch_size_)) {
+            // compute sum of the loss value for one full batch
+            double sum_loss = std::accumulate(loss_history.begin(), 
+                                              loss_history.end(), 
+                                              decltype(loss_history)::value_type(0));
+            if ((this->tol_ > -INF) && (sum_loss > best_loss - this->tol_ * step_per_iter)) {
                 no_improvement_count +=1;
             }
             else {
@@ -140,7 +143,7 @@ public:
                 best_loss = sum_loss;
             }
 
-            // 
+            // if there is no improvement is bigger than the threshold
             if (no_improvement_count >= this->num_iters_no_change_) {
                 if (this->verbose_) {
                     std::cout << "Convergence after " << (iter + 1) << " epochs." << std::endl;
@@ -151,8 +154,9 @@ public:
 
             if (this->verbose_) {
                 if ((iter % 1) == 0) {
-                    std::cout << "-- Epoch = " << iter << ", average loss value = " 
-                              << sum_loss / static_cast<double>(this->batch_size_) << std::endl;
+                    std::cout << "Epoch = " << (iter + 1) << ", xnorm2 = " 
+                              << sgdlib::internal::sqnorm2<FeatureType>(x0) << ", avg loss = " 
+                              << sum_loss / static_cast<double>(step_per_iter) << std::endl;
                 }
             }
         }
