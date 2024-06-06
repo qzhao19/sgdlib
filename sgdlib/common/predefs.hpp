@@ -6,6 +6,7 @@
 using FeatureType = double;
 using LabelType = long;
 using LossParamType = std::unordered_map<std::string, double>;
+using LRDecayParamType = std::unordered_map<std::string, double>;
 
 constexpr double max_dloss = 1e+10;
 constexpr double min_dloss = 1e-10;
