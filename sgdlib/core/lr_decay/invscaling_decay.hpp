@@ -1,8 +1,6 @@
 #ifndef CORE_LR_DECAY_INVSCALING_DECAY_HPP_
 #define CORE_LR_DECAY_INVSCALING_DECAY_HPP_
 
-#include "common/prereqs.hpp"
-#include "common/predefs.hpp"
 #include "base.hpp"
 
 namespace sgdlib {
