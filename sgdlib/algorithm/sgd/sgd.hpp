@@ -1,20 +1,41 @@
 #ifndef ALGORITHM_SGD_SGD_HPP_
 #define ALGORITHM_SGD_SGD_HPP_
 
-#include "common/prereqs.hpp"
-#include "common/predefs.hpp"
 #include "algorithm/base.hpp"
-#include "core/loss.hpp"
-#include "core/lr_decay.hpp"
 
 namespace sgdlib {
 
 /**
  * @file sgd.hpp
  * 
- * @brief A stochastic gradient descent optimizer.
+ * @brief Stochastic Gradient Descent (SGD) optimizer.
  * 
- * 
+ * @param x0 FeatureType. Initial parameter vector.
+ *      This vector represents the starting point of the optimization process.
+ * @param loss String. The type of loss function to be used for the optimization.
+ *      Common choices include "log_loss" for classification tasks.
+ * @param lr_policy String
+ *      The learning rate schedule policy, which can be "exponential" or "invscaling".
+ * @param alpha 
+ *      The regularization strength, which penalizes large parameter values to prevent overfitting.
+ *      The higher the alpha, the stronger the regularization.
+ * @param eta0 Double. The initial value of the learning rate.
+ * @param tol Double The convergence tolerance, which is a threshold below which the change in the loss function
+ *      indicates that the optimizer has likely converged.
+ * @param gamma Double A hyperparameter that controls the learning rate policy.
+ * @param max_iters Integer. The maximum number of iterations (epochs) that the optimizer will run before stopping.
+ * @param batch_size Integer. The number of samples to be processed in each iteration of the optimization loop.
+ *      Smaller batch sizes can provide a regularizing effect, while larger batch sizes may 
+ *      offer computational efficiency.
+ * @param num_iters_no_change Integer. The number of iterations after which the optimizer will stop if there is no
+ *      improvement in the loss function.
+ * @param random_seed Integer The seed for the random number generator, which ensures reproducibility of the results
+ *      when shuffling the data or selecting batches.
+ * @param shuffle Boolean. Whether to randomly shuffle the data before starting each iteration. This can help prevent
+ *      the optimizer from converging to a local minimum and is generally recommended.
+ * @param verbose Boolean Whether to output detailed information during the optimization process, such as the progress,
+ *      loss values, and parameter updates.
+ *
 */
 class SGD: public BaseOptimizer {
 public:
@@ -71,16 +92,6 @@ public:
         std::vector<LabelType> y_batch(this->batch_size_);
         std::vector<std::size_t> batch_data_index(this->batch_size_);
         
-        // initialize loss function 
-        std::unique_ptr<sgdlib::LossFunction> loss_fn = LossFunctionRegistry()->Create(
-            this->loss_, this->loss_params_
-        );
-
-        // initialize learning rate scheduler
-        std::unique_ptr<sgdlib::LRDecay> lr_decay = LRDecayRegistry()->Create(
-            this->lr_policy_, this->lr_decay_params_
-        );
-
         // 
         for (iter = 0; iter < this->max_iters_; ++iter) {
             // enable to shuffle mask of data for on batch
@@ -89,7 +100,7 @@ public:
             }
 
             // apply lr decay policy to compute eta
-            double eta = lr_decay->compute(iter);
+            double eta = this->lr_decay_->compute(iter);
             for (std::size_t i = 0; i < step_per_iter; ++i) {
                 // copy batch data indices to batch_data_index
                 std::copy_n(X_data_index.begin() + (i * this->batch_size_), 
@@ -105,10 +116,10 @@ public:
                 };
 
                 // evaluate the loss on X_batch
-                loss = loss_fn->evaluate(X_batch, y_batch, x0);
+                loss = this->loss_fn_->evaluate(X_batch, y_batch, x0);
 
                 // compute gradient on X_batch
-                loss_fn->gradient(X_batch, y_batch, x0, grad);
+                this->loss_fn_->gradient(X_batch, y_batch, x0, grad);
 
                 // gradient clipping
                 sgdlib::internal::clip<FeatureType>(grad, MIN_DLOSS, MAX_DLOSS);
