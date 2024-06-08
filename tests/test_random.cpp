@@ -3,6 +3,8 @@
 
 #include "sgdlib/math/random.hpp"
 
+namespace sgdlib {
+
 class RandomStateTest : public ::testing::Test {
 public:
     virtual void SetUp(unsigned long seed) {
@@ -18,13 +20,31 @@ public:
     std::unique_ptr<sgdlib::internal::RandomState> random_state; 
 };
 
-TEST_F(RandomStateTest, ShuffleTest) {
+TEST_F(RandomStateTest, UniformRealTest) {
     SetUp(-1);
+    double lower_bound = 0.0, upper_bound = 1.0;
+    double x = random_state->uniform_real(lower_bound, upper_bound);
+
+    ASSERT_LE(lower_bound, x) << "x should be greater than upper_bound";
+    ASSERT_LT(x, upper_bound) << "x should be strickly less than upper_bound";
+}
+
+TEST_F(RandomStateTest, UniformIntTest) {
+    SetUp(-1);
+    long lower_bound = 0, upper_bound = 5;
+    long x = random_state->uniform_real(lower_bound, upper_bound);
+
+    ASSERT_LE(lower_bound, x) << "x should be greater than upper_bound";
+    ASSERT_LT(x, upper_bound) << "x should be strickly less than upper_bound";
+}
+
+TEST_F(RandomStateTest, ShuffleTest) {
+    SetUp(0);
     std::vector<double> x = {0.8, 5.1, 12.6, 8.7};
+    std::vector<double> expect = x;
     random_state->shuffle<double>(x);
 
-    for (int i = 0; i < x.size(); ++i) {
-        std::cout << x[i] << " ";
-    }
-    std::cout << std::endl;
+    ASSERT_NE(x, expect);
+}
+
 }
