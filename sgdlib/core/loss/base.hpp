@@ -4,6 +4,7 @@
 #include "common/prereqs.hpp"
 #include "common/predefs.hpp"
 #include "common/registry.hpp"
+#include "math/extmath.hpp"
 
 namespace sgdlib {
 

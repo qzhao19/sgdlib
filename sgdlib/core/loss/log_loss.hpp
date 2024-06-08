@@ -1,9 +1,6 @@
 #ifndef CORE_LOSS_LOG_LOSS_HPP_
 #define CORE_LOSS_LOG_LOSS_HPP_
 
-#include "common/prereqs.hpp"
-#include "common/predefs.hpp"
-#include "math/extmath.hpp"
 #include "base.hpp"
 
 namespace sgdlib {
