@@ -5,7 +5,6 @@
 
 #include "sgdlib/core/lr_decay.hpp"
 
-
 namespace sgdlib {
 
 class LRDecayTest : public ::testing::Test {
