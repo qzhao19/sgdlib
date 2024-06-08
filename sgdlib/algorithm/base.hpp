@@ -4,6 +4,8 @@
 #include "common/prereqs.hpp"
 #include "common/predefs.hpp"
 #include "math/random.hpp"
+#include "core/loss.hpp"
+#include "core/lr_decay.hpp"
 
 namespace sgdlib {
 
@@ -32,6 +34,9 @@ protected:
     LRDecayParamType lr_decay_params_;
     std::vector<FeatureType> x_opt_;
     sgdlib::internal::RandomState random_state_;
+
+    std::unique_ptr<sgdlib::LossFunction> loss_fn_;
+    std::unique_ptr<sgdlib::LRDecay> lr_decay_;
 
 public:
     BaseOptimizer() {};
@@ -66,9 +71,14 @@ public:
         else {
             random_state_ = sgdlib::internal::RandomState(random_seed_);
         }
+        // initialize loss function 
         loss_params_["alpha"] = alpha;
+        loss_fn_ = LossFunctionRegistry()->Create(loss_, loss_params_);
+
+        // initialize learning rate scheduler
         lr_decay_params_["eta0"] = eta0;
         lr_decay_params_["gamma"] = gamma;
+        lr_decay_ = LRDecayRegistry()->Create(lr_policy_, lr_decay_params_);
     };
     
     ~BaseOptimizer() {};
