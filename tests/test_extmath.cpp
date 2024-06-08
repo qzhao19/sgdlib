@@ -33,5 +33,11 @@ TEST(ExtmathTest, IsinfTest){
     EXPECT_FALSE(no_inf);
 };
 
+TEST(ExtmathTest, Sqnorm2Test){
+    std::vector<double> x = {5.2, 3.3, 2.6, 0.3};
+    double norm = sgdlib::internal::sqnorm2<double>(x);
+    EXPECT_DOUBLE_EQ(norm, 6.691786009728643);
+};
+
 }
 
