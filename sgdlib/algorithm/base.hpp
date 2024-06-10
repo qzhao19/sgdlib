@@ -38,6 +38,19 @@ protected:
     std::unique_ptr<sgdlib::LossFunction> loss_fn_;
     std::unique_ptr<sgdlib::LRDecay> lr_decay_;
 
+    void init_loss_params() {
+        // initialize loss function 
+        loss_params_["alpha"] = alpha_;
+        loss_fn_ = LossFunctionRegistry()->Create(loss_, loss_params_);
+    }
+
+    void init_lr_params() {
+        // initialize learning rate scheduler
+        lr_decay_params_["eta0"] = eta0_;
+        lr_decay_params_["gamma"] = gamma_;
+        lr_decay_ = LRDecayRegistry()->Create(lr_policy_, lr_decay_params_);
+    }
+
 public:
     BaseOptimizer() {};
     BaseOptimizer(const std::vector<FeatureType>& x0, 
@@ -71,14 +84,8 @@ public:
         else {
             random_state_ = sgdlib::internal::RandomState(random_seed_);
         }
-        // initialize loss function 
-        loss_params_["alpha"] = alpha;
-        loss_fn_ = LossFunctionRegistry()->Create(loss_, loss_params_);
-
-        // initialize learning rate scheduler
-        lr_decay_params_["eta0"] = eta0;
-        lr_decay_params_["gamma"] = gamma;
-        lr_decay_ = LRDecayRegistry()->Create(lr_policy_, lr_decay_params_);
+        init_loss_params();
+        init_lr_params();
     };
     
     ~BaseOptimizer() {};
