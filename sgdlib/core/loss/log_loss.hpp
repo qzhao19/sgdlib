@@ -44,7 +44,7 @@ public:
                                         w.begin(), 0.0);
         reg /= static_cast<double>(num_samples);
         
-        return loss + reg * this->loss_param_.at("alpha");
+        return loss + reg * loss_param_.at("alpha");
     }
 
     /**
@@ -80,7 +80,7 @@ public:
                               (y_hat[i] - static_cast<FeatureType>(y[i]));
             }
             grad[fx_index] = inner_prod / static_cast<FeatureType>(num_samples) + 
-                             this->loss_param_.at("alpha") * 2.0 * w[fx_index];
+                             loss_param_.at("alpha") * 2.0 * w[fx_index];
             ++fx_index;
             inner_prod = 0.0;
         }
