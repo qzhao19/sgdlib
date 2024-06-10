@@ -14,7 +14,7 @@ public:
      * eta = eta0 / pow(epoch, gamma) 
     */
     double compute(std::size_t epoch) override {
-        return this->lr_decay_param_.at("eta0") / std::pow(epoch, this->lr_decay_param_.at("gamma"));
+        return lr_decay_param_.at("eta0") / std::pow(epoch, lr_decay_param_.at("gamma"));
     }
 };
 
