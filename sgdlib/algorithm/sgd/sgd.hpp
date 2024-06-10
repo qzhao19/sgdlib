@@ -67,9 +67,9 @@ public:
                   const std::vector<LabelType>& y) override {
         
         std::size_t num_samples = y.size();
-        std::size_t num_features = this->x0_.size();
+        std::size_t num_features = x0_.size();
 
-        std::size_t step_per_iter = num_samples / this->batch_size_;
+        std::size_t step_per_iter = num_samples / batch_size_;
         std::size_t no_improvement_count = 0;
         std::size_t iter = 0;
 
@@ -85,30 +85,30 @@ public:
         double loss;
         std::vector<double> loss_history(step_per_iter, 0);
         std::vector<FeatureType> grad(num_features, 0.0);
-        std::vector<FeatureType> x0 = this->x0_;
+        std::vector<FeatureType> x0 = x0_;
 
         // initialize X_batch, y_batch and batch_data_index
-        std::vector<FeatureType> X_batch(num_features*this->batch_size_);
-        std::vector<LabelType> y_batch(this->batch_size_);
-        std::vector<std::size_t> batch_data_index(this->batch_size_);
+        std::vector<FeatureType> X_batch(num_features*batch_size_);
+        std::vector<LabelType> y_batch(batch_size_);
+        std::vector<std::size_t> batch_data_index(batch_size_);
         
         // 
-        for (iter = 0; iter < this->max_iters_; ++iter) {
+        for (iter = 0; iter < max_iters_; ++iter) {
             // enable to shuffle mask of data for on batch
-            if (this->shuffle_) {
-                this->random_state_.shuffle<std::size_t>(X_data_index);
+            if (shuffle_) {
+                random_state_.shuffle<std::size_t>(X_data_index);
             }
 
             // apply lr decay policy to compute eta
-            double eta = this->lr_decay_->compute(iter);
+            double eta = lr_decay_->compute(iter);
             for (std::size_t i = 0; i < step_per_iter; ++i) {
                 // copy batch data indices to batch_data_index
-                std::copy_n(X_data_index.begin() + (i * this->batch_size_), 
-                            this->batch_size_, 
+                std::copy_n(X_data_index.begin() + (i * batch_size_), 
+                            batch_size_, 
                             batch_data_index.begin());
 
                 // copy X_batch and y_batch data
-                for (std::size_t j = 0; j < this->batch_size_; ++j) {
+                for (std::size_t j = 0; j < batch_size_; ++j) {
                     std::copy_n(&X[batch_data_index[j] * num_features], 
                                 num_features, 
                                 X_batch.begin() + (j * num_features));
@@ -116,10 +116,10 @@ public:
                 };
 
                 // evaluate the loss on X_batch
-                loss = this->loss_fn_->evaluate(X_batch, y_batch, x0);
+                loss = loss_fn_->evaluate(X_batch, y_batch, x0);
 
                 // compute gradient on X_batch
-                this->loss_fn_->gradient(X_batch, y_batch, x0, grad);
+                loss_fn_->gradient(X_batch, y_batch, x0, grad);
 
                 // gradient clipping
                 sgdlib::internal::clip<FeatureType>(grad, MIN_DLOSS, MAX_DLOSS);
@@ -144,7 +144,7 @@ public:
             double sum_loss = std::accumulate(loss_history.begin(), 
                                               loss_history.end(), 
                                               decltype(loss_history)::value_type(0));
-            if ((this->tol_ > -INF) && (sum_loss > best_loss - this->tol_ * step_per_iter)) {
+            if ((tol_ > -INF) && (sum_loss > best_loss - tol_ * step_per_iter)) {
                 no_improvement_count +=1;
             }
             else {
@@ -155,15 +155,15 @@ public:
             }
 
             // if there is no improvement is bigger than the threshold
-            if (no_improvement_count >= this->num_iters_no_change_) {
-                if (this->verbose_) {
+            if (no_improvement_count >= num_iters_no_change_) {
+                if (verbose_) {
                     std::cout << "Convergence after " << (iter + 1) << " epochs." << std::endl;
                 }
                 is_converged = true;
                 break;
             }
 
-            if (this->verbose_) {
+            if (verbose_) {
                 if ((iter % 1) == 0) {
                     std::cout << "Epoch = " << (iter + 1) << ", xnorm2 = " 
                               << sgdlib::internal::sqnorm2<FeatureType>(x0) << ", avg loss = " 
@@ -182,12 +182,12 @@ public:
         if (!is_converged) {
             std::ostringstream err_msg;
             err_msg << "Not converge, current number of epoch = " << (iter + 1)
-                    << ", the batch size = " << this->batch_size_ 
+                    << ", the batch size = " << batch_size_ 
                     << ", try apply different parameters." << std::endl;
             throw std::runtime_error(err_msg.str());
         }
 
-        this->x_opt_ = x0;
+        x_opt_ = x0;
     }
 
 };
