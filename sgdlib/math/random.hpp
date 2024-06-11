@@ -47,12 +47,33 @@ public:
     };
 
     /**
+     * Shuffles the elements of a vector randomly.
      * 
+     * @param x A reference to the vector of type `Type` to be shuffled.
     */
     template<typename Type>
     void shuffle(std::vector<Type>& x) {
         std::shuffle(std::begin(x), std::end(x), engine_);
     };
+
+    /**
+     * Randomly extract elements from x without repetition.
+    */
+    template<typename Type>
+    Type random(std::vector<Type>& x) {
+
+        std::size_t size = x.size();
+        std::uniform_int_distribution<long> dist(0, size - 1);
+
+        // randomly generate an index of x
+        std::size_t index = dist(engine_);
+        
+        // swap selected value with the last element of x
+        std::swap(x[index], x.back());
+        --size;
+
+        return x[index];
+    }
 
 }; 
 
