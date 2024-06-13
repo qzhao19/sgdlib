@@ -59,6 +59,29 @@ double sqnorm2(const std::vector<Type>& x) {
     );
 }
 
+/**
+ * @brief Computes the index of the maximum element in a given array.
+ *
+ * @param x Pointer to the first element of the array to be processed.
+ *         The array should contain 'size' number of elements of type ValueType.
+ * @param size The number of elements in the array pointed to by 'x'.
+ * @return IndexType The index of the maximum element within the array.
+ *         If multiple elements are equal to the maximum value, the index of the first occurrence is returned.
+ */
+template<typename ValueType, typename IndexType>
+IndexType argmax(ValueType* x, unsigned long size) {
+    IndexType max_index = 0;
+    ValueType max_value = x[max_index];
+
+    for (unsigned long i = 0; i < size; i++) {
+        if (x[i] > max_value) {
+            max_index = i;
+            max_value = x[max_index];
+        }
+    }
+    return max_index;
+};
+
 } // namespace internal
 } // namespace sgdlib
 
