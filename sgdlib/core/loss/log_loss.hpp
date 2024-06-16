@@ -14,6 +14,7 @@ public:
      * evaluate the logistic regression log-likelihood function
      * with the given parameters.
      *   - sum(-y * np.log(y_hat) - (1 - y) * np.log(1 - y_hat)) / len(y_hat)
+     * 
      * @param[in] X 1darray of shape (num_samples * num_features), the matrix of input data
      * @param[in] y 1darray of shape (num_samples) 
      * @param[in] w 1darray of shape (num_features) coefficient of the features 
@@ -51,6 +52,7 @@ public:
      * Evaluate the gradient of logistic regression log-likelihood
      * function with the given parameters using the given batch 
      * size from the given point label
+     *    - sum(x_i * (s(w_T*x_i) - y_i))
      * 
      * @param[in] X 1darray of shape (num_samples * num_features), the matrix of input data
      * @param[in] y 1darray of shape (num_samples) 
