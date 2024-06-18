@@ -13,20 +13,6 @@ namespace sgdlib {
  * 
 */
 class SAG: public BaseOptimizer {
-protected:
-    void lagged_update(const std::vector<FeatureType>& sum_gradient,
-                       const std::vector<std::size_t>& feature_hist,
-                       const std::vector<std::size_t>& X_index_ptr, 
-                       std::size_t num_samples, 
-                       std::size_t num_features,
-                       std::size_t sample_index,
-                       double wscale,
-                       bool reset,
-                       std::vector<FeatureType>& x0,
-                       std::vector<FeatureType>& cumulative_sums) {
-        
-    }
-
 public:
     SAG(const std::vector<FeatureType>& x0, 
         std::string loss, 
@@ -55,7 +41,14 @@ public:
     void optimize(const std::vector<FeatureType>& X, 
                   const std::vector<LabelType>& y) override {
 
-        
+        std::size_t num_samples = y.size();
+        std::size_t num_features = x0_.size();
+
+        std::vector<FeatureType> x0 = x0_;
+        std::vector<FeatureType> sum_grad(num_features);
+        std::vector<FeatureType> grad_history(num_features);
+        std::vector<FeatureType> last_updated(num_features);
+
     }
 
 
