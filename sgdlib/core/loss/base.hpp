@@ -17,12 +17,15 @@ public:
 
     virtual double evaluate(const std::vector<FeatureType>& X, 
                             const std::vector<LabelType>& y, 
-                            const std::vector<FeatureType>& w) const = 0 ;
+                            const std::vector<FeatureType>& weight, 
+                            const FeatureType& bias) const = 0 ;
 
     virtual void gradient(const std::vector<FeatureType>& X, 
                           const std::vector<LabelType>& y, 
-                          const std::vector<FeatureType>& w,
-                          std::vector<FeatureType>& grad) const = 0;
+                          const std::vector<FeatureType>& weight,
+                          const FeatureType& bias,
+                          std::vector<FeatureType>& weight_grad, 
+                          FeatureType& bias_grad) const = 0;
 };
 
 // Create registries for base loss function
