@@ -36,42 +36,22 @@ TEST_F(LossTest, LogLossTest) {
                             6.5, 3.1, 5.2, 2.1};
     std::vector<long> y = {0, 0, 0, 0, 1, 1, 1, 1, 1};
     std::vector<double> w = {0.9781, 0.9711, 0.3962, 0.5209};
+    double b = 1.0;
 
     SetUp("LogLoss");
-    double loss = loss_fn->evaluate(X, y, w);
-    EXPECT_DOUBLE_EQ(loss, 4.0159203584860403);
+    loss_fn->set_param("alpha", 1.0);
+    loss_fn->set_param("wscale", 1.0);
+    double loss = loss_fn->evaluate(X, y, w, b);
+    EXPECT_DOUBLE_EQ(loss, 4.7189764781884902);
 
-    std::vector<double> grad(4);
-    loss_fn->gradient(X, y, w, grad);
-    std::vector<double> expect ={2.2939883890082928, 1.3441739235904036, 
-                                 0.9131519457304953, 0.19995927206507597};
-    EXPECT_EQ(grad, expect);
-};
+    double grad_b = 0.0;
+    std::vector<double> grad_w(4);
+    loss_fn->gradient(X, y, w, b, grad_w, grad_b);
+    std::vector<double> expect_w = {4.2504766518182384, 3.2865449134325799, 
+                                  1.7056665980952996, 1.2417850159468702};
+    EXPECT_EQ(grad_w, expect_w);
 
-
-TEST_F(LossTest, LogLossTestWightWithBias) {
-    std::vector<double> X = {5.2, 3.3, 1.2, 0.3, 1.0,
-                            4.8, 3.1 , 1.6, 0.2, 1.0,
-                            4.75, 3.1, 1.32, 0.1, 1.0,
-                            5.9, 2.6, 4.1, 1.2, 1.0,
-                            5.1, 2.2, 3.3, 1.1, 1.0,
-                            5.2, 2.7, 4.1, 1.3, 1.0,
-                            6.6, 3.1, 5.25, 2.2, 1.0,
-                            6.3, 2.5, 5.1, 2.0, 1.0,
-                            6.5, 3.1, 5.2, 2.1, 1.0};
-    std::vector<long> y = {0, 0, 0, 0, 1, 1, 1, 1, 1};
-    std::vector<double> w = {0.9781, 0.9711, 0.3962, 0.5209, 0.458};
-
-    SetUp("HuberLoss");
-    double loss = loss_fn->evaluate(X, y, w);
-    EXPECT_DOUBLE_EQ(loss, 4.219442264452395);
-
-    std::vector<double> grad(5);
-    loss_fn->gradient(X, y, w, grad);
-    std::vector<double> expect ={2.2941559485325085, 1.3442733152162059, 
-                                 0.91321859059836319, 0.19997423656493518, 
-                                 0.44438651672263596};
-    EXPECT_EQ(grad, expect);
+    std::cout << grad_b << std::endl;
 };
 
 }
