@@ -26,6 +26,10 @@ public:
                           const FeatureType& bias,
                           std::vector<FeatureType>& weight_grad, 
                           FeatureType& bias_grad) const = 0;
+    
+    void set_param(const std::string& name, double value) {
+        loss_param_[name] = value;
+    }
 };
 
 // Create registries for base loss function
