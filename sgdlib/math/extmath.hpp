@@ -47,6 +47,19 @@ bool isinf(const std::vector<Type>& x) {
 }
 
 /**
+ * @brief check if the given value represents infinity
+ * 
+ * @param x value to check infinity.
+ */
+template<typename Type>
+bool isinf(const Type& x) {
+    if (std::isinf(x)) {
+        return true;
+    }
+    return false;
+}
+
+/**
  * @brief calculate the L2 norm of a vector.
  * 
  * @param x a vector of type T.
