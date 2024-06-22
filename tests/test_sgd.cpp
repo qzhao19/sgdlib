@@ -12,6 +12,7 @@ class SGDTest : public ::testing::Test {
 public:
     virtual void SetUp() {
         std::vector<FeatureType> x0 = {1.0, 1.0, 1.0, 1.0}; 
+        FeatureType b0 = 1.0;
         std::string loss = "LogLoss";
         std::string lr_policy = "Exponential";
         double alpha = 0.0;
@@ -19,13 +20,13 @@ public:
         double tol = 0.0001;
         double decay = 0.5;
         std::size_t max_iters = 100; 
-        std::size_t batch_size = 8;
+        std::size_t batch_size = 4;
         std::size_t num_iters_no_change = 5;
         std::size_t random_seed = -1;
         bool shuffle = true;
         bool verbose = true;
 
-        optimizer = std::make_unique<sgdlib::SGD>(x0, 
+        optimizer = std::make_unique<sgdlib::SGD>(x0, b0,
             loss, 
             lr_policy, 
             alpha, eta0, 
@@ -205,12 +206,18 @@ TEST_F(SGDTest, SGDOptimizerTest) {
     optimizer->optimize(X_train, y_train);
 
     std::vector<double> coef;
-    coef = optimizer->get_coef();
+    double intercept;
 
+    coef = optimizer->get_coef();
+    intercept = optimizer->get_intercept();
+
+    std::cout << "coefficients = ";
     for (auto c : coef) {
         std::cout << c << " ";
     }
     std::cout << std::endl;
+    std::cout << "intercept = " << intercept <<std::endl;
+
 }
     
 }
