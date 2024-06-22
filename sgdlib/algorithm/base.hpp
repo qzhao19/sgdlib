@@ -12,6 +12,8 @@ namespace sgdlib {
 class BaseOptimizer {
 protected:
     std::vector<FeatureType> x0_;
+    FeatureType b0_;
+    
     std::string loss_;
     std::string penalty_;
     std::string lr_policy_;
@@ -33,6 +35,7 @@ protected:
     LossParamType loss_params_;
     LRDecayParamType lr_decay_params_;
     std::vector<FeatureType> x_opt_;
+    FeatureType b_opt_;
     sgdlib::internal::RandomState random_state_;
 
     std::unique_ptr<sgdlib::LossFunction> loss_fn_;
@@ -41,6 +44,7 @@ protected:
     void init_loss_params() {
         // initialize loss function 
         loss_params_["alpha"] = alpha_;
+        loss_params_["wscale"] = 1.0;
         loss_fn_ = LossFunctionRegistry()->Create(loss_, loss_params_);
     }
 
@@ -53,7 +57,8 @@ protected:
 
 public:
     BaseOptimizer() {};
-    BaseOptimizer(const std::vector<FeatureType>& x0, 
+    BaseOptimizer(const std::vector<FeatureType>& x0,
+                  const FeatureType& b0,
                   std::string loss, 
                   std::string lr_policy,
                   double alpha,
@@ -65,7 +70,7 @@ public:
                   std::size_t num_iters_no_change,
                   std::size_t random_seed,
                   bool shuffle = true, 
-                  bool verbose = true): x0_(x0), 
+                  bool verbose = true): x0_(x0), b0_(b0),
             loss_(loss), 
             lr_policy_(lr_policy),
             alpha_(alpha),
@@ -95,6 +100,10 @@ public:
 
     const std::vector<FeatureType> get_coef() const {
         return x_opt_;
+    }
+
+    const FeatureType get_intercept() const {
+        return b_opt_;
     }
 
 };
