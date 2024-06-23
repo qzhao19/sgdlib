@@ -8,6 +8,14 @@
 
 namespace sgdlib {
 
+/** 
+ * @file base.hpp
+ * 
+ * @class LossFunction
+ * 
+ * @brief Abstract base class representing a loss function
+ * 
+*/
 class LossFunction {
 protected:
     LossParamType loss_param_;
@@ -15,61 +23,36 @@ public:
     LossFunction(LossParamType loss_param): loss_param_(loss_param) {};
     virtual ~LossFunction() {};
 
-    /* -------------without intercept term------------- */
     /**
-     * @brief evaluate the loss function
+     * evaluate the loss value of loss function
      * 
-     * @param[in] X 1darray of shape (num_samples * num_features), the matrix of input data
-     * @param[in] y 1darray of shape (num_samples) 
-     * @param[in] w 1darray of shape (num_features) coefficient of the features
-     * @param[in] b scalar intercept term
-     * @return loss function value
+     * @param y_pred FeatureType
+     *      The predicted output of a model given an input.
+     * @param y_true LabelType
+     *      The true label value for the data point
+     * @return A double value for loss function value
     */
-    virtual double evaluate(const std::vector<FeatureType>& X, 
-                            const std::vector<LabelType>& y, 
-                            const std::vector<FeatureType>& w, 
-                            const FeatureType& b) const = 0 ;
+    virtual FeatureType evaluate(const FeatureType& y_pred, 
+                                 const LabelType& y_true) const = 0;
     
-    /**
-     * @brief compute gradient of the loss function
-     * 
-     * @param[in] X 1darray of shape (num_samples * num_features), the matrix of input data
-     * @param[in] y 1darray of shape (num_samples) 
-     * @param[in] w 1darray of shape (num_features) coefficient of the features
-     * @param[in] b scalar intercept term of the model
-     * @param[out] grad_w vector of FeatureType, where the gradient with respect to 
-     *      the weights will be stored.
-     * @param[out] grad_b FeatureType, where the gradient with respect to the bias
-    */
-    virtual void gradient(const std::vector<FeatureType>& X, 
-                          const std::vector<LabelType>& y, 
-                          const std::vector<FeatureType>& w,
-                          const FeatureType& b,
-                          std::vector<FeatureType>& grad_w, 
-                          FeatureType& grad_b) const = 0;
-    
-    /* -------------compute intercept term------------- */
-
-    /**
-     * evaluate the loss value of model
-     * 
-     * @param[in] X 1darray of shape (num_samples * num_features), the matrix of input data
-     * @param[in] y 1darray of shape (num_samples) 
-     * @param[in] w 1darray of shape (num_features) coefficient of the features
-    */
-    virtual double evaluate(const std::vector<FeatureType>& X, 
-                            const std::vector<LabelType>& y, 
-                            const std::vector<FeatureType>& w) const = 0 ;
-
     /** 
-     * compute gradient of the loss function 
+     * compute the derivative of a loss function.
+     * 
+     * @param y_pred FeatureType
+     *      The predicted output of a model given an input.
+     * @param y_true LabelType
+     *      The true label value for the data point
+     * @return A double value representing the derivative of the loss function
     */
-    virtual void gradient(const std::vector<FeatureType>& X, 
-                          const std::vector<LabelType>& y, 
-                          const std::vector<FeatureType>& w,
-                          std::vector<FeatureType>& grad) const = 0;
+    virtual FeatureType derivate(const FeatureType& y_pred, 
+                                 const LabelType& y_true) const = 0;
 
-    // set loss function parameters
+    /**
+     * @brief Sets a parameter for the loss function.
+     * 
+     * @param name The name of the parameter as a string.
+     * @param value The value of the parameter as a double.
+    */
     void set_param(const std::string& name, const double& value) {
         loss_param_[name] = value;
     }
