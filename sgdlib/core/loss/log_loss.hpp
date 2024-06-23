@@ -8,147 +8,53 @@ namespace sgdlib {
 /**
  * @file log_loss.hpp
  * 
- * @brief logistic regression loss function
+ * @class LogLoss
  * 
- * Logistic regression log-likelihood function with the given parameters.
- *     (1/N) * sum[y_i * log(P1 + (1 - y_i) * log(P0))] / n_samples
+ * @brief logistic regression loss function for binary classification 
+ * with y in {-1, 1}. An approximation is used to simplify calculations, 
+ * specifically avoiding the computation of a logarithm, it can help 
+ * maintain numerical stability by avoiding extreme values.
  * 
- * Gradient of logistic regression log-likelihood function 
- *     (1/N) * sum[X_i * P1 - X_i * y_i] = (1/N) * sum[X_i * (P1 - X_i)]
+ * Here, we use another way to express loss function with the categories 
+ * as {-1, 1}, let x_i be the i-th feature vector, w be the parameter 
+ * vector for the logistic regression, N be the sample size, and p(y_i) 
+ * be the predicted probability of membership to category 1
+ * so p(y_i) = p_i = w * x_i
+ * 
+ *  L = (1/N) * sum(log(1.0 + exp(-y_i * p_i)))
+ * 
+ *  dL/dp = (1/N) * sum(-y / (1 + exp(y_i * p_i)))
+ * 
 */
 class LogLoss final: public LossFunction {
 public:
     LogLoss(LossParamType loss_param): LossFunction(loss_param) {};
     ~LogLoss() {};
 
-    // with intercept term
-    double evaluate(const std::vector<FeatureType>& X, 
-                    const std::vector<LabelType>& y, 
-                    const std::vector<FeatureType>& w, 
-                    const FeatureType& b) const override {
-    
-        std::size_t num_samples = y.size();
-        std::size_t num_features = w.size();  
-        double loss = 0.0;
-        double X_w, y_hat;
-        for (std::size_t i = 0; i < num_samples; ++i) {
-            X_w = std::inner_product(X.begin() + (i * num_features), 
-                                     X.begin() + ((i + 1) * num_features), 
-                                     w.begin(), 0.0);
-            X_w *= loss_param_.at("wscale");
-            X_w += b; 
-            y_hat = sgdlib::internal::sigmoid<FeatureType>(X_w);
-
-            loss -= (static_cast<double>(y[i]) * std::log(y_hat) + 
-                    (1.0 - static_cast<double>(y[i])) * std::log(1.0 - y_hat));
-        }
-        loss /= static_cast<double>(num_samples);
+    virtual FeatureType evaluate(const FeatureType& y_pred, 
+                                 const LabelType& y_true) const override {
         
-        // calculate regulization term
-        double reg = std::inner_product(w.begin(), 
-                                        w.end(), 
-                                        w.begin(), 0.0);
-        reg /= static_cast<double>(num_samples);
-        return loss + reg * loss_param_.at("alpha");
+        FeatureType z = y_pred * static_cast<FeatureType>(y_true);
+        if (z > 18.0) {
+            return std::exp(-z);
+        }
+        if (z < -18.0) {
+            return -z;
+        }
+        return std::log(1.0 + std::exp(-z));
     }
 
-    void gradient(const std::vector<FeatureType>& X, 
-                  const std::vector<LabelType>& y, 
-                  const std::vector<FeatureType>& w,
-                  const FeatureType& b,
-                  std::vector<FeatureType>& grad_w, 
-                  FeatureType& grad_b) const override {
-    
-        std::size_t num_samples = y.size();
-        std::size_t num_features = w.size();
-        double X_w;
-        std::vector<FeatureType> y_hat(num_samples, 0.0);
+    virtual FeatureType derivate(const FeatureType& y_pred, 
+                                 const LabelType& y_true) const override {
 
-        for (std::size_t i = 0; i < num_samples; ++i) {
-            X_w = std::inner_product(X.begin() + (i * num_features), 
-                                     X.begin() + ((i + 1) * num_features), 
-                                     w.begin(), 0.0);
-            X_w *= loss_param_.at("wscale");
-            X_w += b;
-            y_hat[i] = sgdlib::internal::sigmoid<FeatureType>(X_w);
-            grad_b += (y_hat[i] - static_cast<FeatureType>(y[i]));
+        FeatureType z = y_pred * static_cast<FeatureType>(y_true);
+        if (z > 18.0) {
+            return std::exp(-z) * (-static_cast<FeatureType>(y_true));
         }
-        grad_b /= static_cast<FeatureType>(num_samples);
-
-        FeatureType inner_prod = 0.0;
-        std::size_t feature_index = 0;
-        while (feature_index < num_features) {
-            for (std::size_t i = 0; i < num_samples; ++i) {
-                inner_prod += (X[i * num_features + feature_index]) * 
-                              (y_hat[i] - static_cast<FeatureType>(y[i]));
-            }
-            grad_w[feature_index] = inner_prod / static_cast<FeatureType>(num_samples) + 
-                                    loss_param_.at("alpha") * 2.0 * w[feature_index];
-            ++feature_index;
-            inner_prod = 0.0;
+        if (z < -18.0) {
+            return -static_cast<FeatureType>(y_true);
         }
-    }
-
-    // without intercept term
-    double evaluate(const std::vector<FeatureType>& X, 
-                    const std::vector<LabelType>& y, 
-                    const std::vector<FeatureType>& w) const override {
-    
-        std::size_t num_samples = y.size();
-        std::size_t num_features = w.size();  
-        double loss = 0.0;
-        double X_w, y_hat;
-        for (std::size_t i = 0; i < num_samples; ++i) {
-            X_w = std::inner_product(X.begin() + (i * num_features), 
-                                     X.begin() + ((i + 1) * num_features), 
-                                     w.begin(), 0.0);
-            X_w *= loss_param_.at("wscale");
-            // X_w += b; 
-            y_hat = sgdlib::internal::sigmoid<FeatureType>(X_w);
-
-            loss -= (static_cast<double>(y[i]) * std::log(y_hat) + 
-                    (1.0 - static_cast<double>(y[i])) * std::log(1.0 - y_hat));
-        }
-        loss /= static_cast<double>(num_samples);
-        
-        // calculate regulization term
-        double reg = std::inner_product(w.begin(), 
-                                        w.end(), 
-                                        w.begin(), 0.0);
-        reg /= static_cast<double>(num_samples);
-        return loss + reg * loss_param_.at("alpha");
-    }
-
-    void gradient(const std::vector<FeatureType>& X, 
-                  const std::vector<LabelType>& y, 
-                  const std::vector<FeatureType>& w,
-                  std::vector<FeatureType>& grad) const override {
-    
-        std::size_t num_samples = y.size();
-        std::size_t num_features = w.size();
-        double X_w;
-        std::vector<FeatureType> y_hat(num_samples, 0.0);
-
-        for (std::size_t i = 0; i < num_samples; ++i) {
-            X_w = std::inner_product(X.begin() + (i * num_features), 
-                                     X.begin() + ((i + 1) * num_features), 
-                                     w.begin(), 0.0);
-            X_w *= loss_param_.at("wscale");
-            y_hat[i] = sgdlib::internal::sigmoid<FeatureType>(X_w);
-        }
-
-        FeatureType inner_prod = 0.0;
-        std::size_t feature_index = 0;
-        while (feature_index < num_features) {
-            for (std::size_t i = 0; i < num_samples; ++i) {
-                inner_prod += (X[i * num_features + feature_index]) * 
-                              (y_hat[i] - static_cast<FeatureType>(y[i]));
-            }
-            grad[feature_index] = inner_prod / static_cast<FeatureType>(num_samples) + 
-                                  loss_param_.at("alpha") * 2.0 * w[feature_index];
-            ++feature_index;
-            inner_prod = 0.0;
-        }
+        return -static_cast<FeatureType>(y_true) / (std::exp(z) + 1.0);
     }
 
 };
