@@ -12,7 +12,7 @@ namespace internal {
  * @param x input value
 */
 template <typename Type>
-Type sigmoid(Type x) {
+inline Type sigmoid(Type x) {
     return 1 / (1 + std::exp(-x));
 };
 
@@ -23,7 +23,7 @@ Type sigmoid(Type x) {
  * @param min, max minimum and maximum value
 */
 template<typename Type>
-void clip(std::vector<Type>& x, Type min, Type max) {
+inline void clip(std::vector<Type>& x, Type min, Type max) {
     std::transform(std::begin(x), std::end(x), std::begin(x),
         [=] (auto i) { 
             return std::clamp(i, min, max); 
@@ -37,7 +37,7 @@ void clip(std::vector<Type>& x, Type min, Type max) {
  * @param x vector containing elements to check infinity.
 */
 template<typename Type>
-bool isinf(const std::vector<Type>& x) {
+inline bool isinf(const std::vector<Type>& x) {
     for (std::size_t i = 0; i < x.size(); ++i) {
         if (std::isinf(x[i])) {
             return true;
@@ -52,7 +52,7 @@ bool isinf(const std::vector<Type>& x) {
  * @param x value to check infinity.
  */
 template<typename Type>
-bool isinf(const Type& x) {
+inline bool isinf(const Type& x) {
     if (std::isinf(x)) {
         return true;
     }
@@ -66,7 +66,7 @@ bool isinf(const Type& x) {
  * @return The L2 norm of the vector as a double.
  */
 template<typename Type>
-double sqnorm2(const std::vector<Type>& x) {
+inline double sqnorm2(const std::vector<Type>& x) {
     return std::sqrt(
         std::inner_product(x.begin(), x.end(), x.begin(), 0.0)
     );
@@ -82,7 +82,7 @@ double sqnorm2(const std::vector<Type>& x) {
  *         If multiple elements are equal to the maximum value, the index of the first occurrence is returned.
  */
 template<typename ValueType, typename IndexType>
-IndexType argmax(ValueType* x, unsigned long size) {
+inline IndexType argmax(ValueType* x, unsigned long size) {
     IndexType max_index = 0;
     ValueType max_value = x[max_index];
 
@@ -94,6 +94,19 @@ IndexType argmax(ValueType* x, unsigned long size) {
     }
     return max_index;
 };
+
+/** 
+ * @brief Applies a scalar multiplication operation to a vector.
+ * 
+ * @param[in,out] x vector of type T, which will be scaled by the scalar 'c'.
+ * @param[in] scalar constant scalar value 
+*/
+template<typename T>
+inline void dot(std::vector<T>& x, const T c) {
+    for (std::size_t i = 0; i < x.size(); ++i) {
+        x[i] *= c;
+    }
+}
 
 } // namespace internal
 } // namespace sgdlib
