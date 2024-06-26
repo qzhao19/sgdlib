@@ -24,12 +24,29 @@ inline Type sigmoid(Type x) {
 */
 template<typename Type>
 inline void clip(std::vector<Type>& x, Type min, Type max) {
+    if (min > max) {
+        throw std::invalid_argument("a_min must be less than or equal to a_max.");
+    }
     std::transform(std::begin(x), std::end(x), std::begin(x),
         [=] (auto i) { 
             return std::clamp(i, min, max); 
         }
     );
 };
+
+/** 
+ * @brief Clips the value to the specified range [min, max]
+ * 
+ * @param x The input value to be clipped.
+ * @param min, max minimum and maximum value
+*/
+template<typename Type>
+inline void clip(Type& x, Type min, Type max) {
+    if (min > max) {
+        throw std::invalid_argument("a_min must be less than or equal to a_max.");
+    }
+    x = std::max(min, std::min(x, max));
+}
 
 /**
  * @brief check if any element of vector is infinite.
