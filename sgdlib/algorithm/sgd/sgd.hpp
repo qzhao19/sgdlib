@@ -69,34 +69,31 @@ public:
         
         std::size_t num_samples = y.size();
         std::size_t num_features = x0_.size();
-
         std::size_t step_per_iter = num_samples / batch_size_;
+
         std::size_t no_improvement_count = 0;
         std::size_t iter = 0;
 
         bool is_converged = false;
         bool is_infinity = false;
         double best_loss = INF;
+        FeatureType wscale = 1.0;
 
         // initialize a lookup table for training X, y
         std::vector<std::size_t> X_data_index(num_samples);
         std::iota(X_data_index.begin(), X_data_index.end(), 0);
 
         // initialize loss, loss_history, gradient, 
-        double loss;
-        std::vector<double> loss_history(step_per_iter, 0);
-        std::vector<FeatureType> grad_w(num_features, 0.0);
-        FeatureType grad_b = 0.0;
+        double loss, dloss;
+        FeatureType y_hat;
+        std::vector<double> loss_history(step_per_iter, 0.0);
+        std::vector<FeatureType> weight_update(num_features, 0.0);
+        FeatureType bias_update = 0.0;
 
         // initialize x0 (weight) and b0 (bias)
         std::vector<FeatureType> x0 = x0_;
         FeatureType b0 = b0_;
 
-        // initialize X_batch, y_batch and X_batch_index
-        std::vector<FeatureType> X_batch(num_features*batch_size_);
-        std::vector<LabelType> y_batch(batch_size_);
-        std::vector<std::size_t> X_batch_index(batch_size_);
-        
         // start to loop
         for (iter = 0; iter < max_iters_; ++iter) {
             // enable to shuffle mask of data for on batch
@@ -106,37 +103,68 @@ public:
 
             // apply lr decay policy to compute eta
             double eta = lr_decay_->compute(iter);
+
             for (std::size_t i = 0; i < step_per_iter; ++i) {
-                // copy batch data indices to X_batch_index
-                std::copy_n(X_data_index.begin() + (i * batch_size_), 
-                            batch_size_, 
-                            X_batch_index.begin());
-
-                // copy X_batch and y_batch data
                 for (std::size_t j = 0; j < batch_size_; ++j) {
-                    std::copy_n(&X[X_batch_index[j] * num_features], 
-                                num_features, 
-                                X_batch.begin() + (j * num_features));
-                    y_batch[j] = y[X_batch_index[j]];
-                };
+                    // compute predicted label proba XW + b
+                    y_hat = std::inner_product(&X[X_data_index[i * batch_size_ + j] * num_features], 
+                                               &X[(X_data_index[i * batch_size_ + j] + 1) * num_features], 
+                                               x0.begin(), 0.0);                    
+                    y_hat *= wscale;
+                    y_hat += b0;
 
-                // evaluate the loss on X_batch
-                loss = loss_fn_->evaluate(X_batch, y_batch, x0, b0);
+                    // evaluate the loss on one row of X, and calculate the derivatives of the loss
+                    loss += loss_fn_->evaluate(y_hat, y[X_data_index[i * batch_size_ + j]]);
+                    dloss = loss_fn_->derivate(y_hat, y[X_data_index[i * batch_size_ + j]]);
 
-                // compute gradient on X_batch
-                loss_fn_->gradient(X_batch, y_batch, x0, b0, grad_w, grad_b);
-
-                // weight gradient clipping
-                sgdlib::internal::clip<FeatureType>(grad_w, MIN_DLOSS, MAX_DLOSS);
-
-                // update x0: w = w - lr * grad_w and b0: b = b - lr * grad_b
-                for (std::size_t k = 0; k < num_features; ++k) {
-                    x0[k] -= eta * grad_w[k];
+                    // clip dloss with large values
+                    sgdlib::internal::clip(dloss, -MAX_DLOSS, MAX_DLOSS);
+                    
+                    if (dloss != 0.0) {
+                        std::transform(&X[X_data_index[i * batch_size_ + j] * num_features], 
+                                       &X[(X_data_index[i * batch_size_ + j] + 1) * num_features], 
+                                       weight_update.begin(),
+                                       [dloss](FeatureType elem) {return elem * dloss;});
+                        
+                        std::transform(weight_update.begin(), weight_update.end(), 
+                                       weight_update.begin(), 
+                                       weight_update.begin(), 
+                                       std::plus<>());
+                        bias_update += 2.0 * dloss;
+                    }
+                    
                 }
-                b0 -= eta * grad_b;
+                // compute loss/weight_gradient/bias_gradient for one batch data point
+                if (batch_size_ > 1) {
+                    loss /= static_cast<FeatureType>(batch_size_);
+                    for (std::size_t k = 0; k < num_features; ++k) {
+                        weight_update[k] /= static_cast<FeatureType>(batch_size_);
+                    }
+                    bias_update /= static_cast<FeatureType>(batch_size_);
+                }
+                
+                // add L2 penalty for weight
+                if (alpha_ > 0.0) {
+                    FeatureType reg = std::inner_product(x0.begin(), x0.end(), x0.begin(), 0.0) / 
+                        static_cast<FeatureType>(num_samples);
+                    loss += alpha_ * reg;
+                    for (std::size_t k = 0; k < num_features; ++k) {
+                        weight_update[k] += (2.0 * alpha_ * x0[k] / static_cast<FeatureType>(num_samples));
+                    }
+                }
+
+                // scales sample w by wscale
+
+
+                // update x0: w = w - lr * w and b0: b = b - lr * b
+                for (std::size_t k = 0; k < num_features; ++k) {
+                    x0[k] -= eta * weight_update[k];
+                }
+                b0 -= eta * bias_update;
 
                 // store loss value into loss_history
                 loss_history[i] = loss;
+                loss = 0.0;
             }
 
             // ---Convergence test---
