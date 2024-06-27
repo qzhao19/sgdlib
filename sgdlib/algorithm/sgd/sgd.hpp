@@ -55,7 +55,8 @@ public:
         bool verbose = true): BaseOptimizer(x0, b0,
             loss, lr_policy, 
             alpha, eta0, 
-            tol, gamma,
+            tol, 
+            gamma,
             max_iters, 
             batch_size, 
             num_iters_no_change,
@@ -86,10 +87,10 @@ public:
         // initialize loss, loss_history, gradient, 
         double loss, dloss;
         FeatureType y_hat;
+        FeatureType bias_update = 0.0;
         std::vector<double> loss_history(step_per_iter, 0.0);
         std::vector<FeatureType> weight_update(num_features, 0.0);
-        FeatureType bias_update = 0.0;
-
+        
         // initialize x0 (weight) and b0 (bias)
         std::vector<FeatureType> x0 = x0_;
         FeatureType b0 = b0_;
@@ -102,16 +103,14 @@ public:
             }
 
             // apply lr decay policy to compute eta
-            double eta = lr_decay_->compute(iter);
-
+            double eta = lr_decay_->compute(iter);            
             for (std::size_t i = 0; i < step_per_iter; ++i) {
                 for (std::size_t j = 0; j < batch_size_; ++j) {
                     // compute predicted label proba XW + b
                     y_hat = std::inner_product(&X[X_data_index[i * batch_size_ + j] * num_features], 
                                                &X[(X_data_index[i * batch_size_ + j] + 1) * num_features], 
                                                x0.begin(), 0.0);                    
-                    y_hat *= wscale;
-                    y_hat += b0;
+                    y_hat = y_hat * wscale + b0;
 
                     // evaluate the loss on one row of X, and calculate the derivatives of the loss
                     loss += loss_fn_->evaluate(y_hat, y[X_data_index[i * batch_size_ + j]]);
@@ -132,8 +131,8 @@ public:
                                        std::plus<>());
                         bias_update += 2.0 * dloss;
                     }
-                    
                 }
+
                 // compute loss/weight_gradient/bias_gradient for one batch data point
                 if (batch_size_ > 1) {
                     loss /= static_cast<FeatureType>(batch_size_);
@@ -145,9 +144,9 @@ public:
                 
                 // add L2 penalty for weight
                 if (alpha_ > 0.0) {
-                    FeatureType reg = std::inner_product(x0.begin(), x0.end(), x0.begin(), 0.0) / 
-                        static_cast<FeatureType>(num_samples);
-                    loss += alpha_ * reg;
+                    loss += alpha_ * 
+                        std::inner_product(x0.begin(), x0.end(), x0.begin(), 0.0) / 
+                            static_cast<FeatureType>(num_samples);
                     for (std::size_t k = 0; k < num_features; ++k) {
                         weight_update[k] += (2.0 * alpha_ * x0[k] / static_cast<FeatureType>(num_samples));
                     }
@@ -160,7 +159,7 @@ public:
                 for (std::size_t k = 0; k < num_features; ++k) {
                     x0[k] -= eta * weight_update[k];
                 }
-                b0 -= eta * bias_update;
+                b0 -= 0.01 * eta * bias_update;
 
                 // store loss value into loss_history
                 loss_history[i] = loss;
