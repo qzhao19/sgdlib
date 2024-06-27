@@ -43,8 +43,8 @@ protected:
 
     void init_loss_params() {
         // initialize loss function 
-        loss_params_["alpha"] = alpha_;
-        loss_params_["wscale"] = 1.0;
+        // margin threshold for hinge loss
+        loss_params_["threshold"] = 1.0;
         loss_fn_ = LossFunctionRegistry()->Create(loss_, loss_params_);
     }
 
