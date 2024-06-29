@@ -82,7 +82,8 @@ public:
             num_iters_no_change_(num_iters_no_change),
             random_seed_(random_seed),
             shuffle_(shuffle),
-            verbose_(verbose) {
+            verbose_(verbose), 
+            l1_ratio_(0.0) {
         if (random_seed_ == -1) {
             random_state_ = sgdlib::internal::RandomState();
         }
