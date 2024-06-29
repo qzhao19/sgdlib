@@ -118,8 +118,12 @@ public:
 
                     // clip dloss with large values
                     sgdlib::internal::clip(dloss, -MAX_DLOSS, MAX_DLOSS);
-                    
+
                     if (dloss != 0.0) {
+                        // Scales sample x by constant wscale and add it to weight:
+                        // deflation of the sample feature values, adding to weights 
+                        // means that this scaled sample directly affects the final output
+                        dloss /= wscale;
                         std::transform(&X[X_data_index[i * batch_size_ + j] * num_features], 
                                        &X[(X_data_index[i * batch_size_ + j] + 1) * num_features], 
                                        weight_update.begin(),
@@ -130,6 +134,14 @@ public:
                                        weight_update.begin(), 
                                        std::plus<>());
                         bias_update += 2.0 * dloss;
+                    }
+
+                    // scale weight vector by a scalar factor
+                    if (alpha_ > 0.0) {
+                        wscale *= std::max(0.0, 1.0 - ((1.0 - l1_ratio_) * eta * alpha_));
+                        if (wscale < WSCALE_THRESHOLD) {
+                            wscale = 1.0;
+                        }
                     }
                 }
 
@@ -151,9 +163,6 @@ public:
                         weight_update[k] += (2.0 * alpha_ * x0[k] / static_cast<FeatureType>(num_samples));
                     }
                 }
-
-                // scales sample w by wscale
-
 
                 // update x0: w = w - lr * w and b0: b = b - lr * b
                 for (std::size_t k = 0; k < num_features; ++k) {
@@ -178,7 +187,7 @@ public:
             double sum_loss = std::accumulate(loss_history.begin(), 
                                               loss_history.end(), 
                                               decltype(loss_history)::value_type(0));
-            if ((tol_ > -INF) && (sum_loss > best_loss - tol_ * step_per_iter)) {
+            if ((tol_ > -INF) && (sum_loss > best_loss - tol_ * num_samples)) {
                 no_improvement_count +=1;
             }
             else {
