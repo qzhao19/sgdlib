@@ -9,9 +9,10 @@ using LossParamType = std::unordered_map<std::string, double>;
 using LRDecayParamType = std::unordered_map<std::string, double>;
 
 constexpr double max_dloss = 1e+10;
-constexpr double min_dloss = 1e-10;
 #define MAX_DLOSS max_dloss
-#define MIN_DLOSS min_dloss
+
+constexpr double wscale_threshold = 1e-9;
+#define WSCALE_THRESHOLD wscale_threshold
 
 constexpr double inf = std::numeric_limits<double>::infinity();
 #define INF inf
