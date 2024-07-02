@@ -144,7 +144,7 @@ public:
                                        weight_update.begin(), 
                                        weight_update.begin(), 
                                        std::plus<>());
-                        bias_update += 2.0 * dloss;
+                        bias_update += dloss;
                     }
 
                     // scale weight vector by a scalar factor
