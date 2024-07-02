@@ -51,12 +51,12 @@ public:
         FeatureType b0 = b0_;
 
         // 
-        std::vector<FeatureType> sum_grad(num_features);
+        std::vector<FeatureType> grad_sum(num_features);
         std::vector<FeatureType> grad_history(num_features);
-        std::vector<FeatureType> cumulative_sums(max_iters_ * num_samples);
+        std::vector<FeatureType> cumulative_sum(max_iters_ * num_samples);
 
-        std::vector<std::size_t> seen(num_samples);
-        std::vector<std::size_t> last_updated(num_features);
+        std::vector<std::size_t> seen(num_samples, 0);
+        std::vector<std::size_t> last_updated(num_features, 0);
         
         std::size_t no_improvement_count = 0;
         std::size_t sample_index = 0;
@@ -79,6 +79,7 @@ public:
         std::vector<double> loss_history(num_samples, 0.0);
         std::vector<FeatureType> weight_update(num_features, 0.0);
 
+        std::size_t counter = 0;
         for (iter = 0; iter < max_iters_; ++iter) {
             for (std::size_t i = 0; i < num_samples; ++i) {
                 sample_index = random_state_.random<std::size_t>(X_data_index);
@@ -89,9 +90,29 @@ public:
                     seen[sample_index] = 1;
                 }
                 
+                if (counter >= 1) {
+                    for (std::size_t j = 0; j < num_features; ++j) {
+                        if (last_updated[j] == 0) {
+                            x0[j] -= cumulative_sum[j-1] * grad_sum[j];
+                        }
+                        else {
+                            x0[j] -= (cumulative_sum[j-1] - cumulative_sum[last_updated[j] - 1]) * grad_sum[j];
+                        }
+                        last_updated[j] = counter;
+                    }
+                }
 
+                y_hat = std::inner_product(&X[sample_index * num_features], 
+                                           &X[(sample_index + 1) * num_features], 
+                                           x0.begin(), 0.0);                    
+                y_hat = y_hat * wscale + b0;
 
+                dloss = loss_fn_->derivate(y_hat, y[sample_index]);
 
+                std::transform(&X[sample_index * num_features], 
+                               &X[(sample_index + 1) * num_features], 
+                               weight_update.begin(),
+                               [dloss](FeatureType elem) {return elem * dloss;});
 
             }
 
