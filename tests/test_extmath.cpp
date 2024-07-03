@@ -50,5 +50,29 @@ TEST(ExtmathTest, Sqnorm2Test){
     EXPECT_DOUBLE_EQ(norm, 6.691786009728643);
 };
 
+TEST(ExtmathTest, ArgmaxTest){
+    std::vector<double> x = {5.2, 3.3, 1.2, 0.3, 4.8, 3.1, 1.6, 0.2, 4.75};
+    long max_index;
+    max_index = sgdlib::internal::argmax<double, long>(&x[0], 9);
+    EXPECT_THAT(max_index, 0);
+};
+
+TEST(ExtmathTest, InplaceVectorScalarDotTest){
+    std::vector<double> x = {5.2, 3.3, 2.6, 0.3};
+    double c = 10.0;
+    sgdlib::internal::dot<double>(x, c);
+    std::vector<double> expect = {52.0, 33.0, 26.0, 3.0};
+    EXPECT_EQ(x, expect);
+};
+
+TEST(ExtmathTest, IteratorVectorScalarDotTest){
+    std::vector<double> x = {5.2, 3.3, 2.6, 0.3};
+    std::vector<double> out;
+    double c = 10.0;
+    sgdlib::internal::dot<double>(x.begin(), x.end(), c, out);
+    std::vector<double> expect = {52.0, 33.0, 26.0, 3.0};
+    EXPECT_EQ(out, expect);
+};
+
 }
 
