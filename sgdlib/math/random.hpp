@@ -57,10 +57,10 @@ public:
     };
 
     /**
-     * Randomly extract elements from x without repetition.
+     * Randomly extract one element from x without repetition.
     */
     template<typename Type>
-    Type random(std::vector<Type>& x) {
+    Type sample(std::vector<Type>& x) {
 
         std::size_t size = x.size();
         std::uniform_int_distribution<long> dist(0, size - 1);
