@@ -8,7 +8,7 @@ namespace sgdlib {
 /**
  * @file sag.hpp
  * 
- * @brief @brief Stochastic Average Gradient Descent (SAGD) optimizer.
+ * @brief Stochastic Average Gradient Descent (SAGD) optimizer.
  * 
  * 
 */
@@ -23,9 +23,9 @@ public:
         double tol,
         double gamma,
         std::size_t max_iters, 
-        std::size_t batch_size,
         std::size_t num_iters_no_change,
         std::size_t random_seed,
+        bool is_saga = false,
         bool shuffle = true, 
         bool verbose = true): BaseOptimizer(x0, b0,
             loss, lr_policy, 
@@ -33,9 +33,9 @@ public:
             tol, 
             gamma,
             max_iters, 
-            batch_size, 
             num_iters_no_change,
             random_seed,
+            is_saga,
             shuffle, 
             verbose) {};
     ~SAG() {};
@@ -76,13 +76,14 @@ public:
         double loss, dloss;
         FeatureType y_hat;
         FeatureType bias_update = 0.0;
+        FeatureType grad_correction = 0.0;
         std::vector<double> loss_history(num_samples, 0.0);
         std::vector<FeatureType> weight_update(num_features, 0.0);
 
         std::size_t counter = 0;
         for (iter = 0; iter < max_iters_; ++iter) {
             for (std::size_t i = 0; i < num_samples; ++i) {
-                sample_index = random_state_.random<std::size_t>(X_data_index);
+                sample_index = random_state_.sample<std::size_t>(X_data_index);
 
                 // update the number of X seen
                 if (seen[sample_index] == 0) {
@@ -107,13 +108,23 @@ public:
                                            x0.begin(), 0.0);                    
                 y_hat = y_hat * wscale + b0;
 
+                loss  = loss_fn_->evaluate(y_hat, y[sample_index]);
                 dloss = loss_fn_->derivate(y_hat, y[sample_index]);
+                
+                sgdlib::internal::dot<FeatureType>(&X[sample_index * num_features], 
+                                                   &X[(sample_index + 1) * num_features], 
+                                                   dloss,
+                                                   weight_update);
 
-                std::transform(&X[sample_index * num_features], 
-                               &X[(sample_index + 1) * num_features], 
-                               weight_update.begin(),
-                               [dloss](FeatureType elem) {return elem * dloss;});
-
+                // make the weight update to grad_sum
+                for (std::size_t j = 0; j < num_features; ++j) {
+                    grad_correction = weight_update[j] - (grad_history[sample_index] * X[sample_index * num_features + j]);
+                    grad_sum[j] += grad_correction;
+                    if (is_saga_) {
+                        x0[j] -= (grad_correction * alpha_ * (1.0 - 1.0 / num_seens) / wscale);
+                    }
+                }
+                grad_history[sample_index] = dloss;
             }
 
 
