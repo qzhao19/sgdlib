@@ -96,8 +96,8 @@ public:
         std::iota(X_data_index.begin(), X_data_index.end(), 0);
 
         // initialize loss, loss_history, gradient, 
-        double loss, dloss;
         FeatureType y_hat;
+        FeatureType loss, dloss;
         FeatureType bias_update = 0.0;
         std::vector<double> loss_history(step_per_iter, 0.0);
         std::vector<FeatureType> weight_update(num_features, 0.0);
@@ -135,15 +135,13 @@ public:
                         // deflation of the sample feature values, adding to weights 
                         // means that this scaled sample directly affects the final output
                         dloss /= wscale;
-                        std::transform(&X[X_data_index[i * batch_size_ + j] * num_features], 
-                                       &X[(X_data_index[i * batch_size_ + j] + 1) * num_features], 
-                                       weight_update.begin(),
-                                       [dloss](FeatureType elem) {return elem * dloss;});
-                        
-                        std::transform(weight_update.begin(), weight_update.end(), 
-                                       weight_update.begin(), 
-                                       weight_update.begin(), 
-                                       std::plus<>());
+                        sgdlib::internal::dot<FeatureType>(&X[X_data_index[i * batch_size_ + j] * num_features],
+                                                           &X[(X_data_index[i * batch_size_ + j] + 1) * num_features],  
+                                                           dloss, 
+                                                           weight_update);
+                        for (std::size_t k = 0; k < num_features; ++k) {
+                            weight_update[k] += weight_update[k];
+                        }
                         bias_update += dloss;
                     }
 
