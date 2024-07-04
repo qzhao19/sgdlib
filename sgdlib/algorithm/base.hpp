@@ -29,6 +29,7 @@ protected:
     std::size_t num_iters_no_change_;
     std::size_t random_seed_;
 
+    bool is_saga_;
     bool shuffle_;
     bool verbose_;
 
@@ -54,6 +55,8 @@ protected:
         lr_decay_params_["gamma"] = gamma_;
         lr_decay_ = LRDecayRegistry()->Create(lr_policy_, lr_decay_params_);
     }
+
+    void init_optimizer_params() {}
 
 public:
     BaseOptimizer() {};
@@ -81,6 +84,43 @@ public:
             batch_size_(batch_size),
             num_iters_no_change_(num_iters_no_change),
             random_seed_(random_seed),
+            shuffle_(shuffle),
+            verbose_(verbose), 
+            l1_ratio_(0.0) {
+        if (random_seed_ == -1) {
+            random_state_ = sgdlib::internal::RandomState();
+        }
+        else {
+            random_state_ = sgdlib::internal::RandomState(random_seed_);
+        }
+        init_loss_params();
+        init_lr_params();
+    };
+
+    BaseOptimizer(const std::vector<FeatureType>& x0,
+                  const FeatureType& b0,
+                  std::string loss, 
+                  std::string lr_policy,
+                  double alpha,
+                  double eta0,
+                  double tol,
+                  double gamma,
+                  std::size_t max_iters, 
+                  std::size_t num_iters_no_change,
+                  std::size_t random_seed,
+                  bool is_saga = false,
+                  bool shuffle = true, 
+                  bool verbose = true): x0_(x0), b0_(b0),
+            loss_(loss), 
+            lr_policy_(lr_policy),
+            alpha_(alpha),
+            eta0_(eta0),
+            tol_(tol),
+            gamma_(gamma),
+            max_iters_(max_iters), 
+            num_iters_no_change_(num_iters_no_change),
+            random_seed_(random_seed),
+            is_saga_(is_saga),
             shuffle_(shuffle),
             verbose_(verbose), 
             l1_ratio_(0.0) {
