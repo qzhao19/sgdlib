@@ -80,6 +80,9 @@ public:
         std::vector<double> loss_history(num_samples, 0.0);
         std::vector<FeatureType> weight_update(num_features, 0.0);
 
+        // 
+        double eta = lr_decay_->compute();  
+
         std::size_t counter = 0;
         for (iter = 0; iter < max_iters_; ++iter) {
             for (std::size_t i = 0; i < num_samples; ++i) {
@@ -111,12 +114,14 @@ public:
                 loss  = loss_fn_->evaluate(y_hat, y[sample_index]);
                 dloss = loss_fn_->derivate(y_hat, y[sample_index]);
                 
+                // scale weight for L2 penalty
+                wscale *= 1.0 - alpha_ * eta;
+
+                // make the weight update to grad_sum
                 sgdlib::internal::dot<FeatureType>(&X[sample_index * num_features], 
                                                    &X[(sample_index + 1) * num_features], 
                                                    dloss,
                                                    weight_update);
-
-                // make the weight update to grad_sum
                 for (std::size_t j = 0; j < num_features; ++j) {
                     grad_correction = weight_update[j] - (grad_history[sample_index] * X[sample_index * num_features + j]);
                     grad_sum[j] += grad_correction;
@@ -124,6 +129,9 @@ public:
                         x0[j] -= (grad_correction * alpha_ * (1.0 - 1.0 / num_seens) / wscale);
                     }
                 }
+
+
+
                 grad_history[sample_index] = dloss;
             }
 
