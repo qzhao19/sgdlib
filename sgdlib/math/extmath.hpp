@@ -7,12 +7,21 @@ namespace sgdlib {
 namespace internal {
 
 /**
- * @brief compute sigmoid function 
- *      f(x) = 1/(1 + e^-x)
- * 
- * @tparam Type The type of elements for the input.
- * 
- * @param x input value
+ * @brief Applies the sigmoid function to a given value.
+ *
+ * The sigmoid function is a mathematical function that can take any real-valued 
+ * number and map it into a range between 0 and 1. It is often used in machine 
+ * learning for converting a linear output into a probability-like value.
+ *
+ * The formula for the sigmoid function is:
+ * \[ \text{sigmoid}(x) = \frac{1}{1 + e^{-x}} \]
+ *
+ * @tparam Type A floating-point type (e.g., float or double) for the input value.
+ * @param x The input value to which the sigmoid function will be applied.
+ * @return The result of applying the sigmoid function to the input value.
+ *
+ * @note This function assumes that the input value `x` is of a type that can be used in
+ *       exponential calculations (usually a floating-point type).
 */
 template <typename Type>
 inline Type sigmoid(Type x) {
@@ -193,6 +202,31 @@ inline void dot(IterType begin, IterType end,
                         return elem * c;
                    });
 };
+
+/**
+ * @brief Multiplies two vectors element-wise and stores the result in an output vector.
+ *
+ * This function takes two vectors of the same size, pointed to by v1 and v2, and their
+ * element-wise products are calculated. The results are then stored in the output vector
+ * pointed to by the out parameter.
+ *
+ * @tparam Type The data type of the elements in the input and output vectors.
+ * @param v1 A constant reference to the first input vector.
+ * @param v2 A constant reference to the second input vector. It must be the same size as v1.
+ * @param out A reference to the output vector where the results will be stored. 
+ *
+ * @note This function assumes that v1 and v2 are of the same size. If they are not, the
+ *       behavior is undefined. It is the caller's responsibility to ensure the sizes match.
+ */
+template<typename Type>
+inline void multiply(const std::vector<Type>& v1, 
+                     const std::vector<Type>& v2, 
+                     std::vector<Type>& out) {
+    std::transform(v1.begin(), v1.end(), v2.begin(), out.begin(),
+                   [](const Type& a, const Type& b) { 
+                        return a * b; 
+                    });
+}
 
 } // namespace internal
 } // namespace sgdlib
