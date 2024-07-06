@@ -67,12 +67,25 @@ TEST(ExtmathTest, InplaceVectorScalarDotTest){
 
 TEST(ExtmathTest, IteratorVectorScalarDotTest){
     std::vector<double> x = {5.2, 3.3, 2.6, 0.3};
-    std::vector<double> out;
+    std::vector<double> out(x.size());
     double c = 10.0;
     sgdlib::internal::dot<double>(x.begin(), x.end(), c, out);
     std::vector<double> expect = {52.0, 33.0, 26.0, 3.0};
     EXPECT_EQ(out, expect);
 };
+
+TEST(ExtmathTest, ElementWiseMultiplyTest){
+    std::vector<double> x1 = {5.2, 3.3, 2.6, 0.3};
+    std::vector<double> x2 = {5.2, 3.3, 2.6, 0.3};
+    std::vector<double> out1(x1.size());
+    sgdlib::internal::multiply<double>(x1, x2, out1);
+    std::vector<double> expect = {27.04, 10.89, 6.76, 0.09};
+    double tolerance = 1e-8;
+    for (size_t i = 0; i < out1.size(); ++i) {
+        EXPECT_NEAR(expect[i], out1[i], tolerance);
+    }
+};
+
 
 }
 
