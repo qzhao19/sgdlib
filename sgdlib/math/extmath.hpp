@@ -204,29 +204,62 @@ inline void dot(IterType begin, IterType end,
 };
 
 /**
- * @brief Multiplies two vectors element-wise and stores the result in an output vector.
+ * @brief Computes the row-wise norms of a vector.
  *
- * This function takes two vectors of the same size, pointed to by v1 and v2, and their
- * element-wise products are calculated. The results are then stored in the output vector
- * pointed to by the out parameter.
+ * This function calculates the norms of each row in a given vector `x`,
+ * The result can be squared or not, based on the `squared` flag.
  *
- * @tparam Type The data type of the elements in the input and output vectors.
- * @param v1 A constant reference to the first input vector.
- * @param v2 A constant reference to the second input vector. It must be the same size as v1.
- * @param out A reference to the output vector where the results will be stored. 
+ * @tparam Type A floating-point or arithmetic type that supports necessary operations.
+ * @param x A constant reference to the input vector
+ * @param squared A boolean flag that determines whether to compute the squared norms.
+ *                - If true, the function computes the squared Euclidean norm: 
+ *                  \( \sum_{i=1}^{n} x_i^2 \)
+ *                - If false, the function computes the Euclidean norm (non-squared), which
+ *                  is the square root of the squared norm.
+ * @param out A reference to the output vector where the computed norms will be stored.
  *
- * @note This function assumes that v1 and v2 are of the same size. If they are not, the
- *       behavior is undefined. It is the caller's responsibility to ensure the sizes match.
- */
+ * @note The function assumes that `x` represents a matrix with its size is ncols * nrows.
+ *
+*/
 template<typename Type>
-inline void multiply(const std::vector<Type>& v1, 
-                     const std::vector<Type>& v2, 
-                     std::vector<Type>& out) {
-    std::transform(v1.begin(), v1.end(), v2.begin(), out.begin(),
-                   [](const Type& a, const Type& b) { 
-                        return a * b; 
+void row_norms(const std::vector<Type>& x, 
+               bool squared,
+               std::vector<Type>& out) {
+    
+    std::size_t num_elems = x.size();
+    std::size_t num_rows = out.size();
+    std::size_t num_cols = num_elems / num_rows;
+    std::vector<Type> elem_prod(num_elems);
+    
+    // compute x * x
+    std::transform(x.begin(), x.end(), elem_prod.begin(),
+                    [](const Type& value) { 
+                        return value * value;
                     });
-}
+    
+    // compute prefix sum of elem_prod
+    std::vector<Type> prefix_sum(num_elems);
+    std::partial_sum(elem_prod.begin(), elem_prod.end(), prefix_sum.begin());
+
+    // compute the sum of every nth element
+    std::size_t count = 0;
+    for (size_t i = 0; i < num_elems; i += num_cols) {
+        size_t end = std::min(i + num_cols, num_elems);
+        if (count == 0) {
+            out[count] = prefix_sum[end - 1];
+        } else {
+            out[count] = prefix_sum[end - 1] - prefix_sum[i - 1];
+        }
+        count += 1;
+    }
+
+    if (!squared) {
+        std::transform(out.begin(), out.end(), out.begin(),
+                    [](const Type& value) {
+                        return std::sqrt(value);
+                    });
+    }
+};
 
 } // namespace internal
 } // namespace sgdlib
