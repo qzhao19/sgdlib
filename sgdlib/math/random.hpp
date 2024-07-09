@@ -69,8 +69,8 @@ public:
         std::size_t index = dist(engine_);
         
         // swap selected value with the last element of x
-        std::swap(x[index], x.back());
-        --size;
+        // std::swap(x[index], x.back());
+        // --size;
 
         return x[index];
     }
