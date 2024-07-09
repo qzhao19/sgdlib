@@ -13,7 +13,7 @@ public:
     ~ConstantSearch() {};
 
     /** 
-     * 
+     * Compute step size and it is specifically used for the SAG optimizer.
     */
     int search(bool is_saga, double& step_size) override {
         std::size_t num_samples = y_.size();
@@ -28,7 +28,7 @@ public:
 
         if (is_saga) {
             double mu = std::min(2 * num_samples * alpha_scaled, L);
-            step_size = 1.0 / (2* L + mu)
+            step_size = 1.0 / (2* L + mu);
         }
         else {
             step_size =  1.0 / L;
