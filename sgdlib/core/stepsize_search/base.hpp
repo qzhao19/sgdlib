@@ -9,6 +9,14 @@
 
 namespace sgdlib {
 
+/** 
+ * @file base.hpp
+ * 
+ * @class StepSizeSearch
+ * 
+ * @brief Abstract base class representing step size search
+ * 
+*/
 class StepSizeSearch {
 protected:
     std::vector<FeatureType> X_;
