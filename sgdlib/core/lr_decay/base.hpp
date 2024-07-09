@@ -7,6 +7,14 @@
 
 namespace sgdlib {
 
+/** 
+ * @file base.hpp
+ * 
+ * @class LRDecay
+ * 
+ * @brief Abstract base class representing learning rate decay
+ * 
+*/
 class LRDecay {
 protected:
     LRDecayParamType lr_decay_param_;
