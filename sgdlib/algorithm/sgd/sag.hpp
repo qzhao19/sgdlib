@@ -10,7 +10,6 @@ namespace sgdlib {
  * 
  * @brief Stochastic Average Gradient Descent (SAGD) optimizer.
  * 
- * 
 */
 class SAG: public BaseOptimizer {
 public:
@@ -19,7 +18,6 @@ public:
         std::string loss, 
         std::string lr_policy,
         double alpha,
-        double eta0,
         double tol,
         double gamma,
         std::size_t max_iters, 
@@ -29,7 +27,7 @@ public:
         bool shuffle = true, 
         bool verbose = true): BaseOptimizer(x0, b0,
             loss, lr_policy, 
-            alpha, eta0, 
+            alpha, 
             tol, 
             gamma,
             max_iters, 
@@ -51,6 +49,7 @@ public:
         FeatureType b0 = b0_;
 
         // 
+        FeatureType bias_grad_sum = 0.0;
         std::vector<FeatureType> grad_sum(num_features);
         std::vector<FeatureType> grad_history(num_features);
         std::vector<FeatureType> cumulative_sum(max_iters_ * num_samples);
@@ -80,8 +79,11 @@ public:
         std::vector<double> loss_history(num_samples, 0.0);
         std::vector<FeatureType> weight_update(num_features, 0.0);
 
-        // 
-        double eta = lr_decay_->compute();  
+        // compute step size 
+        double step_size = 0.0;
+        std::unique_ptr<sgdlib::StepSizeSearch> stepsize_search_ = \
+            std::make_unique<sgdlib::ConstantSearch>(X, y, stepsize_search_param_);
+        stepsize_search_->search(is_saga_, step_size);
 
         std::size_t counter = 0;
         for (iter = 0; iter < max_iters_; ++iter) {
@@ -104,6 +106,10 @@ public:
                         }
                         last_updated[j] = counter;
                     }
+                    if (sgdlib::internal::isinf<FeatureType>(x0)) {
+                        is_infinity = true;
+                        break;
+                    }
                 }
 
                 y_hat = std::inner_product(&X[sample_index * num_features], 
@@ -114,9 +120,6 @@ public:
                 loss  = loss_fn_->evaluate(y_hat, y[sample_index]);
                 dloss = loss_fn_->derivate(y_hat, y[sample_index]);
                 
-                // scale weight for L2 penalty
-                wscale *= 1.0 - alpha_ * eta;
-
                 // make the weight update to grad_sum
                 sgdlib::internal::dot<FeatureType>(&X[sample_index * num_features], 
                                                    &X[(sample_index + 1) * num_features], 
@@ -126,13 +129,41 @@ public:
                     grad_correction = weight_update[j] - (grad_history[sample_index] * X[sample_index * num_features + j]);
                     grad_sum[j] += grad_correction;
                     if (is_saga_) {
-                        x0[j] -= (grad_correction * alpha_ * (1.0 - 1.0 / num_seens) / wscale);
+                        x0[j] -= (grad_correction * step_size * (1.0 - 1.0 / num_seens) / wscale);
                     }
                 }
 
-
+                // fit intercept
+                grad_correction = dloss - grad_history[sample_index];
+                bias_grad_sum += grad_correction;
+                grad_correction *= step_size * (1.0 - 1.0 / num_seens);
+                if (is_saga_) {
+                    b0 -= (step_size * bias_grad_sum / num_seens) + grad_correction;
+                }
+                else {
+                    b0 -= step_size * bias_grad_sum / num_seens;
+                }
+                if (sgdlib::internal::isinf<FeatureType>(b0)) {
+                    is_infinity = true;
+                    break;
+                }
 
                 grad_history[sample_index] = dloss;
+
+                // scale weight for L2 penalty
+                wscale *= 1.0 - alpha_ * step_size;
+                if (counter == 0) {
+                    cumulative_sum[0] = step_size / (wscale * num_seens);
+                }
+                else {
+                    cumulative_sum[counter] = cumulative_sum[counter - 1] + step_size / (wscale * num_seens); 
+                }
+
+                // if wscale is too small, need to reset 
+                if (counter >= 1 && wscale < WSCALE_THRESHOLD) {
+                    
+                }
+
             }
 
 
