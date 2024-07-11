@@ -6,6 +6,7 @@
 #include "math/random.hpp"
 #include "core/loss.hpp"
 #include "core/lr_decay.hpp"
+#include "core/stepsize_search.hpp"
 
 namespace sgdlib {
 
@@ -35,6 +36,8 @@ protected:
 
     LossParamType loss_params_;
     LRDecayParamType lr_decay_params_;
+    StepSizeSearchParamType stepsize_search_param_;
+
     std::vector<FeatureType> x_opt_;
     FeatureType b_opt_;
     sgdlib::internal::RandomState random_state_;
@@ -102,7 +105,6 @@ public:
                   std::string loss, 
                   std::string lr_policy,
                   double alpha,
-                  double eta0,
                   double tol,
                   double gamma,
                   std::size_t max_iters, 
@@ -114,7 +116,6 @@ public:
             loss_(loss), 
             lr_policy_(lr_policy),
             alpha_(alpha),
-            eta0_(eta0),
             tol_(tol),
             gamma_(gamma),
             max_iters_(max_iters), 
@@ -131,7 +132,7 @@ public:
             random_state_ = sgdlib::internal::RandomState(random_seed_);
         }
         init_loss_params();
-        init_lr_params();
+        stepsize_search_param_["alpha"] = alpha;
     };
     
     ~BaseOptimizer() {};
