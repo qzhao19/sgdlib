@@ -55,7 +55,7 @@ public:
         std::vector<FeatureType> cumulative_sum(max_iters_ * num_samples);
 
         std::vector<std::size_t> seen(num_samples, 0);
-        std::vector<std::size_t> last_updated(num_features, 0);
+        std::vector<std::size_t> update_history(num_features, 0);
         
         std::size_t no_improvement_count = 0;
         std::size_t sample_index = 0;
@@ -77,8 +77,9 @@ public:
         FeatureType bias_update = 0.0;
         FeatureType grad_correction = 0.0;
         std::vector<double> loss_history(num_samples, 0.0);
+        std::vector<FeatureType> prev_weight(num_features, 0.0);
         std::vector<FeatureType> weight_update(num_features, 0.0);
-
+        
         // compute step size 
         double step_size = 0.0;
         std::unique_ptr<sgdlib::StepSizeSearch> stepsize_search_ = \
@@ -96,15 +97,16 @@ public:
                     seen[sample_index] = 1;
                 }
                 
-                if (counter >= 1) {
+                // update weights
+                if (counter > 0) {
                     for (std::size_t j = 0; j < num_features; ++j) {
-                        if (last_updated[j] == 0) {
+                        if (update_history[j] == 0) {
                             x0[j] -= cumulative_sum[j-1] * grad_sum[j];
                         }
                         else {
-                            x0[j] -= (cumulative_sum[j-1] - cumulative_sum[last_updated[j] - 1]) * grad_sum[j];
+                            x0[j] -= (cumulative_sum[j-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                         }
-                        last_updated[j] = counter;
+                        update_history[j] = counter;
                     }
                     if (sgdlib::internal::isinf<FeatureType>(x0)) {
                         is_infinity = true;
@@ -112,14 +114,14 @@ public:
                     }
                 }
 
+                // compute loss value and its derivative (gradient) of this sample
                 y_hat = std::inner_product(&X[sample_index * num_features], 
                                            &X[(sample_index + 1) * num_features], 
                                            x0.begin(), 0.0);                    
                 y_hat = y_hat * wscale + b0;
-
                 loss  = loss_fn_->evaluate(y_hat, y[sample_index]);
                 dloss = loss_fn_->derivate(y_hat, y[sample_index]);
-                
+ 
                 // make the weight update to grad_sum
                 sgdlib::internal::dot<FeatureType>(&X[sample_index * num_features], 
                                                    &X[(sample_index + 1) * num_features], 
@@ -127,10 +129,10 @@ public:
                                                    weight_update);
                 for (std::size_t j = 0; j < num_features; ++j) {
                     grad_correction = weight_update[j] - (grad_history[sample_index] * X[sample_index * num_features + j]);
-                    grad_sum[j] += grad_correction;
                     if (is_saga_) {
                         x0[j] -= (grad_correction * step_size * (1.0 - 1.0 / num_seens) / wscale);
                     }
+                    grad_sum[j] += grad_correction;
                 }
 
                 // fit intercept
@@ -148,10 +150,9 @@ public:
                     break;
                 }
 
+                // update the gradient history for the current sample
                 grad_history[sample_index] = dloss;
 
-                // scale weight for L2 penalty
-                wscale *= 1.0 - alpha_ * step_size;
                 if (counter == 0) {
                     cumulative_sum[0] = step_size / (wscale * num_seens);
                 }
@@ -160,12 +161,63 @@ public:
                 }
 
                 // if wscale is too small, need to reset 
-                if (counter >= 1 && wscale < WSCALE_THRESHOLD) {
-                    
+                if (counter > 0 && wscale < WSCALE_THRESHOLD) {
+                    for (std::size_t j = 0; j < num_features; ++j) {
+                        if (update_history[j] == 0) {
+                            x0[j] -= cumulative_sum[j-1] * grad_sum[j];
+                        }
+                        else {
+                            x0[j] -= (cumulative_sum[j-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
+                        }
+                        update_history[j] = counter + 1;
+                    }
+                    if (sgdlib::internal::isinf<FeatureType>(x0)) {
+                        is_infinity = true;
+                        break;
+                    }
                 }
 
+                // scale weight for L2 penalty
+                if (alpha_ > 0.0) {
+                    wscale *= 1.0 - alpha_ * step_size;
+                    loss += alpha_ * std::inner_product(x0.begin(), x0.end(), x0.begin(), 0.0);
+                }
+
+                // store loss value into loss_history
+                loss_history[i] = loss;
+                loss = 0.0;
             }
 
+            // break if raise an error in inner loop
+            if (is_infinity) {
+                break;
+            }
+
+            // scale the weights
+            for (std::size_t j = 0; j < num_features; ++j) {
+                if (update_history[j] == 0) {
+                    x0[j] -= cumulative_sum[j-1] * grad_sum[j];
+                }
+                else {
+                    x0[j] -= (cumulative_sum[j-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
+                }
+            }
+            sgdlib::internal::dot<FeatureType>(x0, wscale);
+
+            // check if convergence test is reached
+            FeatureType max_change = 0.0, max_weight = 0.0;
+            for (std::size_t j = 0; j < num_features; j++) {
+                max_weight = std::max(max_weight, std::abs(x0[j]));
+                max_change = std::max(max_change, std::abs(x0[j] - prev_weight[j]));
+                prev_weight[j] = x0[j];
+            }
+            if ((max_weight != 0.0) && (max_change / max_weight <= tol_)) {
+                if (verbose_) {
+                    std::cout << "Convergence after " << (iter + 1) << " epochs." << std::endl;
+                }
+                is_converged = true;
+                break;
+            }
 
         }
 
