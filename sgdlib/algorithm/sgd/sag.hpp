@@ -19,9 +19,7 @@ public:
         std::string lr_policy,
         double alpha,
         double tol,
-        double gamma,
         std::size_t max_iters, 
-        std::size_t num_iters_no_change,
         std::size_t random_seed,
         bool is_saga = false,
         bool shuffle = true, 
@@ -29,9 +27,7 @@ public:
             loss, lr_policy, 
             alpha, 
             tol, 
-            gamma,
             max_iters, 
-            num_iters_no_change,
             random_seed,
             is_saga,
             shuffle, 
@@ -219,11 +215,36 @@ public:
                 break;
             }
 
+            // print loss info
+            double sum_loss = std::accumulate(loss_history.begin(), 
+                                              loss_history.end(), 
+                                              decltype(loss_history)::value_type(0));
+            if (verbose_) {
+                if ((iter % 1) == 0) {
+                    std::cout << "Epoch = " << (iter + 1) << ", xnorm2 = " 
+                              << sgdlib::internal::sqnorm2<FeatureType>(x0) << ", avg loss = " 
+                              << sum_loss / static_cast<double>(num_samples) << std::endl;
+                }
+            }
         }
 
+        if (is_infinity) {
+            std::ostringstream err_msg;
+            err_msg << "Floating-point under-/overflow occurred at epoch " << (iter + 1)
+                    << ", try to scale input data with standard or minmax." << std::endl;
+            throw std::runtime_error(err_msg.str());
+        }
+
+        if (!is_converged) {
+            std::ostringstream err_msg;
+            err_msg << "Not converge, current number of epoch = " << (iter + 1)
+                    << ", try apply different parameters." << std::endl;
+            throw std::runtime_error(err_msg.str());
+        }
+
+        x_opt_ = x0;
+        b_opt_ = b0;
     }
-
-
 }
 
 } // namespace sgdlib
