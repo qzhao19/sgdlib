@@ -11,7 +11,7 @@ namespace sgdlib {
 class SGDTest : public ::testing::Test {
 public:
     virtual void SetUp() {
-        std::vector<FeatureType> x0 = {1.0, 1.0, 1.0, 1.0}; 
+        std::vector<FeatureType> w0 = {1.0, 1.0, 1.0, 1.0}; 
         FeatureType b0 = 1.0;
         std::string loss = "LogLoss";
         std::string lr_policy = "Invscaling";
@@ -26,7 +26,7 @@ public:
         bool shuffle = true;
         bool verbose = true;
 
-        optimizer = std::make_unique<sgdlib::SGD>(x0, b0,
+        optimizer = std::make_unique<sgdlib::SGD>(w0, b0,
             loss, 
             lr_policy, 
             alpha, eta0, 
