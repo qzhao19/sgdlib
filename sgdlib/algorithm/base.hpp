@@ -12,7 +12,7 @@ namespace sgdlib {
 
 class BaseOptimizer {
 protected:
-    std::vector<FeatureType> x0_;
+    std::vector<FeatureType> w0_;
     FeatureType b0_;
     
     std::string loss_;
@@ -38,7 +38,7 @@ protected:
     LRDecayParamType lr_decay_params_;
     StepSizeSearchParamType stepsize_search_param_;
 
-    std::vector<FeatureType> x_opt_;
+    std::vector<FeatureType> w_opt_;
     FeatureType b_opt_;
     sgdlib::internal::RandomState random_state_;
 
@@ -63,7 +63,7 @@ protected:
 
 public:
     BaseOptimizer() {};
-    BaseOptimizer(const std::vector<FeatureType>& x0,
+    BaseOptimizer(const std::vector<FeatureType>& w0,
                   const FeatureType& b0,
                   std::string loss, 
                   std::string lr_policy,
@@ -76,7 +76,7 @@ public:
                   std::size_t num_iters_no_change,
                   std::size_t random_seed,
                   bool shuffle = true, 
-                  bool verbose = true): x0_(x0), b0_(b0),
+                  bool verbose = true): w0_(w0), b0_(b0),
             loss_(loss), 
             lr_policy_(lr_policy),
             alpha_(alpha),
@@ -100,7 +100,7 @@ public:
         init_lr_params();
     };
 
-    BaseOptimizer(const std::vector<FeatureType>& x0,
+    BaseOptimizer(const std::vector<FeatureType>& w0,
                   const FeatureType& b0,
                   std::string loss, 
                   std::string lr_policy,
@@ -110,14 +110,12 @@ public:
                   std::size_t random_seed,
                   bool is_saga = false,
                   bool shuffle = true, 
-                  bool verbose = true): x0_(x0), b0_(b0),
+                  bool verbose = true): w0_(w0), b0_(b0),
             loss_(loss), 
             lr_policy_(lr_policy),
             alpha_(alpha),
             tol_(tol),
-            gamma_(gamma),
             max_iters_(max_iters), 
-            num_iters_no_change_(num_iters_no_change),
             random_seed_(random_seed),
             is_saga_(is_saga),
             shuffle_(shuffle),
@@ -139,7 +137,7 @@ public:
                           const std::vector<LabelType>& y) = 0;
 
     const std::vector<FeatureType> get_coef() const {
-        return x_opt_;
+        return w_opt_;
     }
 
     const FeatureType get_intercept() const {
