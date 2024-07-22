@@ -10,7 +10,7 @@ namespace sgdlib {
  * 
  * @brief Stochastic Gradient Descent (SGD) optimizer.
  * 
- * @param x0 FeatureType vector. 
+ * @param w0 FeatureType vector. 
  *      The initial weight vector of model.
  * @param b0 FeatureType scalar. 
  *      The initial bias scalar of model.
@@ -50,7 +50,7 @@ namespace sgdlib {
 */
 class SGD: public BaseOptimizer {
 public:
-    SGD(const std::vector<FeatureType>& x0, 
+    SGD(const std::vector<FeatureType>& w0, 
         const FeatureType& b0,
         std::string loss, 
         std::string lr_policy,
@@ -63,7 +63,7 @@ public:
         std::size_t num_iters_no_change,
         std::size_t random_seed,
         bool shuffle = true, 
-        bool verbose = true): BaseOptimizer(x0, b0,
+        bool verbose = true): BaseOptimizer(w0, b0,
             loss, lr_policy, 
             alpha, eta0, 
             tol, 
@@ -80,7 +80,7 @@ public:
                   const std::vector<LabelType>& y) override {
         
         std::size_t num_samples = y.size();
-        std::size_t num_features = x0_.size();
+        std::size_t num_features = w0_.size();
         std::size_t step_per_iter = num_samples / batch_size_;
 
         std::size_t no_improvement_count = 0;
@@ -102,8 +102,8 @@ public:
         std::vector<double> loss_history(step_per_iter, 0.0);
         std::vector<FeatureType> weight_update(num_features, 0.0);
         
-        // initialize x0 (weight) and b0 (bias)
-        std::vector<FeatureType> x0 = x0_;
+        // initialize w0 (weight) and b0 (bias)
+        std::vector<FeatureType> w0 = w0_;
         FeatureType b0 = b0_;
 
         // start to loop
@@ -120,7 +120,7 @@ public:
                     // compute predicted label proba XW + b
                     y_hat = std::inner_product(&X[X_data_index[i * batch_size_ + j] * num_features], 
                                                &X[(X_data_index[i * batch_size_ + j] + 1) * num_features], 
-                                               x0.begin(), 0.0);                    
+                                               w0.begin(), 0.0);                    
                     y_hat = y_hat * wscale + b0;
 
                     // evaluate the loss on one row of X, and calculate the derivatives of the loss
@@ -149,7 +149,7 @@ public:
                     wscale *= std::max(0.0, 1.0 - ((1.0 - l1_ratio_) * eta * alpha_));
                     if (wscale < WSCALE_THRESHOLD) {
                         for (std::size_t k = 0; k < num_features; ++k) {
-                            x0[k] *= wscale;
+                            w0[k] *= wscale;
                         }
                         wscale = 1.0;
                     }
@@ -167,16 +167,16 @@ public:
                 // add L2 penalty for weight
                 if (alpha_ > 0.0) {
                     loss += alpha_ * 
-                        std::inner_product(x0.begin(), x0.end(), x0.begin(), 0.0) / 
+                        std::inner_product(w0.begin(), w0.end(), w0.begin(), 0.0) / 
                             static_cast<FeatureType>(num_samples);
                     for (std::size_t k = 0; k < num_features; ++k) {
-                        weight_update[k] += (2.0 * alpha_ * x0[k] / static_cast<FeatureType>(num_samples));
+                        weight_update[k] += (2.0 * alpha_ * w0[k] / static_cast<FeatureType>(num_samples));
                     }
                 }
 
-                // update x0: w = w - lr * w and b0: b = b - lr * b
+                // update w0: w = w - lr * w and b0: b = b - lr * b
                 for (std::size_t k = 0; k < num_features; ++k) {
-                    x0[k] -= eta * weight_update[k];
+                    w0[k] -= eta * weight_update[k];
                 }
                 b0 -= eta * bias_update / (10.0 * static_cast<FeatureType>(num_samples));
 
@@ -187,7 +187,7 @@ public:
 
             // ---Convergence test---
             // check under/overflow
-            if (sgdlib::internal::isinf<FeatureType>(x0) || 
+            if (sgdlib::internal::isinf<FeatureType>(w0) || 
                 sgdlib::internal::isinf<FeatureType>(b0)) {
                 is_infinity = true;
                 break;
@@ -219,7 +219,7 @@ public:
             if (verbose_) {
                 if ((iter % 1) == 0) {
                     std::cout << "Epoch = " << (iter + 1) << ", xnorm2 = " 
-                              << sgdlib::internal::sqnorm2<FeatureType>(x0) << ", avg loss = " 
+                              << sgdlib::internal::sqnorm2<FeatureType>(w0) << ", avg loss = " 
                               << sum_loss / static_cast<double>(step_per_iter) << std::endl;
                 }
             }
@@ -240,7 +240,7 @@ public:
             throw std::runtime_error(err_msg.str());
         }
 
-        x_opt_ = x0;
+        w_opt_ = w0;
         b_opt_ = b0;
     }
 
