@@ -13,7 +13,7 @@ namespace sgdlib {
 */
 class SAG: public BaseOptimizer {
 public:
-    SAG(const std::vector<FeatureType>& x0, 
+    SAG(const std::vector<FeatureType>& w0, 
         const FeatureType& b0,
         std::string loss, 
         std::string lr_policy,
@@ -23,8 +23,9 @@ public:
         std::size_t random_seed,
         bool is_saga = false,
         bool shuffle = true, 
-        bool verbose = true): BaseOptimizer(x0, b0,
-            loss, lr_policy, 
+        bool verbose = true): BaseOptimizer(w0, b0,
+            loss, 
+            lr_policy, 
             alpha, 
             tol, 
             max_iters, 
@@ -38,10 +39,10 @@ public:
                   const std::vector<LabelType>& y) override {
 
         std::size_t num_samples = y.size();
-        std::size_t num_features = x0_.size();
+        std::size_t num_features = w0_.size();
 
-        // initialize x0 (weight) and b0 (bias)
-        std::vector<FeatureType> x0 = x0_;
+        // initialize w0 (weight) and b0 (bias)
+        std::vector<FeatureType> w0 = w0_;
         FeatureType b0 = b0_;
 
         // 
@@ -97,14 +98,14 @@ public:
                 if (counter > 0) {
                     for (std::size_t j = 0; j < num_features; ++j) {
                         if (update_history[j] == 0) {
-                            x0[j] -= cumulative_sum[j-1] * grad_sum[j];
+                            w0[j] -= cumulative_sum[j-1] * grad_sum[j];
                         }
                         else {
-                            x0[j] -= (cumulative_sum[j-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
+                            w0[j] -= (cumulative_sum[j-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                         }
                         update_history[j] = counter;
                     }
-                    if (sgdlib::internal::isinf<FeatureType>(x0)) {
+                    if (sgdlib::internal::isinf<FeatureType>(w0)) {
                         is_infinity = true;
                         break;
                     }
@@ -113,7 +114,7 @@ public:
                 // compute loss value and its derivative (gradient) of this sample
                 y_hat = std::inner_product(&X[sample_index * num_features], 
                                            &X[(sample_index + 1) * num_features], 
-                                           x0.begin(), 0.0);                    
+                                           w0.begin(), 0.0);                    
                 y_hat = y_hat * wscale + b0;
                 loss  = loss_fn_->evaluate(y_hat, y[sample_index]);
                 dloss = loss_fn_->derivate(y_hat, y[sample_index]);
@@ -126,7 +127,7 @@ public:
                 for (std::size_t j = 0; j < num_features; ++j) {
                     grad_correction = weight_update[j] - (grad_history[sample_index] * X[sample_index * num_features + j]);
                     if (is_saga_) {
-                        x0[j] -= (grad_correction * step_size * (1.0 - 1.0 / num_seens) / wscale);
+                        w0[j] -= (grad_correction * step_size * (1.0 - 1.0 / num_seens) / wscale);
                     }
                     grad_sum[j] += grad_correction;
                 }
@@ -160,14 +161,14 @@ public:
                 if (counter > 0 && wscale < WSCALE_THRESHOLD) {
                     for (std::size_t j = 0; j < num_features; ++j) {
                         if (update_history[j] == 0) {
-                            x0[j] -= cumulative_sum[j-1] * grad_sum[j];
+                            w0[j] -= cumulative_sum[j-1] * grad_sum[j];
                         }
                         else {
-                            x0[j] -= (cumulative_sum[j-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
+                            w0[j] -= (cumulative_sum[j-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                         }
                         update_history[j] = counter + 1;
                     }
-                    if (sgdlib::internal::isinf<FeatureType>(x0)) {
+                    if (sgdlib::internal::isinf<FeatureType>(w0)) {
                         is_infinity = true;
                         break;
                     }
@@ -176,7 +177,7 @@ public:
                 // scale weight for L2 penalty
                 if (alpha_ > 0.0) {
                     wscale *= 1.0 - alpha_ * step_size;
-                    loss += alpha_ * std::inner_product(x0.begin(), x0.end(), x0.begin(), 0.0);
+                    loss += alpha_ * std::inner_product(w0.begin(), w0.end(), w0.begin(), 0.0);
                 }
 
                 // store loss value into loss_history
@@ -192,20 +193,20 @@ public:
             // scale the weights
             for (std::size_t j = 0; j < num_features; ++j) {
                 if (update_history[j] == 0) {
-                    x0[j] -= cumulative_sum[j-1] * grad_sum[j];
+                    w0[j] -= cumulative_sum[j-1] * grad_sum[j];
                 }
                 else {
-                    x0[j] -= (cumulative_sum[j-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
+                    w0[j] -= (cumulative_sum[j-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                 }
             }
-            sgdlib::internal::dot<FeatureType>(x0, wscale);
+            sgdlib::internal::dot<FeatureType>(w0, wscale);
 
             // check if convergence test is reached
             FeatureType max_change = 0.0, max_weight = 0.0;
             for (std::size_t j = 0; j < num_features; j++) {
-                max_weight = std::max(max_weight, std::abs(x0[j]));
-                max_change = std::max(max_change, std::abs(x0[j] - prev_weight[j]));
-                prev_weight[j] = x0[j];
+                max_weight = std::max(max_weight, std::abs(w0[j]));
+                max_change = std::max(max_change, std::abs(w0[j] - prev_weight[j]));
+                prev_weight[j] = w0[j];
             }
             if ((max_weight != 0.0) && (max_change / max_weight <= tol_)) {
                 if (verbose_) {
@@ -222,7 +223,7 @@ public:
             if (verbose_) {
                 if ((iter % 1) == 0) {
                     std::cout << "Epoch = " << (iter + 1) << ", xnorm2 = " 
-                              << sgdlib::internal::sqnorm2<FeatureType>(x0) << ", avg loss = " 
+                              << sgdlib::internal::sqnorm2<FeatureType>(w0) << ", avg loss = " 
                               << sum_loss / static_cast<double>(num_samples) << std::endl;
                 }
             }
@@ -242,7 +243,7 @@ public:
             throw std::runtime_error(err_msg.str());
         }
 
-        x_opt_ = x0;
+        w_opt_ = w0;
         b_opt_ = b0;
     }
 }
