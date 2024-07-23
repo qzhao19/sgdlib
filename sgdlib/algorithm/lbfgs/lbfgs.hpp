@@ -13,7 +13,7 @@ namespace sgdlib {
 */
 class LBFGS: public BaseOptimizer {
 public:
-    LBFGS(const std::vector<FeatureType>& x0, 
+    LBFGS(const std::vector<FeatureType>& w0, 
         const FeatureType& b0,
         std::string loss, 
         std::string linesearch_policy,
@@ -21,7 +21,7 @@ public:
         std::size_t max_iters, 
         std::size_t mem_size,
         bool shuffle = true, 
-        bool verbose = true): BaseOptimizer(x0, b0,
+        bool verbose = true): BaseOptimizer(w0, b0,
             loss, 
             linesearch_policy, 
             tol, 
@@ -34,10 +34,10 @@ public:
                   const std::vector<LabelType>& y) override {
 
         std::size_t num_samples = y.size();
-        std::size_t num_features = x0_.size();
+        std::size_t num_features = w0_.size();
 
-        // initialize x0 (weight) and b0 (bias)
-        std::vector<FeatureType> x0 = x0_;
+        // initialize w0 (weight) and b0 (bias)
+        std::vector<FeatureType> w0 = w0_;
         FeatureType b0 = b0_;
 
         // 
