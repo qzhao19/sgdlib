@@ -62,7 +62,7 @@ protected:
     DISABLE_COPY_AND_ASSIGN(Registry);
 };
 
-template <typename  ObjectPtrType, typename ... Args>
+template <typename ObjectPtrType, typename... Args>
 class Registerer {
 public:
     Registerer(const std::string& key,
