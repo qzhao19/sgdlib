@@ -14,12 +14,12 @@ namespace sgdlib {
 class LBFGS: public BaseOptimizer {
 public:
     LBFGS(const std::vector<FeatureType>& w0, 
-        const FeatureType& b0,
         std::string loss, 
         std::string linesearch_policy,
         double tol,
         std::size_t max_iters, 
         std::size_t mem_size,
+        std::size_t past,
         bool shuffle = true, 
         bool verbose = true): BaseOptimizer(w0, b0,
             loss, 
@@ -34,13 +34,25 @@ public:
                   const std::vector<LabelType>& y) override {
 
         std::size_t num_samples = y.size();
-        std::size_t num_features = w0_.size();
+        std::size_t num_dims = w0_.size();
 
-        // initialize w0 (weight) and b0 (bias)
+        // initialize w0 (weight)
         std::vector<FeatureType> w0 = w0_;
-        FeatureType b0 = b0_;
 
-        // 
+        // define the initial parameters
+        std::size_t i, j, k, end, bound;
+        double fx, ys, yy, rate, beta;
+
+        // intermediate variables: previous x, gradient, previous gradient, directions
+        std::vector<FeatureType> xp(num_dims);
+        std::vector<FeatureType> g(num_dims);
+        std::vector<FeatureType> gp(num_dims);
+        std::vector<FeatureType> d(num_dims);
+
+        // an array for storing previous values of the objective function
+        std::vector<FeatureType> pfx(std::max(1, past_));
+
+        // define step search policy
     }
 }
 
