@@ -16,7 +16,6 @@ public:
     SAG(const std::vector<FeatureType>& w0, 
         const FeatureType& b0,
         std::string loss, 
-        std::string lr_policy,
         double alpha,
         double tol,
         std::size_t max_iters, 
@@ -25,7 +24,6 @@ public:
         bool shuffle = true, 
         bool verbose = true): BaseOptimizer(w0, b0,
             loss, 
-            lr_policy, 
             alpha, 
             tol, 
             max_iters, 
@@ -69,7 +67,7 @@ public:
         std::iota(X_data_index.begin(), X_data_index.end(), 0);
 
         // initialize loss, loss_history, gradient, 
-        double loss, dloss;
+        FeatureType loss, dloss;
         FeatureType y_hat;
         FeatureType bias_update = 0.0;
         FeatureType grad_correction = 0.0;
@@ -82,26 +80,26 @@ public:
         std::unique_ptr<sgdlib::StepSizeSearch> stepsize_search_ = \
             std::make_unique<sgdlib::ConstantSearch>(X, y, stepsize_search_param_);
         stepsize_search_->search(is_saga_, step_size);
-
+        std::cout << "step_size = " << step_size << std::endl;
         std::size_t counter = 0;
         for (iter = 0; iter < max_iters_; ++iter) {
             for (std::size_t i = 0; i < num_samples; ++i) {
                 sample_index = random_state_.sample<std::size_t>(X_data_index);
-
+                
                 // update the number of X seen
                 if (seen[sample_index] == 0) {
                     ++num_seens;
                     seen[sample_index] = 1;
                 }
-                
+                // std::cout << "num_seens = " << num_seens << std::endl;
                 // update weights
-                if (counter > 0) {
+                if (counter >= 1) {
                     for (std::size_t j = 0; j < num_features; ++j) {
                         if (update_history[j] == 0) {
-                            w0[j] -= cumulative_sum[j-1] * grad_sum[j];
+                            w0[j] -= cumulative_sum[counter-1] * grad_sum[j];
                         }
                         else {
-                            w0[j] -= (cumulative_sum[j-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
+                            w0[j] -= (cumulative_sum[counter-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                         }
                         update_history[j] = counter;
                     }
@@ -126,10 +124,10 @@ public:
                                                    weight_update);
                 for (std::size_t j = 0; j < num_features; ++j) {
                     grad_correction = weight_update[j] - (grad_history[sample_index] * X[sample_index * num_features + j]);
+                    grad_sum[j] += grad_correction;
                     if (is_saga_) {
                         w0[j] -= (grad_correction * step_size * (1.0 - 1.0 / num_seens) / wscale);
                     }
-                    grad_sum[j] += grad_correction;
                 }
 
                 // fit intercept
@@ -161,10 +159,10 @@ public:
                 if (counter > 0 && wscale < WSCALE_THRESHOLD) {
                     for (std::size_t j = 0; j < num_features; ++j) {
                         if (update_history[j] == 0) {
-                            w0[j] -= cumulative_sum[j-1] * grad_sum[j];
+                            w0[j] -= cumulative_sum[counter-1] * grad_sum[j];
                         }
                         else {
-                            w0[j] -= (cumulative_sum[j-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
+                            w0[j] -= (cumulative_sum[counter-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                         }
                         update_history[j] = counter + 1;
                     }
@@ -173,7 +171,7 @@ public:
                         break;
                     }
                 }
-
+                ++counter;
                 // scale weight for L2 penalty
                 if (alpha_ > 0.0) {
                     wscale *= 1.0 - alpha_ * step_size;
@@ -193,10 +191,10 @@ public:
             // scale the weights
             for (std::size_t j = 0; j < num_features; ++j) {
                 if (update_history[j] == 0) {
-                    w0[j] -= cumulative_sum[j-1] * grad_sum[j];
+                    w0[j] -= cumulative_sum[counter-1] * grad_sum[j];
                 }
                 else {
-                    w0[j] -= (cumulative_sum[j-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
+                    w0[j] -= (cumulative_sum[counter-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                 }
             }
             sgdlib::internal::dot<FeatureType>(w0, wscale);
@@ -246,7 +244,7 @@ public:
         w_opt_ = w0;
         b_opt_ = b0;
     }
-}
+};
 
 } // namespace sgdlib
 
