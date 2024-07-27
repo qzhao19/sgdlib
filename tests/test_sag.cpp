@@ -20,6 +20,7 @@ public:
         std::size_t max_iters = 100; 
         std::size_t num_iters_no_change = 5;
         std::size_t random_seed = -1;
+        bool is_saga = false;
         bool shuffle = true;
         bool verbose = true;
 
@@ -27,10 +28,9 @@ public:
             loss, 
             alpha,
             tol, 
-            gamma,
             max_iters, 
-            num_iters_no_change,
             random_seed,
+            is_saga,
             shuffle, 
             verbose
         );
