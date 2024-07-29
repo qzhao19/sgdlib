@@ -99,7 +99,7 @@ public:
         FeatureType y_hat;
         FeatureType loss, dloss;
         FeatureType bias_update = 0.0;
-        std::vector<double> loss_history(step_per_iter, 0.0);
+        std::vector<FeatureType> loss_history(step_per_iter, 0.0);
         std::vector<FeatureType> weight_update(num_features, 0.0);
         
         // initialize w0 (weight) and b0 (bias)
@@ -194,9 +194,9 @@ public:
             }
 
             // compute sum of the loss value for one full batch
-            double sum_loss = std::accumulate(loss_history.begin(), 
-                                              loss_history.end(), 
-                                              decltype(loss_history)::value_type(0));
+            FeatureType sum_loss = std::accumulate(loss_history.begin(), 
+                                                   loss_history.end(), 
+                                                   decltype(loss_history)::value_type(0));
             if ((tol_ > -INF) && (sum_loss > best_loss - tol_ * num_samples)) {
                 no_improvement_count +=1;
             }
@@ -220,7 +220,7 @@ public:
                 if ((iter % 1) == 0) {
                     std::cout << "Epoch = " << (iter + 1) << ", xnorm2 = " 
                               << sgdlib::internal::sqnorm2<FeatureType>(w0) << ", avg loss = " 
-                              << sum_loss / static_cast<double>(step_per_iter) << std::endl;
+                              << sum_loss / static_cast<FeatureType>(step_per_iter) << std::endl;
                 }
             }
         }
