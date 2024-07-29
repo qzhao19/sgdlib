@@ -71,7 +71,7 @@ public:
         FeatureType y_hat;
         FeatureType bias_update = 0.0;
         FeatureType grad_correction = 0.0;
-        std::vector<double> loss_history(num_samples, 0.0);
+        std::vector<FeatureType> loss_history(num_samples, 0.0);
         std::vector<FeatureType> prev_weight(num_features, 0.0);
         std::vector<FeatureType> weight_update(num_features, 0.0);
         
@@ -81,6 +81,7 @@ public:
             std::make_unique<sgdlib::ConstantSearch>(X, y, stepsize_search_param_);
         stepsize_search_->search(is_saga_, step_size);
         std::cout << "step_size = " << step_size << std::endl;
+        
         std::size_t counter = 0;
         for (iter = 0; iter < max_iters_; ++iter) {
             for (std::size_t i = 0; i < num_samples; ++i) {
@@ -118,32 +119,35 @@ public:
                 dloss = loss_fn_->derivate(y_hat, y[sample_index]);
  
                 // make the weight update to grad_sum
+                // update = x * grad, 
                 sgdlib::internal::dot<FeatureType>(&X[sample_index * num_features], 
                                                    &X[(sample_index + 1) * num_features], 
                                                    dloss,
                                                    weight_update);
                 for (std::size_t j = 0; j < num_features; ++j) {
+                    // std::cout << weight_update[j] << " == " << X[sample_index * num_features + j] * dloss << " ";
                     grad_correction = weight_update[j] - (grad_history[sample_index] * X[sample_index * num_features + j]);
                     grad_sum[j] += grad_correction;
                     if (is_saga_) {
                         w0[j] -= (grad_correction * step_size * (1.0 - 1.0 / num_seens) / wscale);
                     }
                 }
+                // std::cout << std::endl;
 
                 // fit intercept
-                grad_correction = dloss - grad_history[sample_index];
-                bias_grad_sum += grad_correction;
-                grad_correction *= step_size * (1.0 - 1.0 / num_seens);
-                if (is_saga_) {
-                    b0 -= (step_size * bias_grad_sum / num_seens) + grad_correction;
-                }
-                else {
-                    b0 -= step_size * bias_grad_sum / num_seens;
-                }
-                if (sgdlib::internal::isinf<FeatureType>(b0)) {
-                    is_infinity = true;
-                    break;
-                }
+                // grad_correction = dloss - grad_history[sample_index];
+                // bias_grad_sum += grad_correction;
+                // grad_correction *= step_size * (1.0 - 1.0 / num_seens);
+                // if (is_saga_) {
+                //     b0 -= (step_size * bias_grad_sum / num_seens) + grad_correction;
+                // }
+                // else {
+                //     b0 -= step_size * bias_grad_sum / num_seens;
+                // }
+                // if (sgdlib::internal::isinf<FeatureType>(b0)) {
+                //     is_infinity = true;
+                //     break;
+                // }
 
                 // update the gradient history for the current sample
                 grad_history[sample_index] = dloss;
@@ -156,16 +160,20 @@ public:
                 }
 
                 // if wscale is too small, need to reset 
-                if (counter > 0 && wscale < WSCALE_THRESHOLD) {
+                if (counter >= 1 && wscale < WSCALE_THRESHOLD) {
                     for (std::size_t j = 0; j < num_features; ++j) {
                         if (update_history[j] == 0) {
-                            w0[j] -= cumulative_sum[counter-1] * grad_sum[j];
+                            w0[j] -= cumulative_sum[counter] * grad_sum[j];
                         }
                         else {
-                            w0[j] -= (cumulative_sum[counter-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
+                            w0[j] -= (cumulative_sum[counter] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                         }
                         update_history[j] = counter + 1;
                     }
+                    cumulative_sum[counter] = 0.0;
+                    sgdlib::internal::dot<FeatureType>(w0, wscale);
+                    wscale = 1.0;
+
                     if (sgdlib::internal::isinf<FeatureType>(w0)) {
                         is_infinity = true;
                         break;
@@ -191,10 +199,10 @@ public:
             // scale the weights
             for (std::size_t j = 0; j < num_features; ++j) {
                 if (update_history[j] == 0) {
-                    w0[j] -= cumulative_sum[counter-1] * grad_sum[j];
+                    w0[j] -= cumulative_sum[counter - 1] * grad_sum[j];
                 }
                 else {
-                    w0[j] -= (cumulative_sum[counter-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
+                    w0[j] -= (cumulative_sum[counter - 1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                 }
             }
             sgdlib::internal::dot<FeatureType>(w0, wscale);
