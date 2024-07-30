@@ -146,7 +146,7 @@ public:
                     }
 
                     // scale weight vector by a scalar factor
-                    wscale *= std::max(0.0, 1.0 - ((1.0 - l1_ratio_) * eta * alpha_));
+                    wscale *= std::max(0.0, 1.0 - (eta * alpha_));
                     if (wscale < WSCALE_THRESHOLD) {
                         for (std::size_t k = 0; k < num_features; ++k) {
                             w0[k] *= wscale;
