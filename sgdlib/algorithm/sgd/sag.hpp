@@ -44,22 +44,20 @@ public:
         FeatureType b0 = b0_;
 
         // 
-        FeatureType bias_grad_sum = 0.0;
-        std::vector<FeatureType> grad_sum(num_features);
-        std::vector<FeatureType> grad_history(num_features);
-        std::vector<FeatureType> cumulative_sum(max_iters_ * num_samples);
+        FeatureType bias_sum = 0.0;
+        std::vector<FeatureType> grad_sum(num_features, 0.0);
+        std::vector<FeatureType> grad_history(num_samples, 0.0);
+        std::vector<FeatureType> cumulative_sum(max_iters_ * num_samples, 0.0);
 
         std::vector<std::size_t> seen(num_samples, 0);
         std::vector<std::size_t> update_history(num_features, 0);
         
-        std::size_t no_improvement_count = 0;
-        std::size_t sample_index = 0;
         std::size_t iter = 0;
         std::size_t num_seens = 0;
+        std::size_t sample_index = 0;
 
         bool is_converged = false;
         bool is_infinity = false;
-        double best_loss = INF;
         FeatureType wscale = 1.0;
 
         // initialize a lookup table for training X, y
@@ -80,8 +78,7 @@ public:
         std::unique_ptr<sgdlib::StepSizeSearch> stepsize_search_ = \
             std::make_unique<sgdlib::ConstantSearch>(X, y, stepsize_search_param_);
         stepsize_search_->search(is_saga_, step_size);
-        std::cout << "step_size = " << step_size << std::endl;
-        
+
         std::size_t counter = 0;
         for (iter = 0; iter < max_iters_; ++iter) {
             for (std::size_t i = 0; i < num_samples; ++i) {
@@ -92,15 +89,15 @@ public:
                     ++num_seens;
                     seen[sample_index] = 1;
                 }
-                // std::cout << "num_seens = " << num_seens << std::endl;
+
                 // update weights
                 if (counter >= 1) {
                     for (std::size_t j = 0; j < num_features; ++j) {
                         if (update_history[j] == 0) {
-                            w0[j] -= cumulative_sum[counter-1] * grad_sum[j];
+                            w0[j] -= cumulative_sum[counter - 1] * grad_sum[j];
                         }
                         else {
-                            w0[j] -= (cumulative_sum[counter-1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
+                            w0[j] -= (cumulative_sum[counter - 1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                         }
                         update_history[j] = counter;
                     }
@@ -117,7 +114,7 @@ public:
                 y_hat = y_hat * wscale + b0;
                 loss  = loss_fn_->evaluate(y_hat, y[sample_index]);
                 dloss = loss_fn_->derivate(y_hat, y[sample_index]);
- 
+
                 // make the weight update to grad_sum
                 // update = x * grad, 
                 sgdlib::internal::dot<FeatureType>(&X[sample_index * num_features], 
@@ -125,29 +122,27 @@ public:
                                                    dloss,
                                                    weight_update);
                 for (std::size_t j = 0; j < num_features; ++j) {
-                    // std::cout << weight_update[j] << " == " << X[sample_index * num_features + j] * dloss << " ";
                     grad_correction = weight_update[j] - (grad_history[sample_index] * X[sample_index * num_features + j]);
                     grad_sum[j] += grad_correction;
                     if (is_saga_) {
-                        w0[j] -= (grad_correction * step_size * (1.0 - 1.0 / num_seens) / wscale);
+                        w0[j] -= (grad_correction * step_size * (1.0 - 1.0 / static_cast<FeatureType>(num_seens)) / wscale);
                     }
                 }
-                // std::cout << std::endl;
 
                 // fit intercept
-                // grad_correction = dloss - grad_history[sample_index];
-                // bias_grad_sum += grad_correction;
-                // grad_correction *= step_size * (1.0 - 1.0 / num_seens);
-                // if (is_saga_) {
-                //     b0 -= (step_size * bias_grad_sum / num_seens) + grad_correction;
-                // }
-                // else {
-                //     b0 -= step_size * bias_grad_sum / num_seens;
-                // }
-                // if (sgdlib::internal::isinf<FeatureType>(b0)) {
-                //     is_infinity = true;
-                //     break;
-                // }
+                grad_correction = dloss - grad_history[sample_index];
+                bias_sum += grad_correction;
+                grad_correction *= step_size * (1.0 - 1.0 / static_cast<FeatureType>(num_seens));
+                if (is_saga_) {
+                    b0 -= (step_size * bias_sum / static_cast<FeatureType>(num_seens)) + grad_correction;
+                }
+                else {
+                    b0 -= step_size * bias_sum / static_cast<FeatureType>(num_seens);
+                }
+                if (sgdlib::internal::isinf<FeatureType>(b0)) {
+                    is_infinity = true;
+                    break;
+                }
 
                 // update the gradient history for the current sample
                 grad_history[sample_index] = dloss;
@@ -180,6 +175,7 @@ public:
                     }
                 }
                 ++counter;
+                
                 // scale weight for L2 penalty
                 if (alpha_ > 0.0) {
                     wscale *= 1.0 - alpha_ * step_size;
@@ -207,6 +203,10 @@ public:
             }
             sgdlib::internal::dot<FeatureType>(w0, wscale);
 
+            // calc loss info
+            FeatureType sum_loss = std::accumulate(loss_history.begin(), 
+                                                   loss_history.end(), 
+                                                   decltype(loss_history)::value_type(0));
             // check if convergence test is reached
             FeatureType max_change = 0.0, max_weight = 0.0;
             for (std::size_t j = 0; j < num_features; j++) {
@@ -221,16 +221,12 @@ public:
                 is_converged = true;
                 break;
             }
-
-            // print loss info
-            double sum_loss = std::accumulate(loss_history.begin(), 
-                                              loss_history.end(), 
-                                              decltype(loss_history)::value_type(0));
-            if (verbose_) {
-                if ((iter % 1) == 0) {
-                    std::cout << "Epoch = " << (iter + 1) << ", xnorm2 = " 
-                              << sgdlib::internal::sqnorm2<FeatureType>(w0) << ", avg loss = " 
-                              << sum_loss / static_cast<double>(num_samples) << std::endl;
+            else {
+                if (verbose_) {
+                    std::cout << "Epoch = " << iter 
+                              << ", xnorm = " << sgdlib::internal::sqnorm2<FeatureType>(w0) 
+                              << ", loss = " << sum_loss / static_cast<FeatureType>(num_samples) 
+                              << ", change = " << max_change / max_weight << std::endl;
                 }
             }
         }
