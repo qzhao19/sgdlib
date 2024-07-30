@@ -88,8 +88,7 @@ public:
             num_iters_no_change_(num_iters_no_change),
             random_seed_(random_seed),
             shuffle_(shuffle),
-            verbose_(verbose), 
-            l1_ratio_(0.0) {
+            verbose_(verbose) {
         if (random_seed_ == -1) {
             random_state_ = sgdlib::internal::RandomState();
         }
@@ -117,8 +116,7 @@ public:
             random_seed_(random_seed),
             is_saga_(is_saga),
             shuffle_(shuffle),
-            verbose_(verbose), 
-            l1_ratio_(0.0) {
+            verbose_(verbose) {
         if (random_seed_ == -1) {
             random_state_ = sgdlib::internal::RandomState();
         }
