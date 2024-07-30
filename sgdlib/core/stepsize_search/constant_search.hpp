@@ -19,7 +19,7 @@ public:
         std::size_t num_samples = y_.size();
 
         std::vector<FeatureType> X_row_norm(num_samples);
-        sgdlib::internal::row_norms<FeatureType>(X_, false, X_row_norm);
+        sgdlib::internal::row_norms<FeatureType>(X_, true, X_row_norm);
 
         FeatureType max_sum = *std::max_element(X_row_norm.begin(), X_row_norm.end());
 
