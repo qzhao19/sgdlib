@@ -103,6 +103,7 @@ public:
                   const FeatureType& b0,
                   std::string loss, 
                   double alpha,
+                  double eta0,
                   double tol,
                   std::size_t max_iters, 
                   std::size_t random_seed,
@@ -111,6 +112,7 @@ public:
                   bool verbose = true): w0_(w0), b0_(b0),
             loss_(loss), 
             alpha_(alpha),
+            eta0_(eta0),
             tol_(tol),
             max_iters_(max_iters), 
             random_seed_(random_seed),
@@ -125,6 +127,7 @@ public:
         }
         init_loss_params();
         stepsize_search_param_["alpha"] = alpha;
+        stepsize_search_param_["eta0"] = eta0;
     };
     
     ~BaseOptimizer() {};
