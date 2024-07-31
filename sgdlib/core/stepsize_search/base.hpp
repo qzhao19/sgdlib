@@ -33,6 +33,14 @@ public:
     virtual int search(bool is_saga, double& step_size) {
         return 0;
     };
+
+    virtual int search(const FeatureType& y_pred, 
+                       const LabelType& y_true, 
+                       const FeatureType grad,
+                       const FeatureType& xnorm,
+                       double& step_size) {
+        return 0;
+    };
 };
 
 } // namespace sgdlib
