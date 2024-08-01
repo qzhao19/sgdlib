@@ -14,8 +14,8 @@ public:
      * eta = eta0 * exp(-gamma * epoch) 
     */
     double compute(std::size_t epoch) override {
-        return lr_decay_param_.at("eta0") * \
-            std::exp((-lr_decay_param_.at("gamma")) * static_cast<double>(epoch));
+        return lr_decay_param_["eta0"] * \
+            std::exp((-lr_decay_param_["gamma"]) * static_cast<double>(epoch));
     }
 };
 
