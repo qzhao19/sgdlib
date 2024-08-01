@@ -5,25 +5,27 @@
 
 namespace sgdlib {
 
-class ConstantSearch final: public StepSizeSearch{
+template <typename LossFuncType>
+class ConstantSearch final: public StepSizeSearch<LossFuncType>{
 public:
     ConstantSearch(const std::vector<FeatureType>& X, 
                    const std::vector<LabelType>& y,
-                   StepSizeSearchParamType stepsize_search_param): StepSizeSearch(X, y, stepsize_search_param) {};
+                   StepSizeSearchParamType stepsize_search_params): StepSizeSearch<LossFuncType>(
+                        X, y, stepsize_search_params) {};
     ~ConstantSearch() {};
 
     /** 
      * Compute step size and it is specifically used for the SAG optimizer.
     */
     int search(bool is_saga, double& step_size) override {
-        std::size_t num_samples = y_.size();
+        std::size_t num_samples = this->y_.size();
 
         std::vector<FeatureType> X_row_norm(num_samples);
-        sgdlib::internal::row_norms<FeatureType>(X_, true, X_row_norm);
+        sgdlib::internal::row_norms<FeatureType>(this->X_, true, X_row_norm);
 
         FeatureType max_sum = *std::max_element(X_row_norm.begin(), X_row_norm.end());
 
-        double alpha_scaled = stepsize_search_param_.at("alpha") / num_samples;
+        double alpha_scaled = this->stepsize_search_params_["alpha"] / num_samples;
         double L = 0.25 * (max_sum + 1.0) + alpha_scaled;
 
         if (is_saga) {
