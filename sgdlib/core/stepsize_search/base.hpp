@@ -17,17 +17,30 @@ namespace sgdlib {
  * @brief Abstract base class representing step size search
  * 
 */
+template <typename LossFuncType>
 class StepSizeSearch {
 protected:
+    double lipschitz_;
+    double linesearch_scaling_;
+    std::unique_ptr<LossFuncType> loss_fn_;
+
     std::vector<FeatureType> X_;
     std::vector<LabelType> y_;
-    StepSizeSearchParamType stepsize_search_param_;
+    StepSizeSearchParamType stepsize_search_params_;
     
 public:
     StepSizeSearch(const std::vector<FeatureType>& X, 
                    const std::vector<LabelType>& y,
-                   StepSizeSearchParamType stepsize_search_param): X_(X), y_(y),
-                stepsize_search_param_(stepsize_search_param) {};
+                   StepSizeSearchParamType stepsize_search_params): X_(X), y_(y),
+                stepsize_search_params_(stepsize_search_params) {};
+    
+    StepSizeSearch(const std::vector<FeatureType>& X, 
+                   const std::vector<LabelType>& y,
+                   StepSizeSearchParamType stepsize_search_params, 
+                   std::unique_ptr<LossFuncType> loss_fn): X_(X), y_(y),
+                stepsize_search_params_(stepsize_search_params), 
+                loss_fn_(loss_fn_) {};
+    
     ~StepSizeSearch() {};
 
     virtual int search(bool is_saga, double& step_size) {
