@@ -3,10 +3,11 @@
 
 #include "common/prereqs.hpp"
 #include "common/predefs.hpp"
-#include "math/random.hpp"
 #include "core/loss.hpp"
 #include "core/lr_decay.hpp"
 #include "core/stepsize_search.hpp"
+#include "math/random.hpp"
+#include "math/extmath.hpp"
 
 namespace sgdlib {
 
@@ -18,6 +19,7 @@ protected:
     std::string loss_;
     std::string penalty_;
     std::string lr_policy_;
+    std::string search_policy_;
 
     double alpha_;
     double l1_ratio_;
@@ -36,7 +38,7 @@ protected:
 
     LossParamType loss_params_;
     LRDecayParamType lr_decay_params_;
-    StepSizeSearchParamType stepsize_search_param_;
+    StepSizeSearchParamType stepsize_search_params_;
 
     std::vector<FeatureType> w_opt_;
     FeatureType b_opt_;
@@ -59,7 +61,12 @@ protected:
         lr_decay_ = LRDecayRegistry()->Create(lr_policy_, lr_decay_params_);
     }
 
-    void init_optimizer_params() {}
+    void init_stepsize_search_params() {
+        // initialize step-size search function
+        stepsize_search_params_["alpha"] = alpha_;
+        stepsize_search_params_["eta0"] = eta0_;
+        stepsize_search_params_["max_searches"] = eta0_;
+    }
 
 public:
     BaseOptimizer() {};
@@ -102,6 +109,7 @@ public:
     BaseOptimizer(const std::vector<FeatureType>& w0,
                   const FeatureType& b0,
                   std::string loss, 
+                  std::string search_policy,
                   double alpha,
                   double eta0,
                   double tol,
@@ -111,6 +119,7 @@ public:
                   bool shuffle = true, 
                   bool verbose = true): w0_(w0), b0_(b0),
             loss_(loss), 
+            search_policy_(search_policy),
             alpha_(alpha),
             eta0_(eta0),
             tol_(tol),
@@ -126,8 +135,7 @@ public:
             random_state_ = sgdlib::internal::RandomState(random_seed_);
         }
         init_loss_params();
-        stepsize_search_param_["alpha"] = alpha;
-        stepsize_search_param_["eta0"] = eta0;
+        init_stepsize_search_params();
     };
     
     ~BaseOptimizer() {};
