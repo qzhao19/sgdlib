@@ -10,8 +10,11 @@ class ConstantSearch final: public StepSizeSearch<LossFuncType>{
 public:
     ConstantSearch(const std::vector<FeatureType>& X, 
                    const std::vector<LabelType>& y,
+                   const std::unique_ptr<LossFuncType>& loss_fn,
                    StepSizeSearchParamType stepsize_search_params): StepSizeSearch<LossFuncType>(
-                        X, y, stepsize_search_params) {};
+                        X, y, 
+                        loss_fn, 
+                        stepsize_search_params) {};
     ~ConstantSearch() {};
 
     /** 
