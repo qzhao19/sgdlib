@@ -29,17 +29,17 @@ protected:
     StepSizeSearchParamType stepsize_search_params_;
     
 public:
-    StepSizeSearch(const std::vector<FeatureType>& X, 
-                   const std::vector<LabelType>& y,
-                   StepSizeSearchParamType stepsize_search_params): X_(X), y_(y),
-                stepsize_search_params_(stepsize_search_params) {};
+    // StepSizeSearch(const std::vector<FeatureType>& X, 
+    //                const std::vector<LabelType>& y,
+    //                StepSizeSearchParamType stepsize_search_params): X_(X), y_(y),
+    //                     stepsize_search_params_(stepsize_search_params) {};
     
     StepSizeSearch(const std::vector<FeatureType>& X, 
                    const std::vector<LabelType>& y,
-                   StepSizeSearchParamType stepsize_search_params, 
-                   std::unique_ptr<LossFuncType> loss_fn): X_(X), y_(y),
-                stepsize_search_params_(stepsize_search_params), 
-                loss_fn_(loss_fn_) {};
+                   const std::unique_ptr<LossFuncType>& loss_fn,
+                   StepSizeSearchParamType stepsize_search_params): X_(X), y_(y),
+                        loss_fn_(loss_fn),
+                        stepsize_search_params_(stepsize_search_params){};
     
     ~StepSizeSearch() {};
 
@@ -49,9 +49,10 @@ public:
 
     virtual int search(const FeatureType& y_pred, 
                        const LabelType& y_true, 
-                       const FeatureType grad,
-                       const FeatureType& xnorm,
-                       double& step_size) {
+                       const FeatureType& grad,
+                       const FeatureType& xnorm, 
+                       const std::size_t& step,
+                       double& stepsize) {
         return 0;
     };
 };
