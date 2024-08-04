@@ -16,7 +16,9 @@ public:
     SAG(const std::vector<FeatureType>& w0, 
         const FeatureType& b0,
         std::string loss, 
+        std::string search_policy,
         double alpha,
+        double eta0,
         double tol,
         std::size_t max_iters, 
         std::size_t random_seed,
@@ -24,7 +26,9 @@ public:
         bool shuffle = true, 
         bool verbose = true): BaseOptimizer(w0, b0,
             loss, 
+            search_policy,
             alpha, 
+            eta0,
             tol, 
             max_iters, 
             random_seed,
@@ -44,7 +48,6 @@ public:
         FeatureType b0 = b0_;
 
         // 
-        FeatureType bias_sum = 0.0;
         std::vector<FeatureType> grad_sum(num_features, 0.0);
         std::vector<FeatureType> grad_history(num_samples, 0.0);
         std::vector<FeatureType> cumulative_sum(max_iters_ * num_samples, 0.0);
@@ -67,6 +70,7 @@ public:
         // initialize loss, loss_history, gradient, 
         FeatureType loss, dloss;
         FeatureType y_hat;
+        FeatureType xnorm;
         FeatureType bias_update = 0.0;
         FeatureType grad_correction = 0.0;
         std::vector<FeatureType> loss_history(num_samples, 0.0);
@@ -75,9 +79,18 @@ public:
         
         // compute step size 
         double step_size = 0.0;
-        std::unique_ptr<sgdlib::StepSizeSearch> stepsize_search_ = \
-            std::make_unique<sgdlib::ConstantSearch>(X, y, stepsize_search_param_);
-        stepsize_search_->search(is_saga_, step_size);
+        std::unique_ptr<sgdlib::StepSizeSearch<sgdlib::LossFunction>> stepsize_search_; 
+        if (search_policy_ == "Constant") {
+            stepsize_search_ = std::make_unique<sgdlib::ConstantSearch<sgdlib::LossFunction>>(
+                X, y, loss_fn_, stepsize_search_params_
+            );
+            stepsize_search_->search(is_saga_, step_size);
+        }
+        else if (search_policy_ == "BasicLineSearch") {
+            stepsize_search_ = std::make_unique<sgdlib::BasicLineSearch<sgdlib::LossFunction>>(
+                X, y, loss_fn_, stepsize_search_params_
+            );
+        }
 
         std::size_t counter = 0;
         for (iter = 0; iter < max_iters_; ++iter) {
@@ -115,6 +128,16 @@ public:
                 loss  = loss_fn_->evaluate(y_hat, y[sample_index]);
                 dloss = loss_fn_->derivate(y_hat, y[sample_index]);
 
+                // stepsize-search step, apply basic line-search method 
+                // detail see section 4.6 of Schmidt, M., Roux, N., & Bach, F. (2013).
+                // "Minimizing finite sums with the stochastic average gradient". 
+                if (search_policy_ == "BasicLineSearch") {
+                    xnorm = std::inner_product(&X[sample_index * num_features], 
+                                               &X[(sample_index + 1) * num_features], 
+                                               &X[sample_index * num_features], 0.0);
+                    stepsize_search_->search(y_hat, y[sample_index], dloss, xnorm, i, step_size);
+                }
+
                 // make the weight update to grad_sum
                 // update = x * grad, 
                 sgdlib::internal::dot<FeatureType>(&X[sample_index * num_features], 
@@ -131,13 +154,13 @@ public:
 
                 // fit intercept
                 grad_correction = dloss - grad_history[sample_index];
-                bias_sum += grad_correction;
+                bias_update += grad_correction;
                 grad_correction *= step_size * (1.0 - 1.0 / static_cast<FeatureType>(num_seens));
                 if (is_saga_) {
-                    b0 -= (step_size * bias_sum / static_cast<FeatureType>(num_seens)) + grad_correction;
+                    b0 -= (step_size * bias_update / static_cast<FeatureType>(num_seens)) + grad_correction;
                 }
                 else {
-                    b0 -= step_size * bias_sum / static_cast<FeatureType>(num_seens);
+                    b0 -= step_size * bias_update / static_cast<FeatureType>(num_seens);
                 }
                 if (sgdlib::internal::isinf<FeatureType>(b0)) {
                     is_infinity = true;
@@ -223,7 +246,7 @@ public:
             }
             else {
                 if (verbose_) {
-                    std::cout << "Epoch = " << iter 
+                    std::cout << "Epoch = " << iter + 1
                               << ", xnorm = " << sgdlib::internal::sqnorm2<FeatureType>(w0) 
                               << ", loss = " << sum_loss / static_cast<FeatureType>(num_samples) 
                               << ", change = " << max_change / max_weight << std::endl;
