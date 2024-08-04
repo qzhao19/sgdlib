@@ -65,7 +65,8 @@ protected:
         // initialize step-size search function
         stepsize_search_params_["alpha"] = alpha_;
         stepsize_search_params_["eta0"] = eta0_;
-        stepsize_search_params_["max_searches"] = eta0_;
+        stepsize_search_params_["max_searches"] = 10.0;
+        stepsize_search_params_["max_iters"] = 20.0;
     }
 
 public:
