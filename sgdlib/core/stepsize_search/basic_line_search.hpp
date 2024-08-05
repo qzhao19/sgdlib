@@ -10,7 +10,7 @@ class BasicLineSearch final: public StepSizeSearch<LossFuncType>{
 public:
     BasicLineSearch(const std::vector<FeatureType>& X, 
                     const std::vector<LabelType>& y,
-                    const std::unique_ptr<LossFuncType>& loss_fn,
+                    const std::shared_ptr<LossFuncType>& loss_fn,
                     StepSizeSearchParamType stepsize_search_params): StepSizeSearch<LossFuncType>(
                         X, y, 
                         loss_fn, 
@@ -22,7 +22,7 @@ public:
     ~BasicLineSearch() {};
 
     /** 
-     * Compute step size and it is specifically used for the SAG optimizer.
+     * Compute step size with basic line search and it is specifically used for the SAG optimizer.
     */
     int search(const FeatureType& y_pred, 
                const LabelType& y_true, 
@@ -30,7 +30,6 @@ public:
                const FeatureType& xnorm, 
                const std::size_t& step,
                double& stepsize) override {
-        
         bool is_valid;
         FeatureType a, b;
         if (step % static_cast<std::size_t>(this->stepsize_search_params_["max_searches"]) == 0) {
