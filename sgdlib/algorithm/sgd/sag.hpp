@@ -61,6 +61,7 @@ public:
 
         bool is_converged = false;
         bool is_infinity = false;
+        int search_status = 0;
         FeatureType wscale = 1.0;
 
         // initialize a lookup table for training X, y
@@ -84,7 +85,7 @@ public:
             stepsize_search_ = std::make_unique<sgdlib::ConstantSearch<sgdlib::LossFunction>>(
                 X, y, loss_fn_, stepsize_search_params_
             );
-            stepsize_search_->search(is_saga_, step_size);
+            search_status = stepsize_search_->search(is_saga_, step_size);
         }
         else if (search_policy_ == "BasicLineSearch") {
             stepsize_search_ = std::make_unique<sgdlib::BasicLineSearch<sgdlib::LossFunction>>(
@@ -135,7 +136,10 @@ public:
                     xnorm = std::inner_product(&X[sample_index * num_features], 
                                                &X[(sample_index + 1) * num_features], 
                                                &X[sample_index * num_features], 0.0);
-                    stepsize_search_->search(y_hat, y[sample_index], dloss, xnorm, i, step_size);
+                    search_status = stepsize_search_->search(y_hat, y[sample_index], dloss, xnorm, i, step_size);
+                    if (search_status == -1) {
+                        break;
+                    }
                 }
 
                 // make the weight update to grad_sum
@@ -211,7 +215,7 @@ public:
             }
 
             // break if raise an error in inner loop
-            if (is_infinity) {
+            if (is_infinity || search_status == -1) {
                 break;
             }
 
@@ -265,6 +269,13 @@ public:
             std::ostringstream err_msg;
             err_msg << "Not converge, current number of epoch = " << (iter + 1)
                     << ", try apply different parameters." << std::endl;
+            throw std::runtime_error(err_msg.str());
+        }
+
+        if (search_status == -1) {
+            std::ostringstream err_msg;
+            err_msg << "Line-search condition not satisfied at epoch " << (iter + 1)
+                    << ", try apply different step-search parameters." << std::endl;
             throw std::runtime_error(err_msg.str());
         }
 
