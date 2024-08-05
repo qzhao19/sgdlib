@@ -22,21 +22,16 @@ class StepSizeSearch {
 protected:
     double lipschitz_;
     double linesearch_scaling_;
-    std::unique_ptr<LossFuncType> loss_fn_;
+    std::shared_ptr<LossFuncType> loss_fn_;
 
     std::vector<FeatureType> X_;
     std::vector<LabelType> y_;
     StepSizeSearchParamType stepsize_search_params_;
     
-public:
-    // StepSizeSearch(const std::vector<FeatureType>& X, 
-    //                const std::vector<LabelType>& y,
-    //                StepSizeSearchParamType stepsize_search_params): X_(X), y_(y),
-    //                     stepsize_search_params_(stepsize_search_params) {};
-    
+public:  
     StepSizeSearch(const std::vector<FeatureType>& X, 
                    const std::vector<LabelType>& y,
-                   const std::unique_ptr<LossFuncType>& loss_fn,
+                   const std::shared_ptr<LossFuncType>& loss_fn,
                    StepSizeSearchParamType stepsize_search_params): X_(X), y_(y),
                         loss_fn_(loss_fn),
                         stepsize_search_params_(stepsize_search_params){};
