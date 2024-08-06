@@ -59,8 +59,8 @@ public:
 };
 
 // Create registries for base loss function
-DECLARE_REGISTRY(LossFunctionRegistry, LossFunction, LossParamType);
-DEFINE_REGISTRY(LossFunctionRegistry, LossFunction, LossParamType);
+DECLARE_SHARED_REGISTRY(LossFunctionRegistry, LossFunction, LossParamType);
+DEFINE_SHARED_REGISTRY(LossFunctionRegistry, LossFunction, LossParamType);
 
 } // namespace sgdlib
 
