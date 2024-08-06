@@ -99,13 +99,23 @@ public:
         DemangleType<__VA_ARGS__>());                                                  \
     }
 
-#define DECLARE_REGISTRY(RegistryName, ObjectType, ...)                                \
+// define macro for loss func registrer with unique ptr
+#define DECLARE_UNIQUE_REGISTRY(RegistryName, ObjectType, ...)                         \
     DECLARE_TYPED_REGISTRY(                                                            \
         RegistryName, ObjectType, std::unique_ptr, ##__VA_ARGS__)
 
-#define DEFINE_REGISTRY(RegistryName, ObjectType, ...)                                 \
+#define DEFINE_UNIQUE_REGISTRY(RegistryName, ObjectType, ...)                          \
     DEFINE_TYPED_REGISTRY(                                                             \
         RegistryName, ObjectType, std::unique_ptr, ##__VA_ARGS__)
+
+// define macro for lr decay registrer with shared ptr
+#define DECLARE_SHARED_REGISTRY(RegistryName, ObjectType, ...)                         \
+    DECLARE_TYPED_REGISTRY(                                                            \
+        RegistryName, ObjectType, std::shared_ptr, ##__VA_ARGS__)
+
+#define DEFINE_SHARED_REGISTRY(RegistryName, ObjectType, ...)                          \
+    DEFINE_TYPED_REGISTRY(                                                             \
+        RegistryName, ObjectType, std::shared_ptr, ##__VA_ARGS__)
 
 // key is the name, the second is derived class
 #define REGISTER_CLASS(RegistryName, key, ...)                                         \
