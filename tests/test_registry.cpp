@@ -12,8 +12,8 @@ public:
     virtual void Say() = 0;
 };
 
-DECLARE_REGISTRY(FooRegistry, Foo, std::vector<int>);
-DEFINE_REGISTRY(FooRegistry, Foo, std::vector<int>);
+DECLARE_SHARED_REGISTRY(FooRegistry, Foo, std::vector<int>);
+DEFINE_SHARED_REGISTRY(FooRegistry, Foo, std::vector<int>);
 
 class Bar : public Foo {
 public:
@@ -38,10 +38,10 @@ REGISTER_CLASS(FooRegistry, AnotherBar, AnotherBar);
 
 TEST(TestRegistry, CreatorForFoo) {
     std::vector<int> x = {1};
-    std::unique_ptr<Foo> bar = FooRegistry()->Create("Bar", x);
+    std::shared_ptr<Foo> bar = FooRegistry()->Create("Bar", x);
     bar->Say();
     EXPECT_TRUE(bar != nullptr) << "Cannot create bar";
-    std::unique_ptr<Foo> another_bar = FooRegistry()->Create("AnotherBar", x);
+    std::shared_ptr<Foo> another_bar = FooRegistry()->Create("AnotherBar", x);
     another_bar->Say();
     EXPECT_TRUE(another_bar != nullptr);
 }
