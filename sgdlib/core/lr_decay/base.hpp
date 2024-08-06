@@ -27,8 +27,8 @@ public:
 };
 
 // Create registries for base LR Decay function
-DECLARE_REGISTRY(LRDecayRegistry, LRDecay, LRDecayParamType);
-DEFINE_REGISTRY(LRDecayRegistry, LRDecay, LRDecayParamType);
+DECLARE_UNIQUE_REGISTRY(LRDecayRegistry, LRDecay, LRDecayParamType);
+DEFINE_UNIQUE_REGISTRY(LRDecayRegistry, LRDecay, LRDecayParamType);
 
 } // namespace sgdlib
 
