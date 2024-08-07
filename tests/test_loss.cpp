@@ -15,13 +15,13 @@ using ::testing::DoubleLE;
 class LossTest : public ::testing::Test {
 public:
     virtual void SetUp(std::string loss) {
-        LossParamType loss_param = {{"alpha", 0.0}};
-        loss_fn = LossFunctionRegistry()->Create(loss, loss_param);
+        LossParamType loss_params = {{"alpha", 0.0}};
+        loss_fn = LossFunctionRegistry()->Create(loss, loss_params);
     }
 
     virtual void TearDown() {}
 
-    std::unique_ptr<sgdlib::LossFunction> loss_fn; 
+    std::shared_ptr<sgdlib::LossFunction> loss_fn; 
 };
 
 TEST_F(LossTest, LogLoss) {
