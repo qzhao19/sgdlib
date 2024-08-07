@@ -44,8 +44,17 @@ protected:
     FeatureType b_opt_;
     sgdlib::internal::RandomState random_state_;
 
-    std::unique_ptr<sgdlib::LossFunction> loss_fn_;
+    std::shared_ptr<sgdlib::LossFunction> loss_fn_;
     std::unique_ptr<sgdlib::LRDecay> lr_decay_;
+
+    void init_random_state() {
+        if (random_seed_ == -1) {
+            random_state_ = sgdlib::internal::RandomState();
+        }
+        else {
+            random_state_ = sgdlib::internal::RandomState(random_seed_);
+        }
+    }
 
     void init_loss_params() {
         // initialize loss function 
@@ -97,12 +106,7 @@ public:
             random_seed_(random_seed),
             shuffle_(shuffle),
             verbose_(verbose) {
-        if (random_seed_ == -1) {
-            random_state_ = sgdlib::internal::RandomState();
-        }
-        else {
-            random_state_ = sgdlib::internal::RandomState(random_seed_);
-        }
+        init_random_state();
         init_loss_params();
         init_lr_params();
     };
@@ -129,14 +133,28 @@ public:
             is_saga_(is_saga),
             shuffle_(shuffle),
             verbose_(verbose) {
-        if (random_seed_ == -1) {
-            random_state_ = sgdlib::internal::RandomState();
-        }
-        else {
-            random_state_ = sgdlib::internal::RandomState(random_seed_);
-        }
+        init_random_state();
         init_loss_params();
         init_stepsize_search_params();
+    };
+
+    BaseOptimizer(const std::vector<FeatureType>& w0,
+                  const FeatureType& b0, 
+                  std::string loss,
+                  double alpha,
+                  double tol,
+                  std::size_t max_iters, 
+                  std::size_t random_seed,
+                  bool shuffle = true, 
+                  bool verbose = true): w0_(w0), 
+            alpha_(alpha),
+            tol_(tol),
+            max_iters_(max_iters), 
+            random_seed_(random_seed),
+            shuffle_(shuffle),
+            verbose_(verbose) {
+        init_random_state();
+        init_loss_params();
     };
     
     ~BaseOptimizer() {};
