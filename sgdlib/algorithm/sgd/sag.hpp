@@ -47,11 +47,12 @@ public:
         std::vector<FeatureType> w0 = w0_;
         FeatureType b0 = b0_;
 
-        // 
+        // initialize gradient memory, the cumulative sums
         std::vector<FeatureType> grad_sum(num_features, 0.0);
         std::vector<FeatureType> grad_history(num_samples, 0.0);
         std::vector<FeatureType> cumulative_sum(max_iters_ * num_samples, 0.0);
 
+        // array for visited samples
         std::vector<std::size_t> seen(num_samples, 0);
         std::vector<std::size_t> update_history(num_features, 0);
         
