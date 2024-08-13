@@ -4,7 +4,7 @@
 #include <gmock/gmock.h>
 
 #include "sgdlib/algorithm/base.hpp"
-#include "sgdlib/algorithm/sgd/sgd.hpp"
+#include "sgdlib/algorithm/sgd/scd.hpp"
 
 namespace sgdlib {
 
@@ -26,15 +26,11 @@ public:
         bool shuffle = true;
         bool verbose = true;
 
-        optimizer = std::make_unique<sgdlib::SGD>(w0, b0,
+        optimizer = std::make_unique<sgdlib::SCD>(w0, b0,
             loss, 
-            lr_policy, 
-            alpha, eta0, 
+            alpha, 
             tol, 
-            gamma,
             max_iters, 
-            batch_size, 
-            num_iters_no_change,
             random_seed,
             shuffle, 
             verbose
