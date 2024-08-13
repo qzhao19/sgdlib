@@ -42,10 +42,17 @@ public:
         bool is_converged = false;
 
         // initialize a lookup table for training X, y
-        std::vector<std::size_t> X_data_index(num_samples);
-        std::iota(X_data_index.begin(), X_data_index.end(), 0);
+        std::vector<std::size_t> X_feature_index(num_samples);
+        std::iota(X_feature_index.begin(), X_feature_index.end(), 0);
 
-        
+        std::size_t iter = 0;
+        std::size_t f_index = 0;
+
+        for (iter = 0; iter < max_iters_; ++iter) {
+            f_index = random_state_.sample<std::size_t>(X_feature_index);
+            
+
+        }
 
     }
 
