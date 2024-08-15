@@ -29,10 +29,10 @@ public:
                   const std::vector<LabelType>& y) override {
         
         std::size_t num_samples = y.size();
-        std::size_t num_features = w0_.size();
+        std::size_t num_features = w0.size();
 
         // initialize w0 (weight) and b0 (bias)
-        std::vector<FeatureType> w0 = w0_;
+        std::vector<FeatureType> w0 = w0;
         FeatureType b0 = b0_;
 
         // initialize loss, loss_history, gradient, 
@@ -48,9 +48,34 @@ public:
         std::size_t iter = 0;
         std::size_t f_index = 0;
 
+        FeatureType eta = 0.0;
+        std::size_t feat_index = 0;
+
         for (iter = 0; iter < max_iters_; ++iter) {
-            f_index = random_state_.sample<std::size_t>(X_feature_index);
+            grad = this->loss_func_.gradient(X_new, y_new, this->w0);
+
+            FeatureType pred_descent = 0.0;
+            FeatureType best_descent = -1.0;
+            FeatureType best_eta = 0.0;
+            std::size_t best_index = 0.0;
             
+            for (feat_index = 0; feat_index < num_features; ++feat_index) {
+                if ((this->w0(feat_index, 0) - grad(feat_index, 0) / l1_ratio_) > (alpha_ / l1_ratio_)) {
+                    eta = (-grad(feat_index, 0) / l1_ratio_) - (alpha_ / l1_ratio_);
+                }
+                else if ((this->w0(feat_index, 0) - grad(feat_index, 0) / l1_ratio_) < (-alpha_ / l1_ratio_)) {
+                    eta = (-grad(feat_index, 0) / l1_ratio_) + (alpha_ / l1_ratio_);
+                }
+                else {
+                    eta = -this->w0(feat_index, 0);
+                }
+
+                pred_descent = -eta * grad(feat_index, 0) - 
+                    l1_ratio_ / 2 * eta * eta - 
+                        alpha_ * std::abs(this->w0(feat_index, 0) + eta) + 
+                            alpha_ * std::abs(this->w0(feat_index, 0));
+
+            }
 
         }
 
