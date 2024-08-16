@@ -52,7 +52,7 @@ public:
         std::size_t feat_index = 0;
 
         for (iter = 0; iter < max_iters_; ++iter) {
-            grad = this->loss_func_.gradient(X_new, y_new, this->w0);
+            grad = loss_fn_->gradient(X_new, y_new, w0);
 
             FeatureType pred_descent = 0.0;
             FeatureType best_descent = -1.0;
@@ -60,22 +60,31 @@ public:
             std::size_t best_index = 0.0;
             
             for (feat_index = 0; feat_index < num_features; ++feat_index) {
-                if ((this->w0(feat_index, 0) - grad(feat_index, 0) / l1_ratio_) > (alpha_ / l1_ratio_)) {
+                if ((w0(feat_index, 0) - grad(feat_index, 0) / l1_ratio_) > (alpha_ / l1_ratio_)) {
                     eta = (-grad(feat_index, 0) / l1_ratio_) - (alpha_ / l1_ratio_);
                 }
-                else if ((this->w0(feat_index, 0) - grad(feat_index, 0) / l1_ratio_) < (-alpha_ / l1_ratio_)) {
+                else if ((w0(feat_index, 0) - grad(feat_index, 0) / l1_ratio_) < (-alpha_ / l1_ratio_)) {
                     eta = (-grad(feat_index, 0) / l1_ratio_) + (alpha_ / l1_ratio_);
                 }
                 else {
-                    eta = -this->w0(feat_index, 0);
+                    eta = -w0(feat_index, 0);
                 }
 
                 pred_descent = -eta * grad(feat_index, 0) - 
                     l1_ratio_ / 2 * eta * eta - 
-                        alpha_ * std::abs(this->w0(feat_index, 0) + eta) + 
-                            alpha_ * std::abs(this->w0(feat_index, 0));
+                        alpha_ * std::abs(w0(feat_index, 0) + eta) + 
+                            alpha_ * std::abs(w0(feat_index, 0));
+
+                if (pred_descent > best_descent) {
+                    best_descent = pred_descent;
+                    best_index = feat_index;
+                    best_eta = eta;
+                }
 
             }
+
+            // update weight vector w
+            w0(feat_index, 0) += eta;
 
         }
 
