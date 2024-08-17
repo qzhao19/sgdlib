@@ -32,14 +32,16 @@ public:
         std::size_t num_features = w0.size();
 
         // initialize w0 (weight) and b0 (bias)
-        std::vector<FeatureType> w0 = w0;
+        std::vector<FeatureType> w0 = w0_;
         FeatureType b0 = b0_;
 
         // initialize loss, loss_history, gradient, 
+        std::vector<FeatureType> grad(num_features);
         FeatureType loss, dloss;
         FeatureType y_hat;
 
         bool is_converged = false;
+        FeatureType wscale = 1.0;
 
         // initialize a lookup table for training X, y
         std::vector<std::size_t> X_feature_index(num_samples);
@@ -52,7 +54,22 @@ public:
         std::size_t feat_index = 0;
 
         for (iter = 0; iter < max_iters_; ++iter) {
-            grad = loss_fn_->gradient(X_new, y_new, w0);
+            // grad = loss_fn_->gradient(X_new, y_new, w0);
+
+            for(std::size_t i = 0; i < num_samples; ++i) {
+                y_hat = std::inner_product(&X[i * num_features], 
+                                           &X[(i + 1) * num_features], 
+                                           w0.begin(), 0.0);                    
+                y_hat = y_hat * wscale + b0;
+                dloss = loss_fn_->derivate(y_hat, y[i]);
+
+                for(int j = 0; j < num_features; ++j) {
+                    grad[j] += X[i * num_features + j] * dloss;
+                }
+            }
+            for(int j = 0; j < num_features; ++j) {
+                grad[j] /= num_samples;
+            }
 
             FeatureType pred_descent = 0.0;
             FeatureType best_descent = -1.0;
@@ -60,20 +77,20 @@ public:
             std::size_t best_index = 0.0;
             
             for (feat_index = 0; feat_index < num_features; ++feat_index) {
-                if ((w0(feat_index, 0) - grad(feat_index, 0) / l1_ratio_) > (alpha_ / l1_ratio_)) {
-                    eta = (-grad(feat_index, 0) / l1_ratio_) - (alpha_ / l1_ratio_);
+                if ((w0[feat_index] - grad[feat_index] / l1_ratio_) > (alpha_ / l1_ratio_)) {
+                    eta = (-grad[feat_index] / l1_ratio_) - (alpha_ / l1_ratio_);
                 }
-                else if ((w0(feat_index, 0) - grad(feat_index, 0) / l1_ratio_) < (-alpha_ / l1_ratio_)) {
-                    eta = (-grad(feat_index, 0) / l1_ratio_) + (alpha_ / l1_ratio_);
+                else if ((w0(feat_index, 0) - grad[feat_index] / l1_ratio_) < (-alpha_ / l1_ratio_)) {
+                    eta = (-grad[feat_index] / l1_ratio_) + (alpha_ / l1_ratio_);
                 }
                 else {
-                    eta = -w0(feat_index, 0);
+                    eta = -w0[feat_index];
                 }
 
-                pred_descent = -eta * grad(feat_index, 0) - 
+                pred_descent = -eta * grad[feat_index] - 
                     l1_ratio_ / 2 * eta * eta - 
-                        alpha_ * std::abs(w0(feat_index, 0) + eta) + 
-                            alpha_ * std::abs(w0(feat_index, 0));
+                        alpha_ * std::abs(w0[feat_index] + eta) + 
+                            alpha_ * std::abs(w0[feat_index]);
 
                 if (pred_descent > best_descent) {
                     best_descent = pred_descent;
@@ -84,8 +101,9 @@ public:
             }
 
             // update weight vector w
-            w0(feat_index, 0) += eta;
+            w0[feat_index] += eta;
 
+            std::fill_n(grad.begin(), num_features, 0); 
         }
 
     }
