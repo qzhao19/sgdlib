@@ -66,4 +66,14 @@ TEST_F(RandomStateTest, SampleTest) {
     }
 };
 
+
+TEST_F(RandomStateTest, RandomIndexTest) {
+    SetUp(-1);
+    std::size_t lower_bound = 0, upper_bound = 5;
+    std::size_t x = random_state->random_index(lower_bound, upper_bound);
+
+    ASSERT_LE(lower_bound, x) << "x should be greater than upper_bound";
+    ASSERT_LT(x, upper_bound) << "x should be strickly less than upper_bound";
+};
+
 }
