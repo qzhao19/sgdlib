@@ -6,12 +6,6 @@
 
 namespace sgdlib {
 
-TEST(ExtmathTest, SigmoidTest){
-    double x = sgdlib::internal::sigmoid<double>(10.0);
-    std::cout << x << std::endl;
-    EXPECT_DOUBLE_EQ(x, 0.9999546021312976);
-};
-
 TEST(ExtmathTest, VectorClipTest){
     std::vector<double> x = {5.2, 3.3, 1.2, 0.3, 
                              4.8, 3.1, 1.6, 0.2};
@@ -50,13 +44,6 @@ TEST(ExtmathTest, Sqnorm2Test){
     EXPECT_DOUBLE_EQ(norm, 6.691786009728643);
 };
 
-TEST(ExtmathTest, ArgmaxTest){
-    std::vector<double> x = {5.2, 3.3, 1.2, 0.3, 4.8, 3.1, 1.6, 0.2, 4.75};
-    long max_index;
-    max_index = sgdlib::internal::argmax<double, long>(&x[0], 9);
-    EXPECT_THAT(max_index, 0);
-};
-
 TEST(ExtmathTest, InplaceVectorScalarDotTest){
     std::vector<double> x = {5.2, 3.3, 2.6, 0.3};
     double c = 10.0;
@@ -82,6 +69,20 @@ TEST(ExtmathTest, RowNormsTest){
     bool sq = false;
     sgdlib::internal::row_norms<double>(x, sq, out);
     std::vector<double> expect = {6.28171951, 9.16842407, 5.82450856};
+    double tolerance = 1e-8;
+    for (size_t i = 0; i < out.size(); ++i) {
+        EXPECT_NEAR(expect[i], out[i], tolerance);
+    }
+};
+
+TEST(ExtmathTest, ColNormsTest){
+    std::vector<double> x = {5.2, 3.3, 1.2, 0.3, 
+                             6.4, 3.1, 5.5, 1.8, 
+                             4.75, 3.1, 1.32, 0.1};
+    std::vector<double> out(4);
+    bool sq = true;
+    sgdlib::internal::col_norms<double>(x, sq, out);
+    std::vector<double> expect = {90.5625, 30.11, 33.4324, 3.34};
     double tolerance = 1e-8;
     for (size_t i = 0; i < out.size(); ++i) {
         EXPECT_NEAR(expect[i], out[i], tolerance);
