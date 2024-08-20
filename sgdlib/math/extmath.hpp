@@ -7,28 +7,6 @@ namespace sgdlib {
 namespace internal {
 
 /**
- * @brief Applies the sigmoid function to a given value.
- *
- * The sigmoid function is a mathematical function that can take any real-valued 
- * number and map it into a range between 0 and 1. It is often used in machine 
- * learning for converting a linear output into a probability-like value.
- *
- * The formula for the sigmoid function is:
- * \[ \text{sigmoid}(x) = \frac{1}{1 + e^{-x}} \]
- *
- * @tparam Type A floating-point type (e.g., float or double) for the input value.
- * @param x The input value to which the sigmoid function will be applied.
- * @return The result of applying the sigmoid function to the input value.
- *
- * @note This function assumes that the input value `x` is of a type that can be used in
- *       exponential calculations (usually a floating-point type).
-*/
-template <typename Type>
-inline Type sigmoid(Type x) {
-    return 1 / (1 + std::exp(-x));
-};
-
-/**
  * @brief Clip (limit) the values in a vector.
  * 
  * @tparam Type The type of elements in the vector.
@@ -126,33 +104,6 @@ inline double sqnorm2(const std::vector<Type>& x) {
     );
 };
 
-/**
- * @brief Computes the index of the maximum element in a given array.
- *
- * @param x Pointer to the first element of the array to be processed.
- *         The array should contain 'size' number of elements of type ValueType.
- * @param size The number of elements in the array pointed to by 'x'.
- * @return IndexType The index of the maximum element within the array.
- *         If multiple elements are equal to the maximum value, the index 
- *         of the first occurrence is returned.
- * 
- * @note The function is marked as inline, which is suitable for small functions 
- *       to reduce the overhead of function calls.
- */
-template<typename ValueType, typename IndexType>
-inline IndexType argmax(ValueType* x, unsigned long size) {
-    IndexType max_index = 0;
-    ValueType max_value = x[max_index];
-
-    for (unsigned long i = 0; i < size; i++) {
-        if (x[i] > max_value) {
-            max_index = i;
-            max_value = x[max_index];
-        }
-    }
-    return max_index;
-};
-
 /** 
  * @brief Applies a scalar multiplication operation to a vector.
  * 
@@ -227,8 +178,8 @@ void row_norms(const std::vector<Type>& x,
                std::vector<Type>& out) {
     
     std::size_t num_elems = x.size();
-    std::size_t num_rows = out.size();
-    std::size_t num_cols = num_elems / num_rows;
+    std::size_t nrows = out.size();
+    std::size_t ncols = num_elems / nrows;
     std::vector<Type> elem_prod(num_elems);
     
     // compute x * x
@@ -243,8 +194,8 @@ void row_norms(const std::vector<Type>& x,
 
     // compute the sum of every nth element
     std::size_t count = 0;
-    for (size_t i = 0; i < num_elems; i += num_cols) {
-        size_t end = std::min(i + num_cols, num_elems);
+    for (size_t i = 0; i < num_elems; i += ncols) {
+        size_t end = std::min(i + ncols, num_elems);
         if (count == 0) {
             out[count] = prefix_sum[end - 1];
         } else {
@@ -260,6 +211,37 @@ void row_norms(const std::vector<Type>& x,
                     });
     }
 };
+
+
+/** 
+ * @brief Computes the col-wise norms of a vector.
+*/
+template<typename Type>
+void col_norms(const std::vector<Type>& x, 
+               bool squared,
+               std::vector<Type>& out) {
+    
+    std::size_t num_elems = x.size();
+    std::size_t ncols = out.size();
+    std::size_t nrows = num_elems / ncols;
+
+    // std::vector<double> norms(ncols, 0.0);
+    std::size_t j = 0;
+    while (j < ncols) {
+        for (std::size_t i = 0; i < nrows; ++i) {
+            out[j] += x[j + i * ncols] * x[j + i * ncols]; 
+        }
+        ++j;
+    }
+
+    if (!squared) {
+        std::transform(out.begin(), out.end(), out.begin(),
+                    [](const Type& value) {
+                        return std::sqrt(value);
+                    });
+    }
+};
+
 
 } // namespace internal
 } // namespace sgdlib
