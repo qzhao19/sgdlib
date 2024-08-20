@@ -75,6 +75,15 @@ public:
         return x[index];
     }
 
+    /** 
+     * Randomlt generate an index from the range [low, high).
+    */
+    std::size_t random_index(std::size_t low, 
+                             std::size_t high) {
+        std::uniform_int_distribution<std::size_t> dist(low, high - 1);
+        return dist(engine_); 
+    }
+
 }; 
 
 } // namespace internal
