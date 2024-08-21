@@ -35,62 +35,72 @@ public:
         std::vector<FeatureType> w0 = w0_;
         FeatureType b0 = b0_;
 
-        // initialize loss, loss_history, gradient, 
-        std::vector<FeatureType> grad(num_features);
-        FeatureType loss, dloss;
-        FeatureType y_hat;
+        // initialize loss, loss_history, weight_update, 
+        // std::vector<FeatureType> weight_update(num_features);
+        std::vector<FeatureType> xi_w(num_samples, 0.0);
+        FeatureType weight_update, grad, dloss;
+        // FeatureType y_hat;
 
         bool is_converged = false;
-        FeatureType wscale = 1.0;
+        FeatureType prev_weight;
 
         // initialize a lookup table for training X, y
         std::vector<std::size_t> X_feature_index(num_samples);
         std::iota(X_feature_index.begin(), X_feature_index.end(), 0);
 
         std::size_t iter = 0;
-        std::size_t f_index = 0;
-
-        FeatureType eta = 0.0;
+        // FeatureType eta = 0.0;
         std::size_t feature_index = 0;
 
+        // compute column-wise norm2
+        std::vector<FeatureType> X_col_norm(num_features);
+        sgdlib::internal::col_norms<FeatureType>(X, true, X_col_norm);
+
+
         for (iter = 0; iter < max_iters_; ++iter) {
-            // grad = loss_fn_->gradient(X_new, y_new, w0);
+            // choose a feature index randomly
+            feature_index = random_state_.random_index(0, num_features);
 
-            for(std::size_t i = 0; i < num_samples; ++i) {
-                y_hat = std::inner_product(&X[i * num_features], 
-                                           &X[(i + 1) * num_features], 
-                                           w0.begin(), 0.0);                    
-                y_hat = y_hat * wscale + b0;
-                dloss = loss_fn_->derivate(y_hat, y[i]);
-
-                for(int j = 0; j < num_features; ++j) {
-                    grad[j] += X[i * num_features + j] * dloss;
-                }
-            }
-            for(std::size_t j = 0; j < num_features; ++j) {
-                grad[j] /= num_samples;
+            // if norms of the columns of X is null
+            if (X_col_norm[feature_index] == 0.0) {
+                continue;
             }
 
-            
-            for (std::size_t j = 0; j < num_features; ++j) {
-                feature_index = = random_state_.uniform_int(0, num_features);
+            // record the previous weight
+            prev_weight = w0[feature_index];
 
-                if ((w0[feature_index] - grad[feature_index] / l1_ratio_) > (alpha_ / l1_ratio_)) {
-                    eta = (-grad[feature_index] / l1_ratio_) - (alpha_ / l1_ratio_);
-                }
-                else if ((w0(feature_index, 0) - grad[feature_index] / l1_ratio_) < (-alpha_ / l1_ratio_)) {
-                    eta = (-grad[feature_index] / l1_ratio_) + (alpha_ / l1_ratio_);
-                }
-                else {
-                    eta = -w0[feature_index];
-                }
-
+            dloss = 0.0;
+            for (std::size_t i = 0; i < num_samples; ++i) {
+                dloss += loss_fn_->derivate(xi_w[i], y[i]) * X[i * num_features + feature_index];
             }
+
+            // compute gradient for target feature X[:, feature_index]
+            grad = dloss / static_cast<FeatureType>(num_samples);
+
+            // 
+            if ((w0[feature_index] - grad / beta_) > (alpha_ / beta_)) {
+                weight_update = -grad / beta_ - alpha_ / beta_;
+            }
+            else if ((w0[feature_index] - grad / beta_) < (-alpha_ / beta_)) {
+                weight_update = -grad / beta_ + alpha_ / beta_;
+            }
+            else {
+                weight_update = -w0[feature_index];
+            }
+
 
             // update weight vector w
-            w0[feature_index] += eta;
+            w0[feature_index] += weight_update;
 
-            std::fill_n(grad.begin(), num_features, 0); 
+            // update inner product xi_w
+            for (std::size_t i = 0; i < num_samples; ++i) {
+                // dloss += loss_fn_->derivate(xi_w[i], y[i]) * X[i * feature_index];
+                xi_w[i] = xi_w[i] + weight_update * X[i * num_features + feature_index];
+            }
+
+
+
+            // std::fill_n(weight_update.begin(), num_features, 0); 
         }
 
     }
