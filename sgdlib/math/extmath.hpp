@@ -98,10 +98,28 @@ inline bool isinf(const Type& x) {
  *       to reduce the overhead of function calls.
  */
 template<typename Type>
-inline double sqnorm2(const std::vector<Type>& x) {
+inline Type sqnorm2(const std::vector<Type>& x) {
     return std::sqrt(
         std::inner_product(x.begin(), x.end(), x.begin(), 0.0)
     );
+};
+
+/** 
+ * @brief calculate the L1 norm (Manhattan distance) of a vector.
+ * 
+ * @tparam Type The type of elements in the vector.
+ * 
+ * @param x a vector of type T.
+ * @return The L2 norm of the vector as a T.
+ * 
+*/
+template<typename Type>
+inline Type norm1(const std::vector<Type>& x) {
+    Type norm = 0;
+    for (const Type& value : x) {
+        norm += std::abs(value);
+    }
+    return norm;
 };
 
 /** 
