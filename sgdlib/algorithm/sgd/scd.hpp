@@ -38,7 +38,7 @@ public:
         // initialize loss, loss_history, weight_update, 
         // std::vector<FeatureType> weight_update(num_features);
         std::vector<FeatureType> xi_w(num_samples, 0.0);
-        FeatureType weight_update, grad, dloss;
+        FeatureType weight_update, grad, loss, dloss;
         // FeatureType y_hat;
 
         bool is_converged = false;
@@ -49,14 +49,13 @@ public:
         std::iota(X_feature_index.begin(), X_feature_index.end(), 0);
 
         std::size_t iter = 0;
-        // FeatureType eta = 0.0;
         std::size_t feature_index = 0;
 
         // compute column-wise norm2
         std::vector<FeatureType> X_col_norm(num_features);
         sgdlib::internal::col_norms<FeatureType>(X, true, X_col_norm);
 
-
+        FeatureType wmax = 0.0;
         for (iter = 0; iter < max_iters_; ++iter) {
             // choose a feature index randomly
             feature_index = random_state_.random_index(0, num_features);
@@ -77,17 +76,16 @@ public:
             // compute gradient for target feature X[:, feature_index]
             grad = dloss / static_cast<FeatureType>(num_samples);
 
-            // 
-            if ((w0[feature_index] - grad / beta_) > (alpha_ / beta_)) {
-                weight_update = -grad / beta_ - alpha_ / beta_;
+            // soft-thresholding function
+            if ((w0[feature_index] - grad / rho_) > (alpha_ / rho_)) {
+                weight_update = -grad / rho_ - alpha_ / rho_;
             }
-            else if ((w0[feature_index] - grad / beta_) < (-alpha_ / beta_)) {
-                weight_update = -grad / beta_ + alpha_ / beta_;
+            else if ((w0[feature_index] - grad / rho_) < (-alpha_ / rho_)) {
+                weight_update = -grad / rho_ + alpha_ / rho_;
             }
             else {
                 weight_update = -w0[feature_index];
             }
-
 
             // update weight vector w
             w0[feature_index] += weight_update;
@@ -98,9 +96,29 @@ public:
                 xi_w[i] = xi_w[i] + weight_update * X[i * num_features + feature_index];
             }
 
+            // print the summary
+            if (verbose_) {
+                for (std::size_t i = 0; i < num_samples; ++i) {
+                    loss += loss_fn_->evaluate(xi_w[i], y[i])
+                }
+                std::cout << "Epoch = " << (iter + 1) << ", wnorm1 = " 
+                          << sgdlib::internal::norm1<FeatureType>(w0) << ", avg loss = " 
+                          << loss / static_cast<FeatureType>(num_samples) << std::endl;
+            }
 
+            // convergence check
+            wmax = std::fmax(wmax, std::abs(w0[feature_index] - prev_weight));
+            if (wmax < tol_) {
+                is_converged = false;
+                break;
+            }
+        }
 
-            // std::fill_n(weight_update.begin(), num_features, 0); 
+        if (!is_converged) {
+            std::ostringstream err_msg;
+            err_msg << "Not converge, current number of epoch = " << (iter + 1)
+                    << ", try apply different parameters." << std::endl;
+            throw std::runtime_error(err_msg.str());
         }
 
     }
