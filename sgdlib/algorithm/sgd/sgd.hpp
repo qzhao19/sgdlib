@@ -9,43 +9,6 @@ namespace sgdlib {
  * @file sgd.hpp
  * 
  * @brief Stochastic Gradient Descent (SGD) optimizer.
- * 
- * @param w0 FeatureType vector. 
- *      The initial weight vector of model.
- * @param b0 FeatureType scalar. 
- *      The initial bias scalar of model.
- * @param loss String. 
- *      The type of loss function to be used for optimization, e.g., "log_loss".
- * @param lr_policy String
- *      The learning rate schedule policy, which can be "exponential" or "invscaling".
- * @param alpha Double
- *      The regularization strength, which penalizes large parameter values to prevent overfitting.
- *      The higher the alpha, the stronger the regularization.
- * @param eta0 Double. 
- *      The initial value of the learning rate.
- * @param tol Double 
- *      The convergence tolerance, which is a threshold below which the change in the loss function
- *      indicates that the optimizer has likely converged.
- * @param gamma Double 
- *      A hyperparameter that controls the decay of learning rate.
- * @param max_iters Integer. 
- *      The maximum number of iterations (epochs) that the optimizer will run before stopping.
- * @param batch_size Integer. 
- *      The number of samples to be processed in each iteration of the optimization loop.
- *      Smaller batch sizes can provide a regularizing effect, while larger batch sizes may 
- *      offer computational efficiency.
- * @param num_iters_no_change Integer. 
- *      The number of iterations after which the optimizer will stop if there is no
- *      improvement in the loss function.
- * @param random_seed Integer 
- *      The seed for the random number generator, which ensures reproducibility of the results
- *      when shuffling the data or selecting batches.
- * @param shuffle Boolean. 
- *      Whether to randomly shuffle the data before starting each iteration. This can help prevent
- *      the optimizer from converging to a local minimum and is generally recommended.
- * @param verbose Boolean 
- *      Whether to output detailed information during the optimization process, such as the progress,
- *      loss values, and parameter updates.
  *
 */
 class SGD: public BaseOptimizer {
