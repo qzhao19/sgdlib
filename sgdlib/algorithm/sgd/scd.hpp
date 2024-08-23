@@ -5,6 +5,12 @@
 
 namespace sgdlib {
 
+/**
+ * @file scd.hpp
+ * 
+ * @brief Stochastic Coordinate Descent (SAGD) optimizer.
+ * 
+*/
 class SCD: public BaseOptimizer {
 public:
     SCD(const std::vector<FeatureType>& w0,
@@ -57,34 +63,39 @@ public:
 
         FeatureType wmax = 0.0;
         for (iter = 0; iter < max_iters_; ++iter) {
-            // choose a feature index randomly
-            feature_index = random_state_.random_index(0, num_features);
+            // cycle through all the features
+            for (std::size_t j = 0; j < num_features; ++j) {
 
-            // if norms of the columns of X is null
-            if (X_col_norm[feature_index] == 0.0) {
-                continue;
-            }
+                // choose a feature index randomly
+                feature_index = random_state_.random_index(0, num_features);
 
-            // record the previous weight
-            prev_weight = w0[feature_index];
+                // if norms of the columns of X is null
+                if (X_col_norm[feature_index] == 0.0) {
+                    continue;
+                }
 
-            dloss = 0.0;
-            for (std::size_t i = 0; i < num_samples; ++i) {
-                dloss += loss_fn_->derivate(xi_w[i], y[i]) * X[i * num_features + feature_index];
-            }
+                // record the previous weight
+                prev_weight = w0[feature_index];
 
-            // compute gradient for target feature X[:, feature_index]
-            grad = dloss / static_cast<FeatureType>(num_samples);
+                dloss = 0.0;
+                for (std::size_t i = 0; i < num_samples; ++i) {
+                    dloss += loss_fn_->derivate(xi_w[i], y[i]) * X[i * num_features + feature_index];
+                }
 
-            // soft-thresholding function
-            if ((w0[feature_index] - grad / rho_) > (alpha_ / rho_)) {
-                weight_update = -grad / rho_ - alpha_ / rho_;
-            }
-            else if ((w0[feature_index] - grad / rho_) < (-alpha_ / rho_)) {
-                weight_update = -grad / rho_ + alpha_ / rho_;
-            }
-            else {
-                weight_update = -w0[feature_index];
+                // compute gradient for target feature X[:, feature_index]
+                grad = dloss / static_cast<FeatureType>(num_samples);
+
+                // soft-thresholding function
+                if ((w0[feature_index] - grad / rho_) > (alpha_ / rho_)) {
+                    weight_update = -grad / rho_ - alpha_ / rho_;
+                }
+                else if ((w0[feature_index] - grad / rho_) < (-alpha_ / rho_)) {
+                    weight_update = -grad / rho_ + alpha_ / rho_;
+                }
+                else {
+                    weight_update = -w0[feature_index];
+                }
+
             }
 
             // update weight vector w
