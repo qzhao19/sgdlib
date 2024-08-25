@@ -252,7 +252,7 @@ public:
             else {
                 if (verbose_) {
                     std::cout << "Epoch = " << iter + 1
-                              << ", xnorm = " << sgdlib::internal::sqnorm2<FeatureType>(w0) 
+                              << ", xnorm = " << sgdlib::internal::sqnorm2<FeatureType>(w0, true) 
                               << ", loss = " << sum_loss / static_cast<FeatureType>(num_samples) 
                               << ", change = " << max_change / max_weight << std::endl;
                 }
