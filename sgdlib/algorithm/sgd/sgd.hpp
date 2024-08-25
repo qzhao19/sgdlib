@@ -182,7 +182,7 @@ public:
             if (verbose_) {
                 if ((iter % 1) == 0) {
                     std::cout << "Epoch = " << (iter + 1) << ", xnorm2 = " 
-                              << sgdlib::internal::sqnorm2<FeatureType>(w0) << ", avg loss = " 
+                              << sgdlib::internal::sqnorm2<FeatureType>(w0, true) << ", avg loss = " 
                               << sum_loss / static_cast<FeatureType>(step_per_iter) << std::endl;
                 }
             }
