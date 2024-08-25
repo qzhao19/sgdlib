@@ -98,10 +98,16 @@ inline bool isinf(const Type& x) {
  *       to reduce the overhead of function calls.
  */
 template<typename Type>
-inline Type sqnorm2(const std::vector<Type>& x) {
-    return std::sqrt(
-        std::inner_product(x.begin(), x.end(), x.begin(), 0.0)
-    );
+inline Type sqnorm2(const std::vector<Type>& x, bool squared) {
+    Type norm2 = std::inner_product(x.begin(), 
+                                    x.end(), 
+                                    x.begin(), 
+                                    static_cast<Type>(0.0));
+    if (squared) {
+        norm2 = std::sqrt(norm2);
+    }
+    
+    return norm2;
 };
 
 /** 
