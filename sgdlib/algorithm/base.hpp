@@ -22,7 +22,8 @@ protected:
     std::string search_policy_;
 
     double alpha_;
-    double l1_ratio_;
+    double beta_;
+    double rho_;
     double eta0_;
     double tol_;
     double gamma_;
@@ -146,7 +147,8 @@ public:
                   std::size_t max_iters, 
                   std::size_t random_seed,
                   bool shuffle = true, 
-                  bool verbose = true): w0_(w0), 
+                  bool verbose = true): w0_(w0), b0_(b0),
+            loss_(loss),
             alpha_(alpha),
             tol_(tol),
             max_iters_(max_iters), 
@@ -155,6 +157,13 @@ public:
             verbose_(verbose) {
         init_random_state();
         init_loss_params();
+
+        if (loss_ == "LogLoss") {
+            rho_ = 0.25;
+        }
+        else {
+            rho_ = 1.0;
+        }
     };
     
     ~BaseOptimizer() {};
