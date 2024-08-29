@@ -8,20 +8,15 @@
 
 namespace sgdlib {
 
-class SGDTest : public ::testing::Test {
+class SCDTest : public ::testing::Test {
 public:
     virtual void SetUp() {
         std::vector<FeatureType> w0 = {1.0, 1.0, 1.0, 1.0}; 
         FeatureType b0 = 1.0;
         std::string loss = "LogLoss";
-        std::string lr_policy = "Invscaling";
-        double alpha = 0.0;
-        double eta0 = 0.01;
+        double alpha = 0.5;
         double tol = 0.0001;
-        double gamma = 0.5;
         std::size_t max_iters = 100; 
-        std::size_t batch_size = 1;
-        std::size_t num_iters_no_change = 5;
         std::size_t random_seed = -1;
         bool shuffle = true;
         bool verbose = true;
@@ -41,7 +36,7 @@ public:
 };
 
 
-TEST_F(SGDTest, SGDOptimizerTest) {
+TEST_F(SCDTest, SCDOptimizerTest) {
     std::vector<double> X_train = {
         5.1, 3.5, 1.4, 0.2,4.9, 3. , 1.4, 0.2,4.7, 3.2, 1.3, 0.2,4.6, 3.1, 1.5, 0.2,
         5. , 3.6, 1.4, 0.2,5.4, 3.9, 1.7, 0.4,4.6, 3.4, 1.4, 0.3,5. , 3.4, 1.5, 0.2,
@@ -96,14 +91,14 @@ TEST_F(SGDTest, SGDOptimizerTest) {
     double intercept;
 
     coef = optimizer->get_coef();
-    intercept = optimizer->get_intercept();
+    // intercept = optimizer->get_intercept();
 
     std::cout << "coefficients = ";
     for (auto c : coef) {
         std::cout << c << " ";
     }
-    std::cout << std::endl;
-    std::cout << "intercept = " << intercept <<std::endl;
+    // std::cout << std::endl;
+    // std::cout << "intercept = " << intercept <<std::endl;
 };
     
 }
