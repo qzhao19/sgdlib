@@ -68,40 +68,7 @@ public:
         for (iter = 0; iter < max_iters_; ++iter) {
             // grad = loss_fn_->gradient(X_new, y_new, w0);
 
-            for(std::size_t i = 0; i < num_samples; ++i) {
-                y_hat = std::inner_product(&X[i * num_features], 
-                                           &X[(i + 1) * num_features], 
-                                           w0.begin(), 0.0);                    
-                y_hat = y_hat * wscale + b0;
-                dloss = loss_fn_->derivate(y_hat, y[i]);
-
-                for(int j = 0; j < num_features; ++j) {
-                    grad[j] += X[i * num_features + j] * dloss;
-                }
-            }
-            for(std::size_t j = 0; j < num_features; ++j) {
-                grad[j] /= num_samples;
-            }
-
-
-            for (std::size_t j = 0; j < num_features; ++j) {
-                feature_index = random_state_.uniform_int(0, num_features);
-
-                if ((w0[feature_index] - grad[feature_index] / l1_ratio_) > (alpha_ / l1_ratio_)) {
-                    eta = (-grad[feature_index] / l1_ratio_) - (alpha_ / l1_ratio_);
-                }
-                else if ((w0(feature_index, 0) - grad[feature_index] / l1_ratio_) < (-alpha_ / l1_ratio_)) {
-                    eta = (-grad[feature_index] / l1_ratio_) + (alpha_ / l1_ratio_);
-                }
-                else {
-                    eta = -w0[feature_index];
-                }
-
-            }
-
-            // update weight vector w
-            w0[feature_index] += eta;
-
+            
         }
 
 
