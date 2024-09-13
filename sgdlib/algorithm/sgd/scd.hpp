@@ -68,6 +68,14 @@ public:
         for (iter = 0; iter < max_iters_; ++iter) {
             // grad = loss_fn_->gradient(X_new, y_new, w0);
 
+            max_weight = 0.0;
+            max_weight_update = 0.0;
+
+            std::size_t best_feature_index;
+            FeatureType best_weight_update;
+            FeatureType best_descent = -1.0;
+            FeatureType pred_descent;
+
             for (std::size_t j = 0; j < num_features; ++j) {
 
                 // choose a feature index randomly
@@ -100,7 +108,19 @@ public:
                     weight_update = -w0[feature_index];
                 }
 
+                pred_descent = -weight_update*grad - rho_ / 2.0 * weight_update * weight_update - \
+                    alpha_ * (std::abs(w0[feature_index] + weight_update) - std::abs(w0[feature_index]));
 
+                if (pred_descent > best_descent) {
+                    best_feature_index = feature_index;
+                    best_weight_update = weight_update;
+                    best_descent = pred_descent;
+                }
+
+                // max abs-coeff update
+                max_weight = std::fmax(max_weight, w0[feature_index]); 
+                max_weight_update = std::fmax(max_weight_update, std::abs(w0[feature_index] - prev_weight)); 
+            
 
             }
             
