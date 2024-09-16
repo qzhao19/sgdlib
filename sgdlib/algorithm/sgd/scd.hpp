@@ -123,6 +123,27 @@ public:
             
 
             }
+
+            feature_index = best_feature_index;
+            weight_update = best_weight_update;
+
+            // update weight vector w
+            w0[feature_index] += weight_update;
+
+            // update inner product xi_w
+            for (std::size_t i = 0; i < num_samples; ++i) {
+                xi_w[i] = xi_w[i] + weight_update * X[i * num_features + feature_index];
+            }
+
+            // print info
+            if (verbose_) {
+                for (std::size_t i = 0; i < num_samples; ++i) {
+                    loss += loss_fn_->evaluate(xi_w[i], y[i]);
+                }
+                std::cout << "Epoch = " << (iter + 1) << ", wnorm1 = " 
+                          << sgdlib::internal::norm1<FeatureType>(w0) << ", avg loss = " 
+                          << loss / static_cast<FeatureType>(num_samples) << std::endl;
+            }
             
         }
 
