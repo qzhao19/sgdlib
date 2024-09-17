@@ -144,7 +144,22 @@ public:
                           << sgdlib::internal::norm1<FeatureType>(w0) << ", avg loss = " 
                           << loss / static_cast<FeatureType>(num_samples) << std::endl;
             }
+
+            // convergence check maximum coordinate update
+            // max_j|wj_new - wj_old| < tol * max_abs_coef_update
+            // https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html
+            if ((max_weight_update / max_weight > tol_) || (iter == max_iters_ - 1)) {
+                is_converged = false;
+                break;
+            }
             
+        }
+
+        if (!is_converged) {
+            std::ostringstream err_msg;
+            err_msg << "Not converge, current number of epoch = " << (iter + 1)
+                    << ", try apply different parameters." << std::endl;
+            throw std::runtime_error(err_msg.str());
         }
 
 
