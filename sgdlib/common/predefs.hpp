@@ -41,7 +41,7 @@ constexpr double inf = std::numeric_limits<double>::infinity();
 /**
  * @brief Demangles a C++ mangled name to its human-readable form.
  *
- * This function uses the C++ API's demangling functionality to convert a mangled C++ name
+ * This function uses the C++ ABI's demangling functionality to convert a mangled C++ name
  * into its human-readable form. If the demangling is successful, the demangled name is
  * returned as a std::string. If the demangling fails, the original mangled name is returned.
  *
