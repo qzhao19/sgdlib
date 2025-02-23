@@ -237,9 +237,19 @@ void row_norms(const std::vector<Type>& x,
 };
 
 
-/** 
- * @brief Computes the col-wise norms of a vector.
-*/
+/**
+ * @brief Computes the column-wise norms of a vector.
+ *
+ * This function calculates the norms of columns in a vector, treating it as a 2D matrix.
+ * The norms can be either squared or not, based on the 'squared' parameter.
+ *
+ * @tparam Type The data type of the vector elements.
+ * @param[in] x The input vector to compute norms from, treated as a 2D matrix.
+ * @param[in] squared If true, computes squared norms; if false, computes regular norms.
+ * @param[out] out The output vector to store the computed norms. Its size determines the number of columns.
+ *
+ * @note The function assumes that the size of 'x' is divisible by the size of 'out'.
+ */
 template<typename Type>
 void col_norms(const std::vector<Type>& x, 
                bool squared,
@@ -249,12 +259,14 @@ void col_norms(const std::vector<Type>& x,
     std::size_t ncols = out.size();
     std::size_t nrows = num_elems / ncols;
 
-    // std::vector<double> norms(ncols, 0.0);
     std::size_t j = 0;
     while (j < ncols) {
+        Type sum_sq = 0.0;
         for (std::size_t i = 0; i < nrows; ++i) {
-            out[j] += x[j + i * ncols] * x[j + i * ncols]; 
+            Type val = x[j + i * ncols];
+            sum_sq += val * val; 
         }
+        out[j] = sum_sq;
         ++j;
     }
 
