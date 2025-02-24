@@ -57,7 +57,6 @@ public:
         std::vector<FeatureType> X_col_norm(num_features);
         sgdlib::internal::col_norms<FeatureType>(X, false, X_col_norm);
 
-
         FeatureType max_weight, max_weight_update;
         for (iter = 0; iter < max_iters_; ++iter) {
             
@@ -72,8 +71,7 @@ public:
             for (feature_index = 0; feature_index < num_features; ++feature_index) {
                 // choose a feature index randomly
                 // feature_index = random_state_.random_index(0, num_features);
-                // feature_index = j;
-                
+
                 // if norms of the columns of X is null
                 if (X_col_norm[feature_index] == 0.0) {
                     continue;
@@ -81,15 +79,12 @@ public:
 
                 // record the previous weight
                 prev_weight = w0[feature_index];
+                
+                // compute gradient for target feature X[:, feature_index]
                 dloss = 0.0;
                 for (std::size_t i = 0; i < num_samples; ++i) {
-                    // std::cout << "xi_w[i] = " << xi_w[i] << std::endl;
-                    // std::cout << "loss_fn_->derivate(xi_w[i], y[i]) = " << loss_fn_->derivate(0.0, 1) << std::endl;
                     dloss += loss_fn_->derivate(xi_w[i], y[i]) * X[i * num_features + feature_index];
                 }
-
-                // std::cout << "dloss = " << dloss << std::endl;
-                // compute gradient for target feature X[:, feature_index]
                 grad = dloss / static_cast<FeatureType>(num_samples);
                 
                 // soft-thresholding function
@@ -102,8 +97,9 @@ public:
                 else {
                     weight_update = -w0[feature_index];
                 }
+
                 pred_descent = -weight_update*grad - rho_ / 2.0 * weight_update * weight_update - \
-                    alpha_ * (std::abs(w0[feature_index] + weight_update) + alpha_ * std::abs(w0[feature_index]));
+                    alpha_ * std::abs(w0[feature_index] + weight_update) + alpha_ * std::abs(w0[feature_index]);
                 
                 if (pred_descent > best_descent) {
                     best_feature_index = feature_index;
@@ -121,7 +117,7 @@ public:
             weight_update = best_weight_update;
 
             // update weight vector w
-            w0[feature_index] += weight_update;
+            w0[feature_index] = w0[feature_index] + weight_update;
 
             // update inner product xi_w
             for (std::size_t i = 0; i < num_samples; ++i) {
@@ -142,7 +138,8 @@ public:
             // convergence check maximum coordinate update
             // max_j|wj_new - wj_old| < tol * max_abs_coef_update
             // https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html
-            if ((max_weight_update / max_weight <= tol_)) {
+            std::cout << "max_weight_update = " << max_weight_update << std::endl;
+            if ((max_weight_update / max_weight > tol_)) {
                 is_converged = true;
                 break;
             }
