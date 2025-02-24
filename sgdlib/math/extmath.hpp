@@ -116,7 +116,7 @@ inline Type sqnorm2(const std::vector<Type>& x, bool squared) {
  * @tparam Type The type of elements in the vector.
  * 
  * @param x a vector of type T.
- * @return The L2 norm of the vector as a T.
+ * @return The L1 norm of the vector as a T.
  * 
 */
 template<typename Type>
