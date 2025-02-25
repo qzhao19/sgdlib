@@ -82,4 +82,29 @@ const std::unordered_map<std::string, std::string> LEARNING_RATE = {{"invscaling
                                                                     {"exponential", "Exponential"}};
 const std::unordered_set<std::string> PENALTY_TYPES = {"none", "l1", "l2"};
 
+/**
+ * @brief This function is used to throw a runtime error with a formatted message.
+ *
+ * The function constructs an error message by concatenating the provided format string
+ * with the string representations of the provided arguments. The constructed error message
+ * is then thrown as a std::runtime_error exception.
+ *
+ * @param format A C-style format string that specifies the format of the error message.
+ * @param args   Variable number of arguments that will be formatted into the error message.
+ *
+ * @throws std::runtime_error The constructed error message.
+ *
+ * @note This function uses variadic templates and std::ostringstream to achieve the
+ *       formatted error message construction.
+ */
+template <typename... Args>
+void throw_runtime_error(const std::string& format, Args... args) {
+    std::ostringstream err_msg;
+    err_msg << "Error: ";
+    (err_msg << ... << args) << format << std::endl;
+    throw std::runtime_error(err_msg.str());
+}
+#define THROW_RUNTIME_ERROR(...) throw_runtime_error(__VA_ARGS__)
+
+
 #endif // COMMON_PREDEFS_HPP_
