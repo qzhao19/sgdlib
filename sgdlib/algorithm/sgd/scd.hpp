@@ -42,7 +42,6 @@ public:
         FeatureType b0 = b0_;
 
         // initialize loss, loss_history, weight_update, 
-        // std::vector<FeatureType> weight_update(num_features);
         std::vector<FeatureType> xi_w(num_samples, 0.0);
         FeatureType weight_update, grad, loss, dloss;
         
@@ -70,16 +69,13 @@ public:
             // cycle through all the features
             for (feature_index = 0; feature_index < num_features; ++feature_index) {
                 // choose a feature index randomly
-                // feature_index = random_state_.random_index(0, num_features);
-
+                feature_index = random_state_.random_index(0, num_features);
+                
                 // if norms of the columns of X is null
                 if (X_col_norm[feature_index] == 0.0) {
                     continue;
                 }
 
-                // record the previous weight
-                prev_weight = w0[feature_index];
-                
                 // compute gradient for target feature X[:, feature_index]
                 dloss = 0.0;
                 for (std::size_t i = 0; i < num_samples; ++i) {
@@ -97,7 +93,7 @@ public:
                 else {
                     weight_update = -w0[feature_index];
                 }
-
+                
                 pred_descent = -weight_update*grad - rho_ / 2.0 * weight_update * weight_update - \
                     alpha_ * std::abs(w0[feature_index] + weight_update) + alpha_ * std::abs(w0[feature_index]);
                 
@@ -106,22 +102,25 @@ public:
                     best_weight_update = weight_update;
                     best_descent = pred_descent;
                 }
-                
-                // max abs-coeff update
-                max_weight = std::fmax(max_weight, w0[feature_index]); 
-                max_weight_update = std::fmax(max_weight_update, std::abs(w0[feature_index] - prev_weight)); 
             }
 
             // update feature index and weight update
             feature_index = best_feature_index;
             weight_update = best_weight_update;
 
+            // record the previous weight
+            prev_weight = w0[feature_index];
+
             // update weight vector w
             w0[feature_index] = w0[feature_index] + weight_update;
 
+            // max abs-coeff update
+            max_weight = std::fmax(max_weight, w0[feature_index]); 
+            max_weight_update = std::fmax(max_weight_update, std::abs(w0[feature_index] - prev_weight)); 
+
             // update inner product xi_w
             for (std::size_t i = 0; i < num_samples; ++i) {
-                xi_w[i] = xi_w[i] + weight_update * X[i * num_features + feature_index];
+                xi_w[i] += weight_update * X[i * num_features + feature_index];
             }
 
             // print info
@@ -129,17 +128,16 @@ public:
                 for (std::size_t i = 0; i < num_samples; ++i) {
                     loss += loss_fn_->evaluate(xi_w[i], y[i]);
                 }
-                std::cout << "Epoch = " << (iter + 1) << ", wnorm1 = " 
-                          << sgdlib::internal::norm1<FeatureType>(w0) << ", avg loss = " 
-                          << loss / static_cast<FeatureType>(num_samples) << std::endl;
+                std::cout << "Epoch = " << (iter + 1) 
+                          << ", wnorm1 = " << sgdlib::internal::norm1<FeatureType>(w0) 
+                          << ", loss = " << loss / num_samples << std::endl;
                 loss = 0.0;
             }
 
             // convergence check maximum coordinate update
             // max_j|wj_new - wj_old| < tol * max_abs_coef_update
             // https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html
-            std::cout << "max_weight_update = " << max_weight_update << std::endl;
-            if ((max_weight_update / max_weight > tol_)) {
+            if ((max_weight_update / max_weight < tol_)) {
                 is_converged = true;
                 break;
             }
@@ -154,7 +152,6 @@ public:
                     << ", try apply different parameters." << std::endl;
             throw std::runtime_error(err_msg.str());
         }
-
         w_opt_ = w0;
 
     }
