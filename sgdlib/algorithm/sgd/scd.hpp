@@ -147,10 +147,8 @@ public:
             }
         }
         if (!is_converged) {
-            std::ostringstream err_msg;
-            err_msg << "Not converge, current number of epoch = " << (iter + 1)
-                    << ", try apply different parameters." << std::endl;
-            throw std::runtime_error(err_msg.str());
+            THROW_RUNTIME_ERROR("Not converge, current number of epoch =", (iter + 1), 
+                                ", try apply different parameters.");
         }
         w_opt_ = w0;
 
