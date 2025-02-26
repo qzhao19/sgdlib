@@ -3,6 +3,20 @@
 
 #include "common/prereqs.hpp"
 
+struct StepSizeSearchParam {
+    double alpha;
+    double eta0;
+    double dec_factor_;
+    double inc_factor_;
+    double ftol_;
+    double wolfe_;
+    double max_step_;
+    double min_step_;
+    std::size_t max_iters;
+    std::size_t max_search_;
+    std::string condition_;
+};
+
 using FeatureType = double;
 using LabelType = long;
 using LossParamType = std::unordered_map<std::string, double>;
@@ -28,7 +42,6 @@ constexpr double inf = std::numeric_limits<double>::infinity();
     classname(const classname&) = delete;            \
     classname& operator=(const classname&) = delete
 #endif
-
 
 // declare anonymous variable
 #define CONCATENATE_IMPL(var1, var2)  var1##var2
@@ -83,25 +96,22 @@ const std::unordered_map<std::string, std::string> LEARNING_RATE = {{"invscaling
 const std::unordered_set<std::string> PENALTY_TYPES = {"none", "l1", "l2"};
 
 /**
- * @brief This function is used to throw a runtime error with a formatted message.
+ * @brief Throws a runtime error with a formatted error message.
  *
- * The function constructs an error message by concatenating the provided format string
- * with the string representations of the provided arguments. The constructed error message
- * is then thrown as a std::runtime_error exception.
+ * This function constructs an error message by concatenating all provided arguments
+ * and throws a std::runtime_error with the resulting message.
  *
- * @param format A C-style format string that specifies the format of the error message.
- * @param args   Variable number of arguments that will be formatted into the error message.
+ * @tparam Args Variadic template parameter for the types of arguments.
+ * @param args Variable number of arguments to be included in the error message.
+ *             These can be of any type that can be inserted into an output stream.
  *
- * @throws std::runtime_error The constructed error message.
- *
- * @note This function uses variadic templates and std::ostringstream to achieve the
- *       formatted error message construction.
+ * @throws std::runtime_error Always throws this exception with the formatted error message.
  */
 template <typename... Args>
-void throw_runtime_error(const std::string& format, Args... args) {
+void throw_runtime_error(Args... args) {
     std::ostringstream err_msg;
     err_msg << "Error: ";
-    (err_msg << ... << args) << format << std::endl;
+    (err_msg << ... << args) << std::endl;
     throw std::runtime_error(err_msg.str());
 }
 #define THROW_RUNTIME_ERROR(...) throw_runtime_error(__VA_ARGS__)
