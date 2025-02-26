@@ -260,24 +260,18 @@ public:
         }
 
         if (is_infinity) {
-            std::ostringstream err_msg;
-            err_msg << "Floating-point under-/overflow occurred at epoch " << (iter + 1)
-                    << ", try to scale input data with standard or minmax." << std::endl;
-            throw std::runtime_error(err_msg.str());
+            THROW_RUNTIME_ERROR("Floating-point under-/overflow occurred at epoch ", (iter + 1),
+                                ", try to scale input data with standard or minmax.");
         }
 
         if (!is_converged) {
-            std::ostringstream err_msg;
-            err_msg << "Not converge, current number of epoch = " << (iter + 1)
-                    << ", try apply different parameters." << std::endl;
-            throw std::runtime_error(err_msg.str());
+            THROW_RUNTIME_ERROR("Not converge, current number of epoch = ,", (iter + 1),
+                                ", try apply different parameters.");
         }
 
         if (search_status == -1) {
-            std::ostringstream err_msg;
-            err_msg << "Line-search condition not satisfied at epoch " << (iter + 1)
-                    << ", try apply different step-search parameters." << std::endl;
-            throw std::runtime_error(err_msg.str());
+            THROW_RUNTIME_ERROR("Line-search condition not satisfied at epoch ", (iter + 1), 
+                                ", try apply different step-search parameters.");
         }
 
         w_opt_ = w0;
