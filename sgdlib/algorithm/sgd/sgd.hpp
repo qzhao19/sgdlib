@@ -189,18 +189,14 @@ public:
         }
 
         if (is_infinity) {
-            std::ostringstream err_msg;
-            err_msg << "Floating-point under-/overflow occurred at epoch " << (iter + 1)
-                    << ", try to scale input data with standard or minmax." << std::endl;
-            throw std::runtime_error(err_msg.str());
+            THROW_RUNTIME_ERROR("Floating-point under-/overflow occurred at epoch ", (iter + 1),
+                                ", try to scale input data with standard or minmax.");
         }
 
         if (!is_converged) {
-            std::ostringstream err_msg;
-            err_msg << "Not converge, current number of epoch = " << (iter + 1)
-                    << ", the batch size = " << batch_size_ 
-                    << ", try apply different parameters." << std::endl;
-            throw std::runtime_error(err_msg.str());
+            THROW_RUNTIME_ERROR("Not converge, current number of epoch =  ", (iter + 1),
+                                ", the batch size = ", batch_size_,
+                                ", try to apply different parameters.");
         }
 
         w_opt_ = w0;
