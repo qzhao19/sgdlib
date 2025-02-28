@@ -20,6 +20,7 @@ protected:
     std::string penalty_;
     std::string lr_policy_;
     std::string search_policy_;
+    std::string condition_;
 
     double alpha_;
     double beta_;
@@ -27,7 +28,17 @@ protected:
     double eta0_;
     double tol_;
     double gamma_;
-
+    
+    // step linesearch parameters
+    double dec_factor_;
+    double inc_factor_;
+    double ftol_;
+    double wolfe_;
+    double max_step_;
+    double min_step_;
+    double max_searches_;
+    
+    std::size_t past_;
     std::size_t max_iters_;
     std::size_t batch_size_;
     std::size_t num_iters_no_change_;
@@ -39,7 +50,7 @@ protected:
 
     LossParamType loss_params_;
     LRDecayParamType lr_decay_params_;
-    StepSizeSearchParamType stepsize_search_params_;
+    StepSizeSearchParamType* stepsize_search_params_;
 
     std::vector<FeatureType> w_opt_;
     FeatureType b_opt_;
@@ -75,7 +86,7 @@ protected:
         // initialize step-size search function
         stepsize_search_params_["alpha"] = alpha_;
         stepsize_search_params_["eta0"] = eta0_;
-        stepsize_search_params_["max_searches"] = 10.0;
+        stepsize_search_params_["max_searches"] = max_searches_;
         stepsize_search_params_["max_iters"] = 20.0;
     }
 
@@ -164,8 +175,30 @@ public:
         else {
             rho_ = 1.0;
         }
+        max_searches_ = 10.0;
     };
-    
+
+
+    BaseOptimizer(const std::vector<FeatureType>& w0, 
+                  std::string loss,
+                  std::string search_policy,
+                  double tol,
+                  std::size_t max_iters, 
+                  std::size_t mem_size,
+                  std::size_t past,
+                  bool shuffle = true, 
+                  bool verbose = true): w0_(w0), 
+            loss_(loss), 
+            search_policy_(search_policy),
+            tol_(tol),
+            max_iters_(max_iters),
+            past_(past),
+            shuffle_(shuffle),
+            verbose_(verbose) {
+        init_loss_params();
+    };
+
+
     ~BaseOptimizer() {};
 
     virtual void optimize(const std::vector<FeatureType>& X, 
