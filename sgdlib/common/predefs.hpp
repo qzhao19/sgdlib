@@ -4,16 +4,41 @@
 #include "common/prereqs.hpp"
 
 struct StepSizeSearchParam {
+    // regularization coefficients for L2 
     double alpha;
+
+    // initial learning rate
     double eta0;
+
+    // Controls the rate of step reduction, 
+    // decreasing the step size until the condition is met.
     double dec_factor_;
+
+    // increase coefficient, Control the increase rate of the step size, 
+    // used to enlarge the step size when the step size is too small, 
+    // to avoid the convergence problem caused by the step size is too small.
     double inc_factor_;
+
+    // parameter to control the accuracy of the line search
     double ftol_;
+
+    // coefficient for the Wolfe condition,which 
+    // is valid only when the backtracking line-search
     double wolfe_;
+
+    // maximum step of the line search routine
     double max_step_;
+
+    // minimum step of the line search routine
     double min_step_;
+
+    // maximum number of iterations
     std::size_t max_iters;
+
+    // maximum number of trials for the line search
     std::size_t max_search_;
+
+    // Armijo condition or wolfe condition
     std::string condition_;
 };
 
@@ -21,7 +46,14 @@ using FeatureType = double;
 using LabelType = long;
 using LossParamType = std::unordered_map<std::string, double>;
 using LRDecayParamType = std::unordered_map<std::string, double>;
-using StepSizeSearchParamType = std::unordered_map<std::string, double>;
+using StepSizeSearchParamType = StepSizeSearchParam;
+
+static const StepSizeSearchParamType DEFAULT_STEPSIZE_SEARCH_PARAM = {
+    0.0, 0.01, 0.5, 2.1, 
+    1e-4, 0.9, 1e+20, 1e-20, 
+    20, 10, "WOLFE"
+};
+
 
 constexpr double max_dloss = 1e+10;
 #define MAX_DLOSS max_dloss
