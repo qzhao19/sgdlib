@@ -12,34 +12,34 @@ struct StepSizeSearchParam {
 
     // Controls the rate of step reduction, 
     // decreasing the step size until the condition is met.
-    double dec_factor_;
+    double dec_factor;
 
     // increase coefficient, Control the increase rate of the step size, 
     // used to enlarge the step size when the step size is too small, 
     // to avoid the convergence problem caused by the step size is too small.
-    double inc_factor_;
+    double inc_factor;
 
     // parameter to control the accuracy of the line search
-    double ftol_;
+    double ftol;
 
     // coefficient for the Wolfe condition,which 
     // is valid only when the backtracking line-search
-    double wolfe_;
+    double wolfe;
 
     // maximum step of the line search routine
-    double max_step_;
+    double max_step;
 
     // minimum step of the line search routine
-    double min_step_;
+    double min_step;
 
     // maximum number of iterations
     std::size_t max_iters;
 
     // maximum number of trials for the line search
-    std::size_t max_search_;
+    std::size_t max_searches;
 
     // Armijo condition or wolfe condition
-    std::string condition_;
+    std::string condition;
 };
 
 using FeatureType = double;
@@ -48,7 +48,7 @@ using LossParamType = std::unordered_map<std::string, double>;
 using LRDecayParamType = std::unordered_map<std::string, double>;
 using StepSizeSearchParamType = StepSizeSearchParam;
 
-static const StepSizeSearchParamType DEFAULT_STEPSIZE_SEARCH_PARAM = {
+static StepSizeSearchParamType DEFAULT_STEPSIZE_SEARCH_PARAM = {
     0.0, 0.01, 0.5, 2.1, 
     1e-4, 0.9, 1e+20, 1e-20, 
     20, 10, "WOLFE"
