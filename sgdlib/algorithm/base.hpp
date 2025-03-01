@@ -82,16 +82,10 @@ protected:
         lr_decay_ = LRDecayRegistry()->Create(lr_policy_, lr_decay_params_);
     }
 
-    void init_stepsize_search_params() {
-        // initialize step-size search function
-        stepsize_search_params_["alpha"] = alpha_;
-        stepsize_search_params_["eta0"] = eta0_;
-        stepsize_search_params_["max_searches"] = max_searches_;
-        stepsize_search_params_["max_iters"] = 20.0;
-    }
-
 public:
     BaseOptimizer() {};
+
+    // constructor for SGD optimizer
     BaseOptimizer(const std::vector<FeatureType>& w0,
                   const FeatureType& b0,
                   std::string loss, 
@@ -123,6 +117,7 @@ public:
         init_lr_params();
     };
 
+    // constructor for SAG/SAGA optimizer
     BaseOptimizer(const std::vector<FeatureType>& w0,
                   const FeatureType& b0,
                   std::string loss, 
@@ -147,9 +142,16 @@ public:
             verbose_(verbose) {
         init_random_state();
         init_loss_params();
-        init_stepsize_search_params();
+        // init_stepsize_search_params();
+        
+        stepsize_search_params_ = &DEFAULT_STEPSIZE_SEARCH_PARAM;
+        stepsize_search_params_->alpha = alpha_;
+        stepsize_search_params_->eta0 = eta0_;
+        stepsize_search_params_->max_searches = max_searches_;
+        stepsize_search_params_->max_iters = 20;
     };
 
+    // constructor for SCD optimizer
     BaseOptimizer(const std::vector<FeatureType>& w0,
                   const FeatureType& b0, 
                   std::string loss,
@@ -175,7 +177,6 @@ public:
         else {
             rho_ = 1.0;
         }
-        max_searches_ = 10.0;
     };
 
 
