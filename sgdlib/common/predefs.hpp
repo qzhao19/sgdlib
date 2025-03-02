@@ -48,7 +48,7 @@ using LossParamType = std::unordered_map<std::string, double>;
 using LRDecayParamType = std::unordered_map<std::string, double>;
 using StepSizeSearchParamType = StepSizeSearchParam;
 
-static StepSizeSearchParamType DEFAULT_STEPSIZE_SEARCH_PARAM = {
+static StepSizeSearchParamType DEFAULT_STEPSIZE_SEARCH_PARAMS = {
     0.0, 0.01, 0.5, 2.1, 
     1e-4, 0.9, 1e+20, 1e-20, 
     20, 10, "WOLFE"
