@@ -1,5 +1,5 @@
-#ifndef CORE_STEPSIZE_SEARCH_CONSTANT_EARCH_HPP_
-#define CORE_STEPSIZE_SEARCH_CONSTANT_EARCH_HPP_
+#ifndef CORE_STEPSIZE_SEARCH_CONSTANT_SEARCH_HPP_
+#define CORE_STEPSIZE_SEARCH_CONSTANT_SEARCH_HPP_
 
 #include "base.hpp"
 
@@ -11,7 +11,7 @@ public:
     ConstantSearch(const std::vector<FeatureType>& X, 
                    const std::vector<LabelType>& y,
                    const std::shared_ptr<LossFuncType>& loss_fn,
-                   StepSizeSearchParamType stepsize_search_params): StepSizeSearch<LossFuncType>(
+                   StepSizeSearchParamType* stepsize_search_params): StepSizeSearch<LossFuncType>(
                         X, y, 
                         loss_fn, 
                         stepsize_search_params) {};
@@ -28,7 +28,7 @@ public:
 
         FeatureType max_sum = *std::max_element(X_row_norm.begin(), X_row_norm.end());
 
-        double alpha_scaled = this->stepsize_search_params_["alpha"] / num_samples;
+        double alpha_scaled = this->stepsize_search_params_->alpha / num_samples;
         double L = 0.25 * (max_sum + 1.0) + alpha_scaled;
 
         if (is_saga) {
@@ -45,4 +45,4 @@ public:
 
 } // namespace sgdlib
 
-#endif // CORE_STEPSIZE_SEARCH_CONSTANT_EARCH_HPP_
+#endif // CORE_STEPSIZE_SEARCH_CONSTANT_SEARCH_HPP_
