@@ -20,7 +20,6 @@ protected:
     std::string penalty_;
     std::string lr_policy_;
     std::string search_policy_;
-    std::string condition_;
 
     double alpha_;
     double beta_;
@@ -28,16 +27,7 @@ protected:
     double eta0_;
     double tol_;
     double gamma_;
-    
-    // step linesearch parameters
-    double dec_factor_;
-    double inc_factor_;
-    double ftol_;
-    double wolfe_;
-    double max_step_;
-    double min_step_;
-    double max_searches_;
-    
+        
     std::size_t past_;
     std::size_t max_iters_;
     std::size_t batch_size_;
@@ -142,12 +132,11 @@ public:
             verbose_(verbose) {
         init_random_state();
         init_loss_params();
-        // init_stepsize_search_params();
-        
-        stepsize_search_params_ = &DEFAULT_STEPSIZE_SEARCH_PARAM;
+        // initialize stepsize search params;
+        stepsize_search_params_ = &DEFAULT_STEPSIZE_SEARCH_PARAMS;
         stepsize_search_params_->alpha = alpha_;
         stepsize_search_params_->eta0 = eta0_;
-        stepsize_search_params_->max_searches = max_searches_;
+        stepsize_search_params_->max_searches = 10;
         stepsize_search_params_->max_iters = 20;
     };
 
@@ -179,7 +168,7 @@ public:
         }
     };
 
-
+    // constructor for LBFGS optimizer
     BaseOptimizer(const std::vector<FeatureType>& w0, 
                   std::string loss,
                   std::string search_policy,
@@ -198,7 +187,6 @@ public:
             verbose_(verbose) {
         init_loss_params();
     };
-
 
     ~BaseOptimizer() {};
 
