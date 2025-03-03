@@ -1,23 +1,23 @@
-#ifndef CORE_STEPSIZE_SEARCH_BASIC_LINE_EARCH_HPP_
-#define CORE_STEPSIZE_SEARCH_BASIC_LINE_EARCH_HPP_
+#ifndef CORE_STEPSIZE_SEARCH_BASIC_LINE_SEARCH_HPP_
+#define CORE_STEPSIZE_SEARCH_BASIC_LINE_SEARCH_HPP_
 
 #include "base.hpp"
 
 namespace sgdlib {
 
 template <typename LossFuncType>
-class BasicLineSearch final: public StepSizeSearch<LossFuncType>{
+class BasicLineSearch final: public StepSizeSearch<LossFuncType> {
 public:
     BasicLineSearch(const std::vector<FeatureType>& X, 
                     const std::vector<LabelType>& y,
                     const std::shared_ptr<LossFuncType>& loss_fn,
-                    StepSizeSearchParamType stepsize_search_params): StepSizeSearch<LossFuncType>(
+                    StepSizeSearchParamType* stepsize_search_params): StepSizeSearch<LossFuncType>(
                         X, y, 
                         loss_fn, 
                         stepsize_search_params) {
         std::size_t num_samples = y.size();
-        this->lipschitz_ = 1.0 / this->stepsize_search_params_["eta0"] - this->stepsize_search_params_["alpha"];
-        this->linesearch_scaling_ = std::pow(2.0, this->stepsize_search_params_["max_searches"] / num_samples);
+        this->lipschitz_ = 1.0 / this->stepsize_search_params_->eta0 - this->stepsize_search_params_->alpha;
+        this->linesearch_scaling_ = std::pow(2.0, static_cast<double>(this->stepsize_search_params_->max_searches) / num_samples);
     };
     ~BasicLineSearch() {};
 
@@ -32,10 +32,12 @@ public:
                double& stepsize) override {
         bool is_valid;
         FeatureType a, b;
-        if (step % static_cast<std::size_t>(this->stepsize_search_params_["max_searches"]) == 0) {
-            for (size_t i = 0; i < static_cast<std::size_t>(this->stepsize_search_params_["max_iters"]); ++i) {
+
+        if (step % this->stepsize_search_params_->max_searches == 0) {
+            for (size_t i = 0; i < this->stepsize_search_params_->max_iters; ++i) {
                 a = this->loss_fn_->evaluate(y_pred - grad * xnorm / this->lipschitz_, y_true);
                 b = this->loss_fn_->evaluate(y_pred, y_true) - 0.5 * grad * grad * xnorm / this->lipschitz_;
+                
                 if (a <= b) {
                     this->lipschitz_ /= this->linesearch_scaling_;
                     is_valid = true;
@@ -50,7 +52,7 @@ public:
             if (!is_valid) {
                 return -1;
             }
-            stepsize = 1.0 / (this->lipschitz_ + this->stepsize_search_params_["alpha"]);
+            stepsize = 1.0 / (this->lipschitz_ + this->stepsize_search_params_->alpha);
         }
         return 0;
     }
@@ -58,4 +60,4 @@ public:
 
 } // namespace sgdlib
 
-#endif // CORE_STEPSIZE_SEARCH_BASIC_LINE_EARCH_HPP_
+#endif // CORE_STEPSIZE_SEARCH_BASIC_LINE_SEARCH_HPP_
