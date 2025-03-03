@@ -35,11 +35,11 @@ public:
                   const std::vector<LabelType>& y) override {
         
         std::size_t num_samples = y.size();
-        std::size_t num_features = w0_.size();
+        std::size_t num_features = this->w0_.size();
 
         // initialize w0 (weight) and b0 (bias)
-        std::vector<FeatureType> w0 = w0_;
-        FeatureType b0 = b0_;
+        std::vector<FeatureType> w0 = this->w0_;
+        FeatureType b0 = this->b0_;
 
         // initialize loss, loss_history, weight_update, 
         std::vector<FeatureType> xi_w(num_samples, 0.0);
@@ -57,7 +57,7 @@ public:
         sgdlib::internal::col_norms<FeatureType>(X, false, X_col_norm);
 
         FeatureType max_weight, max_weight_update;
-        for (iter = 0; iter < max_iters_; ++iter) {
+        for (iter = 0; iter < this->max_iters_; ++iter) {
             
             max_weight = 0.0;
             max_weight_update = 0.0;
@@ -69,7 +69,7 @@ public:
             // cycle through all the features
             for (feature_index = 0; feature_index < num_features; ++feature_index) {
                 // choose a feature index randomly
-                feature_index = random_state_.random_index(0, num_features);
+                feature_index = this->random_state_.random_index(0, num_features);
                 
                 // if norms of the columns of X is null
                 if (X_col_norm[feature_index] == 0.0) {
@@ -79,23 +79,23 @@ public:
                 // compute gradient for target feature X[:, feature_index]
                 dloss = 0.0;
                 for (std::size_t i = 0; i < num_samples; ++i) {
-                    dloss += loss_fn_->derivate(xi_w[i], y[i]) * X[i * num_features + feature_index];
+                    dloss += this->loss_fn_->derivate(xi_w[i], y[i]) * X[i * num_features + feature_index];
                 }
                 grad = dloss / static_cast<FeatureType>(num_samples);
                 
                 // soft-thresholding function
-                if ((w0[feature_index] - grad / rho_) > (alpha_ / rho_)) {
-                    weight_update = -grad / rho_ - alpha_ / rho_;
+                if ((w0[feature_index] - grad / this->rho_) > (this->alpha_ / this->rho_)) {
+                    weight_update = -grad / this->rho_ - this->alpha_ / this->rho_;
                 }
-                else if ((w0[feature_index] - grad / rho_) < (-alpha_ / rho_)) {
-                    weight_update = -grad / rho_ + alpha_ / rho_;
+                else if ((w0[feature_index] - grad / this->rho_) < (-this->alpha_ / this->rho_)) {
+                    weight_update = -grad / this->rho_ + this->alpha_ / this->rho_;
                 }
                 else {
                     weight_update = -w0[feature_index];
                 }
                 
-                pred_descent = -weight_update*grad - rho_ / 2.0 * weight_update * weight_update - \
-                    alpha_ * std::abs(w0[feature_index] + weight_update) + alpha_ * std::abs(w0[feature_index]);
+                pred_descent = -weight_update*grad - this->rho_ / 2.0 * weight_update * weight_update - \
+                this->alpha_ * std::abs(w0[feature_index] + weight_update) + this->alpha_ * std::abs(w0[feature_index]);
                 
                 if (pred_descent > best_descent) {
                     best_feature_index = feature_index;
@@ -124,25 +124,27 @@ public:
             }
 
             // print info
-            if (verbose_) {
+            if (this->verbose_) {
                 for (std::size_t i = 0; i < num_samples; ++i) {
-                    loss += loss_fn_->evaluate(xi_w[i], y[i]);
+                    loss += this->loss_fn_->evaluate(xi_w[i], y[i]);
                 }
-                std::cout << "Epoch = " << (iter + 1) 
-                          << ", wnorm1 = " << sgdlib::internal::norm1<FeatureType>(w0) 
-                          << ", loss = " << loss / num_samples << std::endl;
+                if ((iter % 5) == 0) {
+                    std::cout << "Epoch = " << (iter + 1) 
+                              << ", wnorm1 = " << sgdlib::internal::norm1<FeatureType>(w0) 
+                              << ", loss = " << loss / num_samples << std::endl;
+                }
                 loss = 0.0;
             }
 
             // convergence check maximum coordinate update
             // max_j|wj_new - wj_old| < tol * max_abs_coef_update
             // https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html
-            if ((max_weight_update / max_weight < tol_)) {
+            if ((max_weight_update / max_weight < this->tol_)) {
                 is_converged = true;
                 break;
             }
 
-            if ((iter == max_iters_ - 1)) {
+            if ((iter == this->max_iters_ - 1)) {
                 is_converged = false;
             }
         }
@@ -150,7 +152,7 @@ public:
             THROW_RUNTIME_ERROR("Not converge, current number of epoch =", (iter + 1), 
                                 ", try apply different parameters.");
         }
-        w_opt_ = w0;
+        this->w_opt_ = w0;
 
     }
 };
