@@ -43,8 +43,8 @@ public:
                   const std::vector<LabelType>& y) override {
         
         std::size_t num_samples = y.size();
-        std::size_t num_features = w0_.size();
-        std::size_t step_per_iter = num_samples / batch_size_;
+        std::size_t num_features = this->w0_.size();
+        std::size_t step_per_iter = num_samples / this->batch_size_;
 
         std::size_t no_improvement_count = 0;
         std::size_t iter = 0;
@@ -66,29 +66,29 @@ public:
         std::vector<FeatureType> weight_update(num_features, 0.0);
         
         // initialize w0 (weight) and b0 (bias)
-        std::vector<FeatureType> w0 = w0_;
-        FeatureType b0 = b0_;
+        std::vector<FeatureType> w0 = this->w0_;
+        FeatureType b0 = this->b0_;
 
         // start to loop
-        for (iter = 0; iter < max_iters_; ++iter) {
+        for (iter = 0; iter < this->max_iters_; ++iter) {
             // enable to shuffle mask of data for on batch
-            if (shuffle_) {
-                random_state_.shuffle<std::size_t>(X_data_index);
+            if (this->shuffle_) {
+                this->random_state_.shuffle<std::size_t>(X_data_index);
             }
 
             // apply lr decay policy to compute eta
-            double eta = lr_decay_->compute(iter);            
+            double eta = this->lr_decay_->compute(iter);            
             for (std::size_t i = 0; i < step_per_iter; ++i) {
-                for (std::size_t j = 0; j < batch_size_; ++j) {
+                for (std::size_t j = 0; j < this->batch_size_; ++j) {
                     // compute predicted label proba XW + b
-                    y_hat = std::inner_product(&X[X_data_index[i * batch_size_ + j] * num_features], 
-                                               &X[(X_data_index[i * batch_size_ + j] + 1) * num_features], 
+                    y_hat = std::inner_product(&X[X_data_index[i * this->batch_size_ + j] * num_features], 
+                                               &X[(X_data_index[i * this->batch_size_ + j] + 1) * num_features], 
                                                w0.begin(), 0.0);                    
                     y_hat = y_hat * wscale + b0;
 
                     // evaluate the loss on one row of X, and calculate the derivatives of the loss
-                    loss += loss_fn_->evaluate(y_hat, y[X_data_index[i * batch_size_ + j]]);
-                    dloss = loss_fn_->derivate(y_hat, y[X_data_index[i * batch_size_ + j]]);
+                    loss += this->loss_fn_->evaluate(y_hat, y[X_data_index[i * this->batch_size_ + j]]);
+                    dloss = this->loss_fn_->derivate(y_hat, y[X_data_index[i * this->batch_size_ + j]]);
 
                     // clip dloss with large values
                     sgdlib::internal::clip(dloss, -MAX_DLOSS, MAX_DLOSS);
@@ -98,8 +98,8 @@ public:
                         // deflation of the sample feature values, adding to weights 
                         // means that this scaled sample directly affects the final output
                         dloss /= wscale;
-                        sgdlib::internal::dot<FeatureType>(&X[X_data_index[i * batch_size_ + j] * num_features],
-                                                           &X[(X_data_index[i * batch_size_ + j] + 1) * num_features],  
+                        sgdlib::internal::dot<FeatureType>(&X[X_data_index[i * this->batch_size_ + j] * num_features],
+                                                           &X[(X_data_index[i * this->batch_size_ + j] + 1) * num_features],  
                                                            dloss, 
                                                            weight_update);
                         for (std::size_t k = 0; k < num_features; ++k) {
@@ -109,7 +109,7 @@ public:
                     }
 
                     // scale weight vector by a scalar factor
-                    wscale *= std::max(0.0, 1.0 - (eta * alpha_));
+                    wscale *= std::max(0.0, 1.0 - (eta * this->alpha_));
                     if (wscale < WSCALE_THRESHOLD) {
                         for (std::size_t k = 0; k < num_features; ++k) {
                             w0[k] *= wscale;
@@ -119,21 +119,21 @@ public:
                 }
 
                 // compute loss/weight_gradient/bias_gradient for one batch data point
-                if (batch_size_ > 1) {
-                    loss /= static_cast<FeatureType>(batch_size_);
+                if (this->batch_size_ > 1) {
+                    loss /= static_cast<FeatureType>(this->batch_size_);
                     for (std::size_t k = 0; k < num_features; ++k) {
-                        weight_update[k] /= static_cast<FeatureType>(batch_size_);
+                        weight_update[k] /= static_cast<FeatureType>(this->batch_size_);
                     }
-                    bias_update /= static_cast<FeatureType>(batch_size_);
+                    bias_update /= static_cast<FeatureType>(this->batch_size_);
                 }
                 
                 // add L2 penalty for weight
-                if (alpha_ > 0.0) {
-                    loss += alpha_ * 
+                if (this->alpha_ > 0.0) {
+                    loss += this->alpha_ * 
                         std::inner_product(w0.begin(), w0.end(), w0.begin(), 0.0) / 
                             static_cast<FeatureType>(num_samples);
                     for (std::size_t k = 0; k < num_features; ++k) {
-                        weight_update[k] += (2.0 * alpha_ * w0[k] / static_cast<FeatureType>(num_samples));
+                        weight_update[k] += (2.0 * this->alpha_ * w0[k] / static_cast<FeatureType>(num_samples));
                     }
                 }
 
@@ -160,7 +160,7 @@ public:
             FeatureType sum_loss = std::accumulate(loss_history.begin(), 
                                                    loss_history.end(), 
                                                    decltype(loss_history)::value_type(0));
-            if ((tol_ > -INF) && (sum_loss > best_loss - tol_ * num_samples)) {
+            if ((tol_ > -INF) && (sum_loss > best_loss - this->tol_ * num_samples)) {
                 no_improvement_count +=1;
             }
             else {
@@ -171,16 +171,16 @@ public:
             }
 
             // if there is no improvement is bigger than the threshold
-            if (no_improvement_count >= num_iters_no_change_) {
-                if (verbose_) {
+            if (no_improvement_count >= this->num_iters_no_change_) {
+                if (this->verbose_) {
                     std::cout << "Convergence after " << (iter + 1) << " epochs." << std::endl;
                 }
                 is_converged = true;
                 break;
             }
 
-            if (verbose_) {
-                if ((iter % 1) == 0) {
+            if (this->verbose_) {
+                if ((iter % 5) == 0) {
                     std::cout << "Epoch = " << (iter + 1) << ", xnorm2 = " 
                               << sgdlib::internal::sqnorm2<FeatureType>(w0, true) << ", avg loss = " 
                               << sum_loss / static_cast<FeatureType>(step_per_iter) << std::endl;
@@ -195,12 +195,12 @@ public:
 
         if (!is_converged) {
             THROW_RUNTIME_ERROR("Not converge, current number of epoch =  ", (iter + 1),
-                                ", the batch size = ", batch_size_,
+                                ", the batch size = ", this->batch_size_,
                                 ", try to apply different parameters.");
         }
 
-        w_opt_ = w0;
-        b_opt_ = b0;
+        this->w_opt_ = w0;
+        this->b_opt_ = b0;
     }
 
 };
