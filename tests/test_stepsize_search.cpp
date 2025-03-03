@@ -22,11 +22,11 @@ public:
                                 6.5, 3.1, 5.2, 2.1};
         std::vector<long> y = {-1, -1, -1, -1, 1, 1, 1, 1, 1};
         LossParamType loss_params = {{"alpha", 0.0}};
-        StepSizeSearchParamType stepsize_search_params;
-        stepsize_search_params["alpha"] = 0.0;
-        stepsize_search_params["eta0"] = 0.01;
-        stepsize_search_params["max_searches"] = 10.0;
-        stepsize_search_params["max_iters"] = 20.0;
+        StepSizeSearchParamType* stepsize_search_params = &DEFAULT_STEPSIZE_SEARCH_PARAMS;
+        stepsize_search_params->alpha = 0.0;
+        stepsize_search_params->eta0 = 0.01;
+        stepsize_search_params->max_searches = 10;
+        stepsize_search_params->max_iters = 20;
 
         loss_fn_ = LossFunctionRegistry()->Create("LogLoss", loss_params);
         if (search_policy == "Constant") {
