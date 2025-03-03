@@ -41,16 +41,16 @@ public:
                   const std::vector<LabelType>& y) override {
 
         std::size_t num_samples = y.size();
-        std::size_t num_features = w0_.size();
+        std::size_t num_features = this->w0_.size();
 
         // initialize w0 (weight) and b0 (bias)
-        std::vector<FeatureType> w0 = w0_;
-        FeatureType b0 = b0_;
+        std::vector<FeatureType> w0 = this->w0_;
+        FeatureType b0 = this->b0_;
 
         // initialize gradient memory, the cumulative sums
         std::vector<FeatureType> grad_sum(num_features, 0.0);
         std::vector<FeatureType> grad_history(num_samples, 0.0);
-        std::vector<FeatureType> cumulative_sum(max_iters_ * num_samples, 0.0);
+        std::vector<FeatureType> cumulative_sum(this->max_iters_ * num_samples, 0.0);
 
         // array for visited samples
         std::vector<std::size_t> seen(num_samples, 0);
@@ -81,23 +81,30 @@ public:
         
         // compute step size 
         double step_size = 0.0;
-        std::unique_ptr<sgdlib::StepSizeSearch<sgdlib::LossFunction>> stepsize_search_; 
-        if (search_policy_ == "Constant") {
-            stepsize_search_ = std::make_unique<sgdlib::ConstantSearch<sgdlib::LossFunction>>(
-                X, y, loss_fn_, stepsize_search_params_
+        std::unique_ptr<sgdlib::StepSizeSearch<sgdlib::LossFunction>> stepsize_search; 
+        if (this->search_policy_ == "Constant") {
+            stepsize_search = std::make_unique<sgdlib::ConstantSearch<sgdlib::LossFunction>>(
+                X, y, this->loss_fn_, this->stepsize_search_params_
             );
-            search_status = stepsize_search_->search(is_saga_, step_size);
+            search_status = stepsize_search->search(is_saga_, step_size);
         }
-        else if (search_policy_ == "BasicLineSearch") {
-            stepsize_search_ = std::make_unique<sgdlib::BasicLineSearch<sgdlib::LossFunction>>(
-                X, y, loss_fn_, stepsize_search_params_
+        else if (this->search_policy_ == "BasicLineSearch") {
+            stepsize_search = std::make_unique<sgdlib::BasicLineSearch<sgdlib::LossFunction>>(
+                X, y, this->loss_fn_, this->stepsize_search_params_
             );
         }
 
         std::size_t counter = 0;
-        for (iter = 0; iter < max_iters_; ++iter) {
+        for (iter = 0; iter < this->max_iters_; ++iter) {
             for (std::size_t i = 0; i < num_samples; ++i) {
-                sample_index = random_state_.sample<std::size_t>(X_data_index);
+
+                // check if we have to shuffle the samples
+                if (this->shuffle_) {
+                    sample_index = this->random_state_.sample<std::size_t>(X_data_index);
+                }
+                else {
+                    sample_index = i;
+                }
                 
                 // update the number of X seen
                 if (seen[sample_index] == 0) {
@@ -127,8 +134,8 @@ public:
                                            &X[(sample_index + 1) * num_features], 
                                            w0.begin(), 0.0);                    
                 y_hat = y_hat * wscale + b0;
-                loss  = loss_fn_->evaluate(y_hat, y[sample_index]);
-                dloss = loss_fn_->derivate(y_hat, y[sample_index]);
+                loss  = this->loss_fn_->evaluate(y_hat, y[sample_index]);
+                dloss = this->loss_fn_->derivate(y_hat, y[sample_index]);
 
                 // stepsize-search step, apply basic line-search method 
                 // detail see section 4.6 of Schmidt, M., Roux, N., & Bach, F. (2013).
@@ -137,7 +144,7 @@ public:
                     xnorm = std::inner_product(&X[sample_index * num_features], 
                                                &X[(sample_index + 1) * num_features], 
                                                &X[sample_index * num_features], 0.0);
-                    search_status = stepsize_search_->search(y_hat, y[sample_index], dloss, xnorm, i, step_size);
+                    search_status = stepsize_search->search(y_hat, y[sample_index], dloss, xnorm, i, step_size);
                     if (search_status == -1) {
                         break;
                     }
@@ -152,7 +159,7 @@ public:
                 for (std::size_t j = 0; j < num_features; ++j) {
                     grad_correction = weight_update[j] - (grad_history[sample_index] * X[sample_index * num_features + j]);
                     grad_sum[j] += grad_correction;
-                    if (is_saga_) {
+                    if (this->is_saga_) {
                         w0[j] -= (grad_correction * step_size * (1.0 - 1.0 / static_cast<FeatureType>(num_seens)) / wscale);
                     }
                 }
@@ -161,7 +168,7 @@ public:
                 grad_correction = dloss - grad_history[sample_index];
                 bias_update += grad_correction;
                 grad_correction *= step_size * (1.0 - 1.0 / static_cast<FeatureType>(num_seens));
-                if (is_saga_) {
+                if (this->is_saga_) {
                     b0 -= (step_size * bias_update / static_cast<FeatureType>(num_seens)) + grad_correction;
                 }
                 else {
@@ -205,9 +212,9 @@ public:
                 ++counter;
                 
                 // scale weight for L2 penalty
-                if (alpha_ > 0.0) {
-                    wscale *= 1.0 - alpha_ * step_size;
-                    loss += alpha_ * std::inner_product(w0.begin(), w0.end(), w0.begin(), 0.0);
+                if (this->alpha_ > 0.0) {
+                    wscale *= 1.0 - this->alpha_ * step_size;
+                    loss += this->alpha_ * std::inner_product(w0.begin(), w0.end(), w0.begin(), 0.0);
                 }
 
                 // store loss value into loss_history
@@ -243,14 +250,14 @@ public:
                 prev_weight[j] = w0[j];
             }
             if ((max_weight != 0.0) && (max_change / max_weight <= tol_)) {
-                if (verbose_) {
+                if (this->verbose_) {
                     std::cout << "Convergence after " << (iter + 1) << " epochs." << std::endl;
                 }
                 is_converged = true;
                 break;
             }
             else {
-                if (verbose_) {
+                if (this->verbose_) {
                     std::cout << "Epoch = " << iter + 1
                               << ", xnorm = " << sgdlib::internal::sqnorm2<FeatureType>(w0, true) 
                               << ", loss = " << sum_loss / static_cast<FeatureType>(num_samples) 
@@ -274,8 +281,8 @@ public:
                                 ", try apply different step-search parameters.");
         }
 
-        w_opt_ = w0;
-        b_opt_ = b0;
+        this->w_opt_ = w0;
+        this->b_opt_ = b0;
     }
 };
 
