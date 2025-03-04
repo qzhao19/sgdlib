@@ -173,18 +173,16 @@ public:
             // if there is no improvement is bigger than the threshold
             if (no_improvement_count >= this->num_iters_no_change_) {
                 if (this->verbose_) {
-                    std::cout << "Convergence after " << (iter + 1) << " epochs." << std::endl;
+                    PRINT_RUNTIME_INFO(1, "Convergence after ", iter + 1, " epochs.");
                 }
                 is_converged = true;
                 break;
             }
 
             if (this->verbose_) {
-                if ((iter % 5) == 0) {
-                    std::cout << "Epoch = " << (iter + 1) << ", xnorm2 = " 
-                              << sgdlib::internal::sqnorm2<FeatureType>(w0, true) << ", avg loss = " 
-                              << sum_loss / static_cast<FeatureType>(step_per_iter) << std::endl;
-                }
+                PRINT_RUNTIME_INFO(2, "Epoch = ", iter + 1, 
+                                   ", xnorm2 = ", sgdlib::internal::sqnorm2<FeatureType>(w0, true), 
+                                   ", avg loss = ", sum_loss / static_cast<FeatureType>(step_per_iter));
             }
         }
 
@@ -194,8 +192,8 @@ public:
         }
 
         if (!is_converged) {
-            THROW_RUNTIME_ERROR("Not converge, current number of epoch =  ", (iter + 1),
-                                ", the batch size = ", this->batch_size_,
+            THROW_RUNTIME_ERROR("Not converge, current number of epoch ", (iter + 1),
+                                ", the batch size ", this->batch_size_,
                                 ", try to apply different parameters.");
         }
 
