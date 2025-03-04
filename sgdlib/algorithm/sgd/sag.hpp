@@ -93,6 +93,9 @@ public:
                 X, y, this->loss_fn_, this->stepsize_search_params_
             );
         }
+        else {
+            THROW_INVALID_ARG_ERROR("Only supports 'Constant' or 'BasicLineSearch' policy.");
+        }
 
         std::size_t counter = 0;
         for (iter = 0; iter < this->max_iters_; ++iter) {
@@ -251,17 +254,17 @@ public:
             }
             if ((max_weight != 0.0) && (max_change / max_weight <= tol_)) {
                 if (this->verbose_) {
-                    std::cout << "Convergence after " << (iter + 1) << " epochs." << std::endl;
+                    PRINT_RUNTIME_INFO(2, "Convergence after ", iter + 1, " epochs.");
                 }
                 is_converged = true;
                 break;
             }
             else {
                 if (this->verbose_) {
-                    std::cout << "Epoch = " << iter + 1
-                              << ", xnorm = " << sgdlib::internal::sqnorm2<FeatureType>(w0, true) 
-                              << ", loss = " << sum_loss / static_cast<FeatureType>(num_samples) 
-                              << ", change = " << max_change / max_weight << std::endl;
+                    PRINT_RUNTIME_INFO(2, "Epoch = ", iter + 1, 
+                                       ", xnorm = ", sgdlib::internal::sqnorm2<FeatureType>(w0, true), 
+                                       ", loss = ", sum_loss / static_cast<FeatureType>(num_samples), 
+                                       ", change = ", max_change / max_weight);
                 }
             }
         }
@@ -272,7 +275,7 @@ public:
         }
 
         if (!is_converged) {
-            THROW_RUNTIME_ERROR("Not converge, current number of epoch = ,", (iter + 1),
+            THROW_RUNTIME_ERROR("Not converge, current number of epoch ", (iter + 1),
                                 ", try apply different parameters.");
         }
 
