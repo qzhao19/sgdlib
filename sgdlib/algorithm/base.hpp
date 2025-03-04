@@ -3,6 +3,7 @@
 
 #include "common/prereqs.hpp"
 #include "common/predefs.hpp"
+#include "common/logging.hpp"
 #include "core/loss.hpp"
 #include "core/lr_decay.hpp"
 #include "core/stepsize_search.hpp"
