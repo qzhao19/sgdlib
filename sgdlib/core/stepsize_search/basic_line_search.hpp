@@ -33,7 +33,7 @@ public:
         bool is_valid;
         FeatureType a, b;
 
-        if (step % this->stepsize_search_params_->max_searches == 0) {
+        if ((step % this->stepsize_search_params_->max_searches == 0) && (std::abs(grad) > 1e-8)) {
             for (size_t i = 0; i < this->stepsize_search_params_->max_iters; ++i) {
                 a = this->loss_fn_->evaluate(y_pred - grad * xnorm / this->lipschitz_, y_true);
                 b = this->loss_fn_->evaluate(y_pred, y_true) - 0.5 * grad * grad * xnorm / this->lipschitz_;
