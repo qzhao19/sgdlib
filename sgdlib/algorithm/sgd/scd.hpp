@@ -128,11 +128,9 @@ public:
                 for (std::size_t i = 0; i < num_samples; ++i) {
                     loss += this->loss_fn_->evaluate(xi_w[i], y[i]);
                 }
-                if ((iter % 5) == 0) {
-                    std::cout << "Epoch = " << (iter + 1) 
-                              << ", wnorm1 = " << sgdlib::internal::norm1<FeatureType>(w0) 
-                              << ", loss = " << loss / num_samples << std::endl;
-                }
+                PRINT_RUNTIME_INFO(5, "Epoch = ", iter + 1, 
+                                   ", wnorm1 = ", sgdlib::internal::norm1<FeatureType>(w0) , 
+                                   ", loss = ", loss / static_cast<FeatureType>(num_samples));
                 loss = 0.0;
             }
 
@@ -149,7 +147,7 @@ public:
             }
         }
         if (!is_converged) {
-            THROW_RUNTIME_ERROR("Not converge, current number of epoch =", (iter + 1), 
+            THROW_RUNTIME_ERROR("Not converge, current number of epoch ", (iter + 1), 
                                 ", try apply different parameters.");
         }
         this->w_opt_ = w0;
