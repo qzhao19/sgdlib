@@ -1,6 +1,7 @@
 #ifndef COMMON_REGISTRY_HPP_
 #define COMMON_REGISTRY_HPP_
 
+#include "common/logging.hpp"
 #include "common/prereqs.hpp"
 #include "common/predefs.hpp"
 
@@ -15,9 +16,7 @@ public:
     void Register(const std::string& key, Creator creator) {
         std::lock_guard<std::mutex> lock(register_mutex_);
         if (registry_.count(key) != 0) {
-            std::ostringstream err_msg;
-            err_msg << "key: " << key << " already exists in registry" << std::endl;
-            throw std::runtime_error(err_msg.str());
+            THROW_RUNTIME_ERROR("key: ", key, " already exists in registry");
         }
         registry_[key] = creator;
     }
