@@ -13,14 +13,13 @@ namespace sgdlib {
 class SCD: public BaseOptimizer {
 public:
     SCD(const std::vector<FeatureType>& w0,
-        const FeatureType& b0, 
         std::string loss,
         double alpha,
         double tol,
         std::size_t max_iters, 
         std::size_t random_seed,
         bool shuffle = true, 
-        bool verbose = true): BaseOptimizer(w0, b0,
+        bool verbose = true): BaseOptimizer(w0,
             loss, 
             alpha, 
             tol, 
@@ -37,9 +36,8 @@ public:
         std::size_t num_samples = y.size();
         std::size_t num_features = this->w0_.size();
 
-        // initialize w0 (weight) and b0 (bias)
+        // initialize w0 (weight)
         std::vector<FeatureType> w0 = this->w0_;
-        FeatureType b0 = this->b0_;
 
         // initialize loss, loss_history, weight_update, 
         std::vector<FeatureType> xi_w(num_samples, 0.0);
@@ -152,6 +150,11 @@ public:
         }
         this->w_opt_ = w0;
 
+    }
+
+    const FeatureType get_intercept() const override {
+        THROW_RUNTIME_ERROR("Not support to call get_intercept method.");
+        return 0.0;
     }
 };
 
