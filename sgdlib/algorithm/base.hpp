@@ -143,14 +143,13 @@ public:
 
     // constructor for SCD optimizer
     BaseOptimizer(const std::vector<FeatureType>& w0,
-                  const FeatureType& b0, 
                   std::string loss,
                   double alpha,
                   double tol,
                   std::size_t max_iters, 
                   std::size_t random_seed,
                   bool shuffle = true, 
-                  bool verbose = true): w0_(w0), b0_(b0),
+                  bool verbose = true): w0_(w0),
             loss_(loss),
             alpha_(alpha),
             tol_(tol),
@@ -198,7 +197,7 @@ public:
         return w_opt_;
     }
 
-    const FeatureType get_intercept() const {
+    virtual const FeatureType get_intercept() const {
         return b_opt_;
     }
 
