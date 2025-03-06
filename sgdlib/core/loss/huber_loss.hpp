@@ -15,10 +15,10 @@ public:
     HuberLoss(LossParamType loss_param): LossFunction(loss_param) {};
     ~HuberLoss() {};
 
-    virtual FeatureType evaluate(const FeatureType& y_pred, 
-                                 const LabelType& y_true) const override {
+    virtual FeatValType evaluate(const FeatValType& y_pred, 
+                                 const LabelValType& y_true) const override {
         
-        FeatureType z = y_pred * static_cast<FeatureType>(y_true);
+        FeatValType z = y_pred * static_cast<FeatValType>(y_true);
         if (z > 18.0) {
             return std::exp(-z);
         }
@@ -28,17 +28,17 @@ public:
         return std::log(1.0 + std::exp(-z));
     }
 
-    virtual FeatureType derivate(const FeatureType& y_pred, 
-                                 const LabelType& y_true) const override {
+    virtual FeatValType derivate(const FeatValType& y_pred, 
+                                 const LabelValType& y_true) const override {
 
-        FeatureType z = y_pred * static_cast<FeatureType>(y_true);
+        FeatValType z = y_pred * static_cast<FeatValType>(y_true);
         if (z > 18.0) {
-            return std::exp(-z) * (-static_cast<FeatureType>(y_true));
+            return std::exp(-z) * (-static_cast<FeatValType>(y_true));
         }
         if (z < -18.0) {
-            return -static_cast<FeatureType>(y_true);
+            return -static_cast<FeatValType>(y_true);
         }
-        return -static_cast<FeatureType>(y_true) / (std::exp(z) + 1.0);
+        return -static_cast<FeatValType>(y_true) / (std::exp(z) + 1.0);
     }
     
 };

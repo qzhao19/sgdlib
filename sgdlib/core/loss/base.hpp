@@ -26,34 +26,34 @@ public:
     /**
      * evaluate the loss value of loss function
      * 
-     * @param y_pred FeatureType
+     * @param y_pred FeatValType
      *      The predicted output of a model given an input.
-     * @param y_true LabelType
+     * @param y_true LabelValType
      *      The true label value for the data point
-     * @return A double value for loss function value
+     * @return A FloatValType value for loss function value
     */
-    virtual FeatureType evaluate(const FeatureType& y_pred, 
-                                 const LabelType& y_true) const = 0;
+    virtual FeatValType evaluate(const FeatValType& y_pred, 
+                                 const LabelValType& y_true) const = 0;
     
     /** 
      * compute the derivative of a loss function.
      * 
-     * @param y_pred FeatureType
+     * @param y_pred FeatValType
      *      The predicted output of a model given an input.
-     * @param y_true LabelType
+     * @param y_true LabelValType
      *      The true label value for the data point
-     * @return A double value representing the derivative of the loss function
+     * @return A FloatValType value representing the derivative of the loss function
     */
-    virtual FeatureType derivate(const FeatureType& y_pred, 
-                                 const LabelType& y_true) const = 0;
+    virtual FeatValType derivate(const FeatValType& y_pred, 
+                                 const LabelValType& y_true) const = 0;
 
     /**
      * @brief Sets a parameter for the loss function.
      * 
      * @param name The name of the parameter as a string.
-     * @param value The value of the parameter as a double.
+     * @param value The value of the parameter as a FloatValType.
     */
-    void set_param(const std::string& name, const double& value) {
+    void set_param(const std::string& name, const FloatValType& value) {
         loss_param_[name] = value;
     }
 };

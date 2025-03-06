@@ -20,17 +20,17 @@ namespace sgdlib {
 template <typename LossFuncType>
 class StepSizeSearch {
 protected:
-    double lipschitz_;
-    double linesearch_scaling_;
+    FloatValType lipschitz_;
+    FloatValType linesearch_scaling_;
     std::shared_ptr<LossFuncType> loss_fn_;
 
-    std::vector<FeatureType> X_;
-    std::vector<LabelType> y_;
+    std::vector<FeatValType> X_;
+    std::vector<LabelValType> y_;
     StepSizeSearchParamType *stepsize_search_params_;
     
 public:  
-    StepSizeSearch(const std::vector<FeatureType>& X, 
-                   const std::vector<LabelType>& y,
+    StepSizeSearch(const std::vector<FeatValType>& X, 
+                   const std::vector<LabelValType>& y,
                    const std::shared_ptr<LossFuncType>& loss_fn,
                    StepSizeSearchParamType *stepsize_search_params): X_(X), y_(y),
                         loss_fn_(loss_fn),
@@ -38,26 +38,26 @@ public:
     
     ~StepSizeSearch() {};
 
-    virtual int search(bool is_saga, double& step_size) {
+    virtual int search(bool is_saga, FloatValType& step_size) {
         return 0;
     };
 
-    virtual int search(const FeatureType& y_pred, 
-                       const LabelType& y_true, 
-                       const FeatureType& grad,
-                       const FeatureType& xnorm, 
+    virtual int search(const FeatValType& y_pred, 
+                       const LabelValType& y_true, 
+                       const FeatValType& grad,
+                       const FeatValType& xnorm, 
                        const std::size_t& step,
-                       double& stepsize) {
+                       FloatValType& stepsize) {
         return 0;
     };
 
-    virtual int search(const std::vector<FeatureType>& xp, 
-                       const std::vector<FeatureType>& gp, 
-                       std::vector<FeatureType>& x,
-                       std::vector<FeatureType>& g, 
-                       std::vector<FeatureType>& d,
-                       FeatureType& fx,
-                       double& stepsize) {
+    virtual int search(const std::vector<FeatValType>& xp, 
+                       const std::vector<FeatValType>& gp, 
+                       std::vector<FeatValType>& x,
+                       std::vector<FeatValType>& g, 
+                       std::vector<FeatValType>& d,
+                       FeatValType& fx,
+                       FloatValType& stepsize) {
         return 0;
     };
 

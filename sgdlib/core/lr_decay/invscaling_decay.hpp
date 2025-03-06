@@ -13,7 +13,7 @@ public:
     /**
      * eta = eta0 / pow(epoch, gamma) 
     */
-    double compute(std::size_t epoch) override {
+    FloatValType compute(std::size_t epoch) override {
         return lr_decay_param_["eta0"] / std::pow(epoch + 1, lr_decay_param_["gamma"]);
     }
 };

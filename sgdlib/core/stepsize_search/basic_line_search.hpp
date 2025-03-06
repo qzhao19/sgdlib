@@ -8,8 +8,8 @@ namespace sgdlib {
 template <typename LossFuncType>
 class BasicLineSearch final: public StepSizeSearch<LossFuncType> {
 public:
-    BasicLineSearch(const std::vector<FeatureType>& X, 
-                    const std::vector<LabelType>& y,
+    BasicLineSearch(const std::vector<FeatValType>& X, 
+                    const std::vector<LabelValType>& y,
                     const std::shared_ptr<LossFuncType>& loss_fn,
                     StepSizeSearchParamType* stepsize_search_params): StepSizeSearch<LossFuncType>(
                         X, y, 
@@ -17,21 +17,21 @@ public:
                         stepsize_search_params) {
         std::size_t num_samples = y.size();
         this->lipschitz_ = 1.0 / this->stepsize_search_params_->eta0 - this->stepsize_search_params_->alpha;
-        this->linesearch_scaling_ = std::pow(2.0, static_cast<double>(this->stepsize_search_params_->max_searches) / num_samples);
+        this->linesearch_scaling_ = std::pow(2.0, static_cast<FloatValType>(this->stepsize_search_params_->max_searches) / num_samples);
     };
     ~BasicLineSearch() {};
 
     /** 
      * Compute step size with basic line search and it is specifically used for the SAG optimizer.
     */
-    int search(const FeatureType& y_pred, 
-               const LabelType& y_true, 
-               const FeatureType& grad,
-               const FeatureType& xnorm, 
+    int search(const FeatValType& y_pred, 
+               const LabelValType& y_true, 
+               const FeatValType& grad,
+               const FeatValType& xnorm, 
                const std::size_t& step,
-               double& stepsize) override {
+               FloatValType& stepsize) override {
         bool is_valid;
-        FeatureType a, b;
+        FeatValType a, b;
 
         if ((step % this->stepsize_search_params_->max_searches == 0) && (std::abs(grad) > 1e-8)) {
             for (size_t i = 0; i < this->stepsize_search_params_->max_iters; ++i) {
