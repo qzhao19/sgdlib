@@ -14,20 +14,20 @@ namespace sgdlib {
 
 class BaseOptimizer {
 protected:
-    std::vector<FeatureType> w0_;
-    FeatureType b0_;
+    std::vector<FeatValType> w0_;
+    FeatValType b0_;
     
     std::string loss_;
     std::string penalty_;
     std::string lr_policy_;
     std::string search_policy_;
 
-    double alpha_;
-    double beta_;
-    double rho_;
-    double eta0_;
-    double tol_;
-    double gamma_;
+    FloatValType alpha_;
+    FloatValType beta_;
+    FloatValType rho_;
+    FloatValType eta0_;
+    FloatValType tol_;
+    FloatValType gamma_;
         
     std::size_t past_;
     std::size_t max_iters_;
@@ -43,8 +43,8 @@ protected:
     LRDecayParamType lr_decay_params_;
     StepSizeSearchParamType* stepsize_search_params_;
 
-    std::vector<FeatureType> w_opt_;
-    FeatureType b_opt_;
+    std::vector<FeatValType> w_opt_;
+    FeatValType b_opt_;
     sgdlib::internal::RandomState random_state_;
 
     std::shared_ptr<sgdlib::LossFunction> loss_fn_;
@@ -77,14 +77,14 @@ public:
     BaseOptimizer() {};
 
     // constructor for SGD optimizer
-    BaseOptimizer(const std::vector<FeatureType>& w0,
-                  const FeatureType& b0,
+    BaseOptimizer(const std::vector<FeatValType>& w0,
+                  const FeatValType& b0,
                   std::string loss, 
                   std::string lr_policy,
-                  double alpha,
-                  double eta0,
-                  double tol,
-                  double gamma,
+                  FloatValType alpha,
+                  FloatValType eta0,
+                  FloatValType tol,
+                  FloatValType gamma,
                   std::size_t max_iters, 
                   std::size_t batch_size,
                   std::size_t num_iters_no_change,
@@ -109,13 +109,13 @@ public:
     };
 
     // constructor for SAG/SAGA optimizer
-    BaseOptimizer(const std::vector<FeatureType>& w0,
-                  const FeatureType& b0,
+    BaseOptimizer(const std::vector<FeatValType>& w0,
+                  const FeatValType& b0,
                   std::string loss, 
                   std::string search_policy,
-                  double alpha,
-                  double eta0,
-                  double tol,
+                  FloatValType alpha,
+                  FloatValType eta0,
+                  FloatValType tol,
                   std::size_t max_iters, 
                   std::size_t random_seed,
                   bool is_saga = false,
@@ -142,10 +142,10 @@ public:
     };
 
     // constructor for SCD optimizer
-    BaseOptimizer(const std::vector<FeatureType>& w0,
+    BaseOptimizer(const std::vector<FeatValType>& w0,
                   std::string loss,
-                  double alpha,
-                  double tol,
+                  FloatValType alpha,
+                  FloatValType tol,
                   std::size_t max_iters, 
                   std::size_t random_seed,
                   bool shuffle = true, 
@@ -169,10 +169,10 @@ public:
     };
 
     // constructor for LBFGS optimizer
-    BaseOptimizer(const std::vector<FeatureType>& w0, 
+    BaseOptimizer(const std::vector<FeatValType>& w0, 
                   std::string loss,
                   std::string search_policy,
-                  double tol,
+                  FloatValType tol,
                   std::size_t max_iters, 
                   std::size_t mem_size,
                   std::size_t past,
@@ -190,14 +190,14 @@ public:
 
     ~BaseOptimizer() {};
 
-    virtual void optimize(const std::vector<FeatureType>& X, 
-                          const std::vector<LabelType>& y) = 0;
+    virtual void optimize(const std::vector<FeatValType>& X, 
+                          const std::vector<LabelValType>& y) = 0;
 
-    const std::vector<FeatureType> get_coef() const {
+    const std::vector<FeatValType> get_coef() const {
         return w_opt_;
     }
 
-    virtual const FeatureType get_intercept() const {
+    virtual const FeatValType get_intercept() const {
         return b_opt_;
     }
 
