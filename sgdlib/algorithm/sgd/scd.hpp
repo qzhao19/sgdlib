@@ -12,10 +12,10 @@ namespace sgdlib {
 */
 class SCD: public BaseOptimizer {
 public:
-    SCD(const std::vector<FeatureType>& w0,
+    SCD(const std::vector<FeatValType>& w0,
         std::string loss,
-        double alpha,
-        double tol,
+        FloatValType alpha,
+        FloatValType tol,
         std::size_t max_iters, 
         std::size_t random_seed,
         bool shuffle = true, 
@@ -30,39 +30,39 @@ public:
 
     ~SCD() {};
     
-    void optimize(const std::vector<FeatureType>& X, 
-                  const std::vector<LabelType>& y) override {
+    void optimize(const std::vector<FeatValType>& X, 
+                  const std::vector<LabelValType>& y) override {
         
         std::size_t num_samples = y.size();
         std::size_t num_features = this->w0_.size();
 
         // initialize w0 (weight)
-        std::vector<FeatureType> w0 = this->w0_;
+        std::vector<FeatValType> w0 = this->w0_;
 
         // initialize loss, loss_history, weight_update, 
-        std::vector<FeatureType> xi_w(num_samples, 0.0);
-        FeatureType weight_update, grad, loss, dloss;
+        std::vector<FeatValType> xi_w(num_samples, 0.0);
+        FeatValType weight_update, grad, loss, dloss;
         
-        // FeatureType y_hat;
+        // FeatValType y_hat;
         bool is_converged = false;
-        FeatureType prev_weight;
+        FeatValType prev_weight;
 
         std::size_t iter = 0;
         std::size_t feature_index;
 
         // compute column-wise norm2
-        std::vector<FeatureType> X_col_norm(num_features);
-        sgdlib::internal::col_norms<FeatureType>(X, false, X_col_norm);
+        std::vector<FeatValType> X_col_norm(num_features);
+        sgdlib::internal::col_norms<FeatValType>(X, false, X_col_norm);
 
-        FeatureType max_weight, max_weight_update;
+        FeatValType max_weight, max_weight_update;
         for (iter = 0; iter < this->max_iters_; ++iter) {
             
             max_weight = 0.0;
             max_weight_update = 0.0;
             std::size_t best_feature_index;
-            FeatureType best_weight_update;
-            FeatureType best_descent = -1.0;
-            FeatureType pred_descent;
+            FeatValType best_weight_update;
+            FeatValType best_descent = -1.0;
+            FeatValType pred_descent;
 
             // cycle through all the features
             for (feature_index = 0; feature_index < num_features; ++feature_index) {
@@ -79,7 +79,7 @@ public:
                 for (std::size_t i = 0; i < num_samples; ++i) {
                     dloss += this->loss_fn_->derivate(xi_w[i], y[i]) * X[i * num_features + feature_index];
                 }
-                grad = dloss / static_cast<FeatureType>(num_samples);
+                grad = dloss / static_cast<FeatValType>(num_samples);
                 
                 // soft-thresholding function
                 if ((w0[feature_index] - grad / this->rho_) > (this->alpha_ / this->rho_)) {
@@ -127,8 +127,8 @@ public:
                     loss += this->loss_fn_->evaluate(xi_w[i], y[i]);
                 }
                 PRINT_RUNTIME_INFO(5, "Epoch = ", iter + 1, 
-                                   ", wnorm1 = ", sgdlib::internal::norm1<FeatureType>(w0) , 
-                                   ", loss = ", loss / static_cast<FeatureType>(num_samples));
+                                   ", wnorm1 = ", sgdlib::internal::norm1<FeatValType>(w0) , 
+                                   ", loss = ", loss / static_cast<FeatValType>(num_samples));
                 loss = 0.0;
             }
 
@@ -152,7 +152,7 @@ public:
 
     }
 
-    const FeatureType get_intercept() const override {
+    const FeatValType get_intercept() const override {
         THROW_RUNTIME_ERROR("Not support to call get_intercept method.");
         return 0.0;
     }
