@@ -1,7 +1,9 @@
 #ifndef MATH_EXTMATH_HPP_
 #define MATH_EXTMATH_HPP_
 
+#include "common/logging.hpp"
 #include "common/prereqs.hpp"
+
 
 namespace sgdlib {
 namespace internal {
@@ -20,7 +22,7 @@ namespace internal {
 template<typename Type>
 inline void clip(std::vector<Type>& x, Type min, Type max) {
     if (min > max) {
-        throw std::invalid_argument("a_min must be less than or equal to a_max.");
+        THROW_INVALID_ARG_ERROR("a_min must be less than or equal to a_max.");
     }
     std::transform(std::begin(x), std::end(x), std::begin(x),
         [=] (auto i) { 
@@ -43,7 +45,7 @@ inline void clip(std::vector<Type>& x, Type min, Type max) {
 template<typename Type>
 inline void clip(Type& x, Type min, Type max) {
     if (min > max) {
-        throw std::invalid_argument("a_min must be less than or equal to a_max.");
+        THROW_INVALID_ARG_ERROR("a_min must be less than or equal to a_max.");
     }
     x = std::max(min, std::min(x, max));
 };
@@ -177,6 +179,45 @@ inline void dot(IterType begin, IterType end,
                         return elem * c;
                    });
 };
+
+
+/** 
+ * @brief Applies a scalar multiplication operation to a vector. 
+ * It computes the sum of the products of all elements within 
+ * the iterator range from begin to end with a constant c.
+ * 
+ * @tparam Type The type of elements in the vector.
+ * 
+ * @param[in] x vector of type T,
+ * @param[in] y vector of type T,
+ * @param out The reference to a vector that stores the result of the dot product.
+ * 
+ * @note The function is marked as inline, which is suitable for small functions 
+ *       to reduce the overhead of function calls.
+ * 
+ */
+template <typename Type>
+inline void dot(const std::vector<Type>& x, 
+                const std::vector<Type>& y, 
+                Type& out) {
+    if (x.size() != y.size()) {
+        THROW_INVALID_ARG_ERROR("Vectors must have the same size.");
+    }
+    out = std::inner_product(x.begin(), x.end(), y.begin(), 0.0);
+}
+
+template<typename Type>
+void inline add(const std::vector<Type>& x, 
+                const std::vector<Type>& y, 
+                std::vector<Type>& out) {
+    // check
+    if (x.size() != y.size()) {
+        THROW_INVALID_ARG_ERROR("Vectors must have the same size.");
+    }
+
+    out.resize(x.size());
+    std::transform(x.begin(), x.end(), y.begin(), out.begin(), std::plus<Type>());
+}
 
 /**
  * @brief Computes the row-wise norms of a vector.
