@@ -13,14 +13,14 @@ namespace sgdlib {
 */
 class SGD: public BaseOptimizer {
 public:
-    SGD(const std::vector<FeatureType>& w0, 
-        const FeatureType& b0,
+    SGD(const std::vector<FeatValType>& w0, 
+        const FeatValType& b0,
         std::string loss, 
         std::string lr_policy,
-        double alpha,
-        double eta0,
-        double tol,
-        double gamma,
+        FloatValType alpha,
+        FloatValType eta0,
+        FloatValType tol,
+        FloatValType gamma,
         std::size_t max_iters, 
         std::size_t batch_size,
         std::size_t num_iters_no_change,
@@ -39,8 +39,8 @@ public:
             verbose) {};
     ~SGD() {};
 
-    void optimize(const std::vector<FeatureType>& X, 
-                  const std::vector<LabelType>& y) override {
+    void optimize(const std::vector<FeatValType>& X, 
+                  const std::vector<LabelValType>& y) override {
         
         std::size_t num_samples = y.size();
         std::size_t num_features = this->w0_.size();
@@ -51,23 +51,23 @@ public:
 
         bool is_converged = false;
         bool is_infinity = false;
-        double best_loss = INF;
-        FeatureType wscale = 1.0;
+        FloatValType best_loss = INF;
+        FeatValType wscale = 1.0;
 
         // initialize a lookup table for training X, y
         std::vector<std::size_t> X_data_index(num_samples);
         std::iota(X_data_index.begin(), X_data_index.end(), 0);
 
         // initialize loss, loss_history, gradient, 
-        FeatureType y_hat;
-        FeatureType loss, dloss;
-        FeatureType bias_update = 0.0;
-        std::vector<FeatureType> loss_history(step_per_iter, 0.0);
-        std::vector<FeatureType> weight_update(num_features, 0.0);
+        FeatValType y_hat;
+        FeatValType loss, dloss;
+        FeatValType bias_update = 0.0;
+        std::vector<FeatValType> loss_history(step_per_iter, 0.0);
+        std::vector<FeatValType> weight_update(num_features, 0.0);
         
         // initialize w0 (weight) and b0 (bias)
-        std::vector<FeatureType> w0 = this->w0_;
-        FeatureType b0 = this->b0_;
+        std::vector<FeatValType> w0 = this->w0_;
+        FeatValType b0 = this->b0_;
 
         // start to loop
         for (iter = 0; iter < this->max_iters_; ++iter) {
@@ -77,13 +77,13 @@ public:
             }
 
             // apply lr decay policy to compute eta
-            double eta = this->lr_decay_->compute(iter);            
+            FloatValType eta = this->lr_decay_->compute(iter);            
             for (std::size_t i = 0; i < step_per_iter; ++i) {
                 for (std::size_t j = 0; j < this->batch_size_; ++j) {
                     // compute predicted label proba XW + b
                     y_hat = std::inner_product(&X[X_data_index[i * this->batch_size_ + j] * num_features], 
                                                &X[(X_data_index[i * this->batch_size_ + j] + 1) * num_features], 
-                                               w0.begin(), 0.0);                    
+                                               w0.begin(), 0.0);
                     y_hat = y_hat * wscale + b0;
 
                     // evaluate the loss on one row of X, and calculate the derivatives of the loss
@@ -98,7 +98,7 @@ public:
                         // deflation of the sample feature values, adding to weights 
                         // means that this scaled sample directly affects the final output
                         dloss /= wscale;
-                        sgdlib::internal::dot<FeatureType>(&X[X_data_index[i * this->batch_size_ + j] * num_features],
+                        sgdlib::internal::dot<FeatValType>(&X[X_data_index[i * this->batch_size_ + j] * num_features],
                                                            &X[(X_data_index[i * this->batch_size_ + j] + 1) * num_features],  
                                                            dloss, 
                                                            weight_update);
@@ -120,20 +120,20 @@ public:
 
                 // compute loss/weight_gradient/bias_gradient for one batch data point
                 if (this->batch_size_ > 1) {
-                    loss /= static_cast<FeatureType>(this->batch_size_);
+                    loss /= static_cast<FeatValType>(this->batch_size_);
                     for (std::size_t k = 0; k < num_features; ++k) {
-                        weight_update[k] /= static_cast<FeatureType>(this->batch_size_);
+                        weight_update[k] /= static_cast<FeatValType>(this->batch_size_);
                     }
-                    bias_update /= static_cast<FeatureType>(this->batch_size_);
+                    bias_update /= static_cast<FeatValType>(this->batch_size_);
                 }
                 
                 // add L2 penalty for weight
                 if (this->alpha_ > 0.0) {
                     loss += this->alpha_ * 
                         std::inner_product(w0.begin(), w0.end(), w0.begin(), 0.0) / 
-                            static_cast<FeatureType>(num_samples);
+                            static_cast<FeatValType>(num_samples);
                     for (std::size_t k = 0; k < num_features; ++k) {
-                        weight_update[k] += (2.0 * this->alpha_ * w0[k] / static_cast<FeatureType>(num_samples));
+                        weight_update[k] += (2.0 * this->alpha_ * w0[k] / static_cast<FeatValType>(num_samples));
                     }
                 }
 
@@ -141,7 +141,7 @@ public:
                 for (std::size_t k = 0; k < num_features; ++k) {
                     w0[k] -= eta * weight_update[k];
                 }
-                b0 -= eta * bias_update / (10.0 * static_cast<FeatureType>(num_samples));
+                b0 -= eta * bias_update / (10.0 * static_cast<FeatValType>(num_samples));
 
                 // store loss value into loss_history
                 loss_history[i] = loss;
@@ -150,14 +150,14 @@ public:
 
             // ---Convergence test---
             // check under/overflow
-            if (sgdlib::internal::isinf<FeatureType>(w0) || 
-                sgdlib::internal::isinf<FeatureType>(b0)) {
+            if (sgdlib::internal::isinf<FeatValType>(w0) || 
+                sgdlib::internal::isinf<FeatValType>(b0)) {
                 is_infinity = true;
                 break;
             }
 
             // compute sum of the loss value for one full batch
-            FeatureType sum_loss = std::accumulate(loss_history.begin(), 
+            FeatValType sum_loss = std::accumulate(loss_history.begin(), 
                                                    loss_history.end(), 
                                                    decltype(loss_history)::value_type(0));
             if ((tol_ > -INF) && (sum_loss > best_loss - this->tol_ * num_samples)) {
@@ -181,8 +181,8 @@ public:
 
             if (this->verbose_) {
                 PRINT_RUNTIME_INFO(2, "Epoch = ", iter + 1, 
-                                   ", xnorm2 = ", sgdlib::internal::sqnorm2<FeatureType>(w0, true), 
-                                   ", avg loss = ", sum_loss / static_cast<FeatureType>(step_per_iter));
+                                   ", xnorm2 = ", sgdlib::internal::sqnorm2<FeatValType>(w0, true), 
+                                   ", avg loss = ", sum_loss / static_cast<FeatValType>(step_per_iter));
             }
         }
 
