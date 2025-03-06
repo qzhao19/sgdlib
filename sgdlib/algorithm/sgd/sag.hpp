@@ -13,13 +13,13 @@ namespace sgdlib {
 */
 class SAG: public BaseOptimizer {
 public:
-    SAG(const std::vector<FeatureType>& w0, 
-        const FeatureType& b0,
+    SAG(const std::vector<FeatValType>& w0, 
+        const FeatValType& b0,
         std::string loss, 
         std::string search_policy,
-        double alpha,
-        double eta0,
-        double tol,
+        FloatValType alpha,
+        FloatValType eta0,
+        FloatValType tol,
         std::size_t max_iters, 
         std::size_t random_seed,
         bool is_saga = false,
@@ -37,20 +37,20 @@ public:
             verbose) {};
     ~SAG() {};
 
-    void optimize(const std::vector<FeatureType>& X, 
-                  const std::vector<LabelType>& y) override {
+    void optimize(const std::vector<FeatValType>& X, 
+                  const std::vector<LabelValType>& y) override {
 
         std::size_t num_samples = y.size();
         std::size_t num_features = this->w0_.size();
 
         // initialize w0 (weight) and b0 (bias)
-        std::vector<FeatureType> w0 = this->w0_;
-        FeatureType b0 = this->b0_;
+        std::vector<FeatValType> w0 = this->w0_;
+        FeatValType b0 = this->b0_;
 
         // initialize gradient memory, the cumulative sums
-        std::vector<FeatureType> grad_sum(num_features, 0.0);
-        std::vector<FeatureType> grad_history(num_samples, 0.0);
-        std::vector<FeatureType> cumulative_sum(this->max_iters_ * num_samples, 0.0);
+        std::vector<FeatValType> grad_sum(num_features, 0.0);
+        std::vector<FeatValType> grad_history(num_samples, 0.0);
+        std::vector<FeatValType> cumulative_sum(this->max_iters_ * num_samples, 0.0);
 
         // array for visited samples
         std::vector<std::size_t> seen(num_samples, 0);
@@ -63,24 +63,24 @@ public:
         bool is_converged = false;
         bool is_infinity = false;
         int search_status = 0;
-        FeatureType wscale = 1.0;
+        FeatValType wscale = 1.0;
 
         // initialize a lookup table for training X, y
         std::vector<std::size_t> X_data_index(num_samples);
         std::iota(X_data_index.begin(), X_data_index.end(), 0);
 
         // initialize loss, loss_history, gradient, 
-        FeatureType loss, dloss;
-        FeatureType y_hat;
-        FeatureType xnorm;
-        FeatureType bias_update = 0.0;
-        FeatureType grad_correction = 0.0;
-        std::vector<FeatureType> loss_history(num_samples, 0.0);
-        std::vector<FeatureType> prev_weight(num_features, 0.0);
-        std::vector<FeatureType> weight_update(num_features, 0.0);
+        FeatValType loss, dloss;
+        FeatValType y_hat;
+        FeatValType xnorm;
+        FeatValType bias_update = 0.0;
+        FeatValType grad_correction = 0.0;
+        std::vector<FeatValType> loss_history(num_samples, 0.0);
+        std::vector<FeatValType> prev_weight(num_features, 0.0);
+        std::vector<FeatValType> weight_update(num_features, 0.0);
         
         // compute step size 
-        double step_size = 0.0;
+        FloatValType step_size = 0.0;
         std::unique_ptr<sgdlib::StepSizeSearch<sgdlib::LossFunction>> stepsize_search; 
         if (this->search_policy_ == "Constant") {
             stepsize_search = std::make_unique<sgdlib::ConstantSearch<sgdlib::LossFunction>>(
@@ -126,7 +126,7 @@ public:
                         }
                         update_history[j] = counter;
                     }
-                    if (sgdlib::internal::isinf<FeatureType>(w0)) {
+                    if (sgdlib::internal::isinf<FeatValType>(w0)) {
                         is_infinity = true;
                         break;
                     }
@@ -155,7 +155,7 @@ public:
 
                 // make the weight update to grad_sum
                 // update = x * grad, 
-                sgdlib::internal::dot<FeatureType>(&X[sample_index * num_features], 
+                sgdlib::internal::dot<FeatValType>(&X[sample_index * num_features], 
                                                    &X[(sample_index + 1) * num_features], 
                                                    dloss,
                                                    weight_update);
@@ -163,21 +163,21 @@ public:
                     grad_correction = weight_update[j] - (grad_history[sample_index] * X[sample_index * num_features + j]);
                     grad_sum[j] += grad_correction;
                     if (this->is_saga_) {
-                        w0[j] -= (grad_correction * step_size * (1.0 - 1.0 / static_cast<FeatureType>(num_seens)) / wscale);
+                        w0[j] -= (grad_correction * step_size * (1.0 - 1.0 / static_cast<FeatValType>(num_seens)) / wscale);
                     }
                 }
 
                 // fit intercept
                 grad_correction = dloss - grad_history[sample_index];
                 bias_update += grad_correction;
-                grad_correction *= step_size * (1.0 - 1.0 / static_cast<FeatureType>(num_seens));
+                grad_correction *= step_size * (1.0 - 1.0 / static_cast<FeatValType>(num_seens));
                 if (this->is_saga_) {
-                    b0 -= (step_size * bias_update / static_cast<FeatureType>(num_seens)) + grad_correction;
+                    b0 -= (step_size * bias_update / static_cast<FeatValType>(num_seens)) + grad_correction;
                 }
                 else {
-                    b0 -= step_size * bias_update / static_cast<FeatureType>(num_seens);
+                    b0 -= step_size * bias_update / static_cast<FeatValType>(num_seens);
                 }
-                if (sgdlib::internal::isinf<FeatureType>(b0)) {
+                if (sgdlib::internal::isinf<FeatValType>(b0)) {
                     is_infinity = true;
                     break;
                 }
@@ -204,10 +204,10 @@ public:
                         update_history[j] = counter + 1;
                     }
                     cumulative_sum[counter] = 0.0;
-                    sgdlib::internal::dot<FeatureType>(w0, wscale);
+                    sgdlib::internal::dot<FeatValType>(w0, wscale);
                     wscale = 1.0;
 
-                    if (sgdlib::internal::isinf<FeatureType>(w0)) {
+                    if (sgdlib::internal::isinf<FeatValType>(w0)) {
                         is_infinity = true;
                         break;
                     }
@@ -239,14 +239,14 @@ public:
                     w0[j] -= (cumulative_sum[counter - 1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                 }
             }
-            sgdlib::internal::dot<FeatureType>(w0, wscale);
+            sgdlib::internal::dot<FeatValType>(w0, wscale);
 
             // calc loss info
-            FeatureType sum_loss = std::accumulate(loss_history.begin(), 
+            FeatValType sum_loss = std::accumulate(loss_history.begin(), 
                                                    loss_history.end(), 
                                                    decltype(loss_history)::value_type(0));
             // check if convergence test is reached
-            FeatureType max_change = 0.0, max_weight = 0.0;
+            FeatValType max_change = 0.0, max_weight = 0.0;
             for (std::size_t j = 0; j < num_features; j++) {
                 max_weight = std::max(max_weight, std::abs(w0[j]));
                 max_change = std::max(max_change, std::abs(w0[j] - prev_weight[j]));
@@ -262,8 +262,8 @@ public:
             else {
                 if (this->verbose_) {
                     PRINT_RUNTIME_INFO(2, "Epoch = ", iter + 1, 
-                                       ", xnorm = ", sgdlib::internal::sqnorm2<FeatureType>(w0, true), 
-                                       ", loss = ", sum_loss / static_cast<FeatureType>(num_samples), 
+                                       ", xnorm = ", sgdlib::internal::sqnorm2<FeatValType>(w0, true), 
+                                       ", loss = ", sum_loss / static_cast<FeatValType>(num_samples), 
                                        ", change = ", max_change / max_weight);
                 }
             }
