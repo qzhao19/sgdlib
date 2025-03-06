@@ -67,6 +67,15 @@ TEST(ExtmathTest, IteratorVectorScalarDotTest){
     EXPECT_EQ(out, expect);
 };
 
+TEST(ExtmathTest, TwoVectorsDotTest){
+    std::vector<double> x = {5.2, 3.3, 2.6, 0.3};
+    std::vector<double> y = {5.2, 3.3, 2.6, 0.3};
+    double out = 0.0;
+    sgdlib::internal::dot<double>(x, y, out);
+    double expect = 44.78;
+    EXPECT_DOUBLE_EQ(out, expect);
+};
+
 TEST(ExtmathTest, RowNormsTest){
     std::vector<double> x = {5.2, 3.3, 1.2, 0.3, 
                              6.4, 3.1, 5.5, 1.8, 
