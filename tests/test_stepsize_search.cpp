@@ -54,7 +54,7 @@ TEST_F(StepSizeSearchTest, ConstantSearchTest) {
 
 TEST_F(StepSizeSearchTest, BasicLineSearchTest) {
     SetUp("BasicLineSearch");
-    FeatureType y_pred = 2.95782, y_true = 1, dloss = -0.049368, xnorm = 98.63;
+    FeatValType y_pred = 2.95782, y_true = 1, dloss = -0.049368, xnorm = 98.63;
     std::size_t index = 120;
     double stepsize = 0.0;
     stepsize_search_->search(y_pred, y_true, dloss, xnorm, index, stepsize);

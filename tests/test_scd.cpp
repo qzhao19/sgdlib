@@ -11,7 +11,7 @@ namespace sgdlib {
 class SCDTest : public ::testing::Test {
 public:
     virtual void SetUp() {
-        std::vector<FeatureType> w0 = {1.0, 1.0, 1.0, 1.0}; 
+        std::vector<FeatValType> w0 = {1.0, 1.0, 1.0, 1.0}; 
         std::string loss = "LogLoss";
         double alpha = 0.01;
         double tol = 0.0001;

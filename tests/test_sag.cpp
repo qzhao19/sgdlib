@@ -11,8 +11,8 @@ namespace sgdlib {
 class SAGTest : public ::testing::Test {
 public:
     virtual void SetUp(bool is_saga) {
-        std::vector<FeatureType> w0 = {1.0, 1.0, 1.0, 1.0}; 
-        FeatureType b0 = 1.0;
+        std::vector<FeatValType> w0 = {1.0, 1.0, 1.0, 1.0}; 
+        FeatValType b0 = 1.0;
         std::string loss = "LogLoss";
         std::string search_policy = "BasicLineSearch";
         double alpha = 0.0;
