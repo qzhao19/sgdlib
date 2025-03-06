@@ -3,34 +3,67 @@
 
 #include "common/prereqs.hpp"
 
+// base value type
+using FloatValType = double;
+using IntegerValType = long;
+
+// 
+using FeatValType = FloatValType;
+using LabelValType = IntegerValType;
+using LossParamType = std::unordered_map<std::string, FloatValType>;
+using LRDecayParamType = std::unordered_map<std::string, FloatValType>;
+
+enum {
+    // unknown error
+    LBFGS_ERROR_UNKNOWNERROR = -1024,
+    
+    // insufficient memory
+    LBFGS_ERROR_OUTOFMEMORY,
+    
+    // invalid stopping criterion
+    LBFGS_ERROR_INVALID_PARAMETERS,
+   
+    // increase gradient  
+    LBFGS_ERROR_INCREASE_GRADIENT,
+    
+    // line-search step became smaller than min_stepsize
+    LBFGS_ERROR_MINIMUM_STEPSIZE,
+
+    // line-search step became larger than min_stepsize
+    LBFGS_ERROR_MAXIMUM_STEPSIZE,
+    
+    // line-search routine reaches the maximum number of evaluations
+    LBFGS_ERROR_MAXIMUM_SEARCHES,
+};
+
 struct StepSizeSearchParam {
     // regularization coefficients for L2 
-    double alpha;
+    FloatValType alpha;
 
     // initial learning rate
-    double eta0;
+    FloatValType eta0;
 
     // Controls the rate of step reduction, 
     // decreasing the step size until the condition is met.
-    double dec_factor;
+    FloatValType dec_factor;
 
     // increase coefficient, Control the increase rate of the step size, 
     // used to enlarge the step size when the step size is too small, 
     // to avoid the convergence problem caused by the step size is too small.
-    double inc_factor;
+    FloatValType inc_factor;
 
     // parameter to control the accuracy of the line search
-    double ftol;
+    FloatValType ftol;
 
     // coefficient for the Wolfe condition,which 
     // is valid only when the backtracking line-search
-    double wolfe;
+    FloatValType wolfe;
 
     // maximum step of the line search routine
-    double max_step;
+    FloatValType max_stepsize;
 
     // minimum step of the line search routine
-    double min_step;
+    FloatValType min_stepsize;
 
     // maximum number of iterations
     std::size_t max_iters;
@@ -42,12 +75,7 @@ struct StepSizeSearchParam {
     std::string condition;
 };
 
-using FeatureType = double;
-using LabelType = long;
-using LossParamType = std::unordered_map<std::string, double>;
-using LRDecayParamType = std::unordered_map<std::string, double>;
 using StepSizeSearchParamType = StepSizeSearchParam;
-
 static StepSizeSearchParamType DEFAULT_STEPSIZE_SEARCH_PARAMS = {
     0.0, 0.01, 0.5, 2.1, 
     1e-4, 0.9, 1e+20, 1e-20, 
