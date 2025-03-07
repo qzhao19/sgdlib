@@ -82,17 +82,42 @@ public:
                 width = dec_factor;
             }
             else {
-                
+                if (this->stepsize_search_params_->condition == "ARMIJO") {
+                    return count;
+                }
 
+                FloatValType dg;
+                sgdlib::internal::dot<FloatValType>(d, g, dg);
+                if (dg < this->stepsize_search_params_->wolfe * dg_init) {
+                    width = inc_factor;
+                }
+                else {
+                    if (this->stepsize_search_params_->condition == "WOLFE") {
+                        return count;
+                    }
+
+                    if (dg > (-this->stepsize_search_params_->wolfe * dg_init)) {
+                        width = dec_factor;
+                    }
+                    else {
+                        return count;
+                    }
+                }
             }
 
+            if (step < this->linesearch_params_->min_stepsize) {
+                return LBFGS_ERROR_MINIMUM_STEPSIZE;
+            }
 
-            // fx = this->loss_fn_->evaluate()
+            if (step > this->linesearch_params_->max_stepsize) {
+                return LBFGS_ERROR_MAXIMUM_STEPSIZE;
+            }
 
-
+            if (count >= this->linesearch_params_->max_searches) {
+                return LBFGS_ERROR_MAXIMUM_SEARCHES;
+            }
+            step *= width;
         }
-
-    
     }
 
 };
