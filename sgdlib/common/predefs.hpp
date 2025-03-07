@@ -3,11 +3,22 @@
 
 #include "common/prereqs.hpp"
 
+#ifndef SGDLIB_FLOAT_TYPE
+#define SGDLIB_FLOAT_TYPE   64
+#endif/*SGDLIB_FLOAT_TYPE*/
+
 // base value type
+#if     SGDLIB_FLOAT_TYPE == 32
+using FloatValType = float;
+using IntegerValType = int;
+#elif   SGDLIB_FLOAT_TYPE == 64
 using FloatValType = double;
 using IntegerValType = long;
+#else
+#error "sgdlib supports (float; SGDLIB_FLOAT_TYPE = 32) or double (double; SGDLIB_FLOAT_TYPE=64) precision only."
+#endif
 
-// 
+// define the type for feature, label, loss parameters and learning rate decay parameters
 using FeatValType = FloatValType;
 using LabelValType = IntegerValType;
 using LossParamType = std::unordered_map<std::string, FloatValType>;
