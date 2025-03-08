@@ -22,7 +22,7 @@ namespace internal {
 template<typename Type>
 inline void clip(std::vector<Type>& x, Type min, Type max) {
     if (min > max) {
-        THROW_INVALID_ARG_ERROR("a_min must be less than or equal to a_max.");
+        THROW_INVALID_ERROR("a_min must be less than or equal to a_max.");
     }
     std::transform(std::begin(x), std::end(x), std::begin(x),
         [=] (auto i) { 
@@ -45,7 +45,7 @@ inline void clip(std::vector<Type>& x, Type min, Type max) {
 template<typename Type>
 inline void clip(Type& x, Type min, Type max) {
     if (min > max) {
-        THROW_INVALID_ARG_ERROR("a_min must be less than or equal to a_max.");
+        THROW_INVALID_ERROR("a_min must be less than or equal to a_max.");
     }
     x = std::max(min, std::min(x, max));
 };
@@ -180,7 +180,6 @@ inline void dot(IterType begin, IterType end,
                    });
 };
 
-
 /** 
  * @brief Applies a scalar multiplication operation to a vector. 
  * It computes the sum of the products of all elements within 
@@ -201,7 +200,7 @@ inline void dot(const std::vector<Type>& x,
                 const std::vector<Type>& y, 
                 Type& out) {
     if (x.size() != y.size()) {
-        THROW_INVALID_ARG_ERROR("Vectors must have the same size.");
+        THROW_INVALID_ERROR("Vectors must have the same size.");
     }
     out = std::inner_product(x.begin(), x.end(), y.begin(), 0.0);
 }
@@ -212,7 +211,7 @@ void inline add(const std::vector<Type>& x,
                 std::vector<Type>& out) {
     // check
     if (x.size() != y.size()) {
-        THROW_INVALID_ARG_ERROR("Vectors must have the same size.");
+        THROW_INVALID_ERROR("Vectors must have the same size.");
     }
 
     out.resize(x.size());
