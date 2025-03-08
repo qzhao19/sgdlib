@@ -3,26 +3,26 @@
 
 #include "common/prereqs.hpp"
 
-#ifndef SGDLIB_FLOAT_TYPE
-#define SGDLIB_FLOAT_TYPE   64
-#endif/*SGDLIB_FLOAT_TYPE*/
+#ifndef PRECISION_TYPE
+#define PRECISION_TYPE   64
+#endif/*PRECISION_TYPE*/
 
 // base value type
-#if     SGDLIB_FLOAT_TYPE == 32
-using FloatValType = float;
-using IntegerValType = int;
-#elif   SGDLIB_FLOAT_TYPE == 64
-using FloatValType = double;
-using IntegerValType = long;
+#if     PRECISION_TYPE == 32
+using FloatType = float;
+using IntegerType = int;
+#elif   PRECISION_TYPE == 64
+using FloatType = double;
+using IntegerType = long;
 #else
-#error "sgdlib supports (float; SGDLIB_FLOAT_TYPE = 32) or double (double; SGDLIB_FLOAT_TYPE=64) precision only."
+#error "sgdlib supports (float; PRECISION_TYPE = 32) or FloatType (FloatType; PRECISION_TYPE=64) precision only."
 #endif
 
 // define the type for feature, label, loss parameters and learning rate decay parameters
-using FeatValType = FloatValType;
-using LabelValType = IntegerValType;
-using LossParamType = std::unordered_map<std::string, FloatValType>;
-using LRDecayParamType = std::unordered_map<std::string, FloatValType>;
+using FeatValType = FloatType;
+using LabelValType = IntegerType;
+using LossParamType = std::unordered_map<std::string, FloatType>;
+using LRDecayParamType = std::unordered_map<std::string, FloatType>;
 
 enum {
     // unknown error
@@ -49,32 +49,32 @@ enum {
 
 struct StepSizeSearchParam {
     // regularization coefficients for L2 
-    FloatValType alpha;
+    FloatType alpha;
 
     // initial learning rate
-    FloatValType eta0;
+    FloatType eta0;
 
     // Controls the rate of step reduction, 
     // decreasing the step size until the condition is met.
-    FloatValType dec_factor;
+    FloatType dec_factor;
 
     // increase coefficient, Control the increase rate of the step size, 
     // used to enlarge the step size when the step size is too small, 
     // to avoid the convergence problem caused by the step size is too small.
-    FloatValType inc_factor;
+    FloatType inc_factor;
 
     // parameter to control the accuracy of the line search
-    FloatValType ftol;
+    FloatType ftol;
 
     // coefficient for the Wolfe condition,which 
     // is valid only when the backtracking line-search
-    FloatValType wolfe;
+    FloatType wolfe;
 
     // maximum step of the line search routine
-    FloatValType max_stepsize;
+    FloatType max_stepsize;
 
     // minimum step of the line search routine
-    FloatValType min_stepsize;
+    FloatType min_stepsize;
 
     // maximum number of iterations
     std::size_t max_iters;
@@ -94,13 +94,13 @@ static StepSizeSearchParamType DEFAULT_STEPSIZE_SEARCH_PARAMS = {
 };
 
 
-constexpr double max_dloss = 1e+10;
+constexpr FloatType max_dloss = 1e+10;
 #define MAX_DLOSS max_dloss
 
-constexpr double wscale_threshold = 1e-9;
+constexpr FloatType wscale_threshold = 1e-9;
 #define WSCALE_THRESHOLD wscale_threshold
 
-constexpr double inf = std::numeric_limits<double>::infinity();
+constexpr FloatType inf = std::numeric_limits<FloatType>::infinity();
 #define INF inf
 
 #ifndef M_PI
