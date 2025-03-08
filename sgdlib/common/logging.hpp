@@ -31,51 +31,32 @@ void print_runtime_info(int print_interval, Args... args) {
 }
 
 /**
- * @brief Throws a runtime error with a formatted error message.
+ * @brief Throws a custom exception with a formatted error message.
  *
  * This function constructs an error message by concatenating all provided arguments
- * and throws a std::runtime_error with the resulting message.
+ * and throws an exception of type 'ExceptionType' with the resulting message.
  *
+ * @tparam ExceptionType The type of exception to be thrown. Must be a class derived from std::exception.
  * @tparam Args Variadic template parameter for the types of arguments.
  * @param args Variable number of arguments to be included in the error message.
  *             These can be of any type that can be inserted into an output stream.
  *
- * @throws std::runtime_error Always throws this exception with the formatted error message.
+ * @throws ExceptionType Always throws this exception with the formatted error message.
  */
-template <typename... Args>
-void throw_runtime_error(Args... args) {
+template <typename ExceptionType, typename... Args>
+void throw_error_msg(Args... args) {
     std::ostringstream err_msg;
     err_msg << "ERROR: ";
-    (err_msg << ... << args) << std::endl;
-    throw std::runtime_error(err_msg.str());
-}
 
-/**
- * @brief Throws an invalid argument error with a formatted error message.
- *
- * This function constructs an error message by concatenating all provided arguments
- * and throws a std::invalid_argument exception with the resulting message.
- *
- * @tparam Args Variadic template parameter for the types of arguments.
- * @param args Variable number of arguments to be included in the error message.
- *             These can be of any type that can be inserted into an output stream.
- *
- * @throws std::invalid_argument Always throws this exception with the formatted error message.
- */
-template <typename... Args>
-void throw_invalid_arg_error(Args... args) {
-    std::ostringstream err_msg;
-    err_msg << "ERROR: ";
     (err_msg << ... << args) << std::endl;
-    throw std::invalid_argument(err_msg.str());
+    throw ExceptionType(err_msg.str());
 }
 
 #define PRINT_RUNTIME_INFO(print_interval, ...) \
     print_runtime_info(print_interval, __VA_ARGS__)
 
-#define THROW_RUNTIME_ERROR(...) throw_runtime_error(__VA_ARGS__)
+#define THROW_RUNTIME_ERROR(...) throw_error_msg<std::runtime_error>(__VA_ARGS__)
 
-#define THROW_INVALID_ARG_ERROR(...) throw_invalid_arg_error(__VA_ARGS__)
-
+#define THROW_INVALID_ERROR(...) throw_error_msg<std::invalid_argument>(__VA_ARGS__)
 
 #endif //COMMON_LOGGING_HPP_
