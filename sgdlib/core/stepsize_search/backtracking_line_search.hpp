@@ -30,12 +30,12 @@ public:
                std::vector<FeatValType>& g, 
                std::vector<FeatValType>& d,
                FeatValType& fx,
-               FloatValType& stepsize) {
+               FloatType& stepsize) {
         
         num_features_ = x.size();
-        FeatValType y_hat, dloss;
-        FloatValType dec_factor = this->stepsize_search_params_->dec_factor;
-        FloatValType inc_factor = this->stepsize_search_params_->inc_factor;
+        FeatValType y_hat;
+        FloatType dec_factor = this->stepsize_search_params_->dec_factor;
+        FloatType inc_factor = this->stepsize_search_params_->inc_factor;
         
         if (stepsize <= 0.0) {
             // step must be positive
@@ -52,8 +52,8 @@ public:
             return LBFGS_ERROR_INCREASE_GRADIENT;
         }
 
-        FloatValType dg_test = this->stepsize_search_params_->ftol * dg_init;
-        FloatValType width;
+        FloatType dg_test = this->stepsize_search_params_->ftol * dg_init;
+        FloatType width;
         int count = 0;
 
         while (true) {
@@ -82,12 +82,13 @@ public:
                 width = dec_factor;
             }
             else {
+                // check the armijo condition
                 if (this->stepsize_search_params_->condition == "ARMIJO") {
                     return count;
                 }
 
-                FloatValType dg;
-                sgdlib::internal::dot<FloatValType>(d, g, dg);
+                FloatType dg;
+                sgdlib::internal::dot<FloatType>(d, g, dg);
                 if (dg < this->stepsize_search_params_->wolfe * dg_init) {
                     width = inc_factor;
                 }
