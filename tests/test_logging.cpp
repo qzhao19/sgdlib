@@ -29,15 +29,15 @@ TEST(LoggingTest, PrintRuntimeInfoTest) {
 
 TEST(LoggingTest, BasicExceptionThrow) {
     EXPECT_THROW({
-        throw_runtime_error("Error code: ", 404, ", Message: Not Found");
+        throw_error_msg<std::runtime_error>("Error code: ", 404, ", Message: Not Found");
     }, std::runtime_error);
 }
 
 TEST(LoggingTest, ValidErrorMessage) {
     try {
-        throw_runtime_error("Error code: ", 404, ", Message: Not Found");
+        throw_error_msg<std::invalid_argument>("Error code: ", 404, ", Message: Not Found");
         FAIL() << "Expected std::runtime_error, but no exception was thrown.";
-    } catch (const std::runtime_error& e) {
+    } catch (const std::invalid_argument& e) {
         // check that the exception is thrown
         EXPECT_STREQ(e.what(), "ERROR: Error code: 404, Message: Not Found\n");
     }
