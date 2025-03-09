@@ -22,15 +22,17 @@ protected:
     std::string lr_policy_;
     std::string search_policy_;
 
-    FloatValType alpha_;
-    FloatValType beta_;
-    FloatValType rho_;
-    FloatValType eta0_;
-    FloatValType tol_;
-    FloatValType gamma_;
+    FloatType alpha_;
+    FloatType beta_;
+    FloatType delta_;
+    FloatType rho_;
+    FloatType eta0_;
+    FloatType tol_;
+    FloatType gamma_;
         
     std::size_t past_;
     std::size_t max_iters_;
+    std::size_t mem_size_;
     std::size_t batch_size_;
     std::size_t num_iters_no_change_;
     std::size_t random_seed_;
@@ -81,10 +83,10 @@ public:
                   const FeatValType& b0,
                   std::string loss, 
                   std::string lr_policy,
-                  FloatValType alpha,
-                  FloatValType eta0,
-                  FloatValType tol,
-                  FloatValType gamma,
+                  FloatType alpha,
+                  FloatType eta0,
+                  FloatType tol,
+                  FloatType gamma,
                   std::size_t max_iters, 
                   std::size_t batch_size,
                   std::size_t num_iters_no_change,
@@ -113,9 +115,9 @@ public:
                   const FeatValType& b0,
                   std::string loss, 
                   std::string search_policy,
-                  FloatValType alpha,
-                  FloatValType eta0,
-                  FloatValType tol,
+                  FloatType alpha,
+                  FloatType eta0,
+                  FloatType tol,
                   std::size_t max_iters, 
                   std::size_t random_seed,
                   bool is_saga = false,
@@ -144,8 +146,8 @@ public:
     // constructor for SCD optimizer
     BaseOptimizer(const std::vector<FeatValType>& w0,
                   std::string loss,
-                  FloatValType alpha,
-                  FloatValType tol,
+                  FloatType alpha,
+                  FloatType tol,
                   std::size_t max_iters, 
                   std::size_t random_seed,
                   bool shuffle = true, 
@@ -172,7 +174,8 @@ public:
     BaseOptimizer(const std::vector<FeatValType>& w0, 
                   std::string loss,
                   std::string search_policy,
-                  FloatValType tol,
+                  FloatType delta,
+                  FloatType tol,
                   std::size_t max_iters, 
                   std::size_t mem_size,
                   std::size_t past,
@@ -180,8 +183,10 @@ public:
                   bool verbose = true): w0_(w0), 
             loss_(loss), 
             search_policy_(search_policy),
+            delta_(delta),
             tol_(tol),
             max_iters_(max_iters),
+            mem_size_(mem_size),
             past_(past),
             shuffle_(shuffle),
             verbose_(verbose) {
