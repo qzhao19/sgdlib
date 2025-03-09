@@ -29,25 +29,24 @@ namespace sgdlib {
 class LogLoss final: public LossFunction {
 public:
     LogLoss(LossParamType loss_param): LossFunction(loss_param) {};
-    ~LogLoss() {};
+    ~LogLoss() = default;
 
-    virtual FeatValType evaluate(const FeatValType& y_pred, 
-                                 const LabelValType& y_true) const override {
-        
-        FeatValType z = y_pred * static_cast<FeatValType>(y_true);
+    FeatValType evaluate(const FeatValType& y_pred, 
+                         const LabelValType& y_true) const override {
+        const FeatValType z = y_pred * static_cast<FeatValType>(y_true);
         if (z > 18.0) {
             return std::exp(-z);
         }
         if (z < -18.0) {
             return -z;
         }
-        return std::log(1.0 + std::exp(-z));
+        // numerically stable log(1 + exp(-z))
+        return std::log1p(std::exp(-z));
     }
 
-    virtual FeatValType derivate(const FeatValType& y_pred, 
-                                 const LabelValType& y_true) const override {
-
-        FeatValType z = y_pred * static_cast<FeatValType>(y_true);
+    FeatValType derivate(const FeatValType& y_pred, 
+                         const LabelValType& y_true) const override {
+        const FeatValType z = y_pred * static_cast<FeatValType>(y_true);
         if (z > 18.0) {
             return std::exp(-z) * (-static_cast<FeatValType>(y_true));
         }

@@ -13,32 +13,16 @@ namespace sgdlib {
 class HuberLoss final: public LossFunction {
 public:
     HuberLoss(LossParamType loss_param): LossFunction(loss_param) {};
-    ~HuberLoss() {};
+    ~HuberLoss() = default;
 
-    virtual FeatValType evaluate(const FeatValType& y_pred, 
-                                 const LabelValType& y_true) const override {
-        
-        FeatValType z = y_pred * static_cast<FeatValType>(y_true);
-        if (z > 18.0) {
-            return std::exp(-z);
-        }
-        if (z < -18.0) {
-            return -z;
-        }
-        return std::log(1.0 + std::exp(-z));
+    FeatValType evaluate(const FeatValType& y_pred, 
+                         const LabelValType& y_true) const override {
+        return 0.0;
     }
 
-    virtual FeatValType derivate(const FeatValType& y_pred, 
-                                 const LabelValType& y_true) const override {
-
-        FeatValType z = y_pred * static_cast<FeatValType>(y_true);
-        if (z > 18.0) {
-            return std::exp(-z) * (-static_cast<FeatValType>(y_true));
-        }
-        if (z < -18.0) {
-            return -static_cast<FeatValType>(y_true);
-        }
-        return -static_cast<FeatValType>(y_true) / (std::exp(z) + 1.0);
+    FeatValType derivate(const FeatValType& y_pred, 
+                         const LabelValType& y_true) const override {
+        return 0.0;
     }
     
 };

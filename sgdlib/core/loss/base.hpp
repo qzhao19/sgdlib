@@ -21,7 +21,7 @@ protected:
     LossParamType loss_param_;
 public:
     LossFunction(LossParamType loss_param): loss_param_(loss_param) {};
-    virtual ~LossFunction() {};
+    virtual ~LossFunction() = default;
 
     /**
      * evaluate the loss value of loss function
