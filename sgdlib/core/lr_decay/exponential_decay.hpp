@@ -13,9 +13,9 @@ public:
     /**
      * eta = eta0 * exp(-gamma * epoch) 
     */
-    FloatValType compute(std::size_t epoch) override {
+    FloatType compute(std::size_t epoch) override {
         return lr_decay_param_["eta0"] * \
-            std::exp((-lr_decay_param_["gamma"]) * static_cast<FloatValType>(epoch));
+            std::exp((-lr_decay_param_["gamma"]) * static_cast<FloatType>(epoch));
     }
 };
 

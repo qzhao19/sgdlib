@@ -23,7 +23,7 @@ public:
     LRDecay(LRDecayParamType lr_decay_param): lr_decay_param_(lr_decay_param) {};
     ~LRDecay() {};
 
-    virtual FloatValType compute(std::size_t epoch) = 0;
+    virtual FloatType compute(std::size_t epoch) = 0;
 };
 
 // Create registries for base LR Decay function
