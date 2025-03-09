@@ -8,18 +8,43 @@ namespace sgdlib {
 /**
  * @file sag.hpp
  * 
- * @brief Stochastic Average Gradient Descent (SAGD) optimizer.
+ * @class SAG
+ * 
+ * @brief Implements the Stochastic Average Gradient (SAG) optimization algorithm.
+ *
+ * This class inherits from `BaseOptimizer` and provides functionality for optimizing
+ * machine learning models using the SAG algorithm. It also supports the SAGA variant,
+ * which extends SAG to handle non-smooth regularization terms.
  * 
 */
 class SAG: public BaseOptimizer {
 public:
+    /**
+     * @brief Constructor for the SAG optimizer.
+     *
+     * Initializes the SAG optimizer with the given parameters and passes them to the
+     * base class `BaseOptimizer`.
+     *
+     * @param w0 Initial weight vector for the model.
+     * @param b0 Initial bias term for the model.
+     * @param loss The loss function to be minimized.
+     * @param search_policy The policy for searching step size during optimization.
+     * @param alpha L2 regularization parameter.
+     * @param eta0 Initial learning rate.
+     * @param tol Tolerance for convergence.
+     * @param max_iters Maximum number of iterations for optimization.
+     * @param random_seed Seed for the random number generator.
+     * @param is_saga If true, enables the SAGA variant of the algorithm (default: false).
+     * @param shuffle If true, shuffles the data before each epoch (default: true).
+     * @param verbose If true, enables logging of optimization progress (default: true).
+    */
     SAG(const std::vector<FeatValType>& w0, 
         const FeatValType& b0,
         std::string loss, 
         std::string search_policy,
-        FloatValType alpha,
-        FloatValType eta0,
-        FloatValType tol,
+        FloatType alpha,
+        FloatType eta0,
+        FloatType tol,
         std::size_t max_iters, 
         std::size_t random_seed,
         bool is_saga = false,
@@ -35,6 +60,11 @@ public:
             is_saga,
             shuffle, 
             verbose) {};
+    /**
+     * @brief Destructor for the SAG optimizer.
+     *
+     * Default destructor.
+     */
     ~SAG() {};
 
     void optimize(const std::vector<FeatValType>& X, 
@@ -80,7 +110,7 @@ public:
         std::vector<FeatValType> weight_update(num_features, 0.0);
         
         // compute step size 
-        FloatValType step_size = 0.0;
+        FloatType step_size = 0.0;
         std::unique_ptr<sgdlib::StepSizeSearch<sgdlib::LossFunction>> stepsize_search; 
         if (this->search_policy_ == "Constant") {
             stepsize_search = std::make_unique<sgdlib::ConstantSearch<sgdlib::LossFunction>>(
@@ -94,7 +124,7 @@ public:
             );
         }
         else {
-            THROW_INVALID_ARG_ERROR("Only supports 'Constant' or 'BasicLineSearch' policy.");
+            THROW_INVALID_ERROR("SAG optimizer supports 'Constant' or 'BasicLineSearch' policy only.");
         }
 
         std::size_t counter = 0;

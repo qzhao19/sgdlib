@@ -7,15 +7,37 @@ namespace sgdlib {
 /**
  * @file scd.hpp
  * 
- * @brief Stochastic Coordinate Descent (SCD) optimizer.
+ * @class SCD
+ * 
+ * @brief Implements the Stochastic Coordinate Descent (SCD) optimization algorithm.
+ *
+ * This class inherits from `BaseOptimizer` and provides functionality for optimizing
+ * machine learning models using the Stochastic Coordinate Descent (SCD) algorithm.
+ * SCD optimizes the model by updating one coordinate (feature weight) at a time,
+ * making it efficient for high-dimensional problems.
  * 
 */
 class SCD: public BaseOptimizer {
 public:
+    /**
+     * @brief Constructor for the SCD optimizer.
+     *
+     * Initializes the SCD optimizer with the given parameters and passes them to the
+     * base class `BaseOptimizer`.
+     *
+     * @param w0 Initial weight vector for the model.
+     * @param loss The loss function to be minimized.
+     * @param alpha L1 regularization parameter.
+     * @param tol Tolerance for convergence.
+     * @param max_iters Maximum number of iterations for optimization.
+     * @param random_seed Seed for the random number generator.
+     * @param shuffle If true, shuffles the data before each epoch (default: true).
+     * @param verbose If true, enables logging of optimization progress (default: true).
+     */
     SCD(const std::vector<FeatValType>& w0,
         std::string loss,
-        FloatValType alpha,
-        FloatValType tol,
+        FloatType alpha,
+        FloatType tol,
         std::size_t max_iters, 
         std::size_t random_seed,
         bool shuffle = true, 
@@ -27,7 +49,12 @@ public:
             random_seed,
             shuffle, 
             verbose) {};
-
+    
+    /**
+     * @brief Destructor for the SCD optimizer.
+     *
+     * Default destructor.
+    */
     ~SCD() {};
     
     void optimize(const std::vector<FeatValType>& X, 

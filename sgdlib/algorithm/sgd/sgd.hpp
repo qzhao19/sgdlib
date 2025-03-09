@@ -8,19 +8,47 @@ namespace sgdlib {
 /**
  * @file sgd.hpp
  * 
- * @brief Stochastic Gradient Descent (SGD) optimizer.
+ * @class SGD
+ * 
+ * @brief Implements the Stochastic Gradient Descent (SGD) optimization algorithm.
+ *
+ * This class inherits from `BaseOptimizer` and provides functionality for optimizing
+ * machine learning models using the Stochastic Gradient Descent (SGD) algorithm.
+ * SGD is a widely used optimization technique that updates model parameters iteratively
+ * using gradients computed on small batches of data.
  *
 */
 class SGD: public BaseOptimizer {
 public:
+    /**
+     * @brief Constructor for the SGD optimizer.
+     *
+     * Initializes the SGD optimizer with the given parameters and passes them to the
+     * base class `BaseOptimizer`.
+     *
+     * @param w0 Initial weight vector for the model.
+     * @param b0 Initial bias term for the model.
+     * @param loss The loss function to be minimized.
+     * @param lr_policy The learning rate policy (e.g., constant, adaptive).
+     * @param alpha L2 regularization parameter.
+     * @param eta0 Initial learning rate.
+     * @param tol Tolerance for convergence.
+     * @param gamma Decay factor for the learning rate (used in some learning rate policies).
+     * @param max_iters Maximum number of iterations for optimization.
+     * @param batch_size Size of the mini-batch used for gradient computation.
+     * @param num_iters_no_change Number of iterations with no improvement to wait before stopping.
+     * @param random_seed Seed for the random number generator.
+     * @param shuffle If true, shuffles the data before each epoch (default: true).
+     * @param verbose If true, enables logging of optimization progress (default: true).
+     */
     SGD(const std::vector<FeatValType>& w0, 
         const FeatValType& b0,
         std::string loss, 
         std::string lr_policy,
-        FloatValType alpha,
-        FloatValType eta0,
-        FloatValType tol,
-        FloatValType gamma,
+        FloatType alpha,
+        FloatType eta0,
+        FloatType tol,
+        FloatType gamma,
         std::size_t max_iters, 
         std::size_t batch_size,
         std::size_t num_iters_no_change,
@@ -37,6 +65,12 @@ public:
             random_seed,
             shuffle, 
             verbose) {};
+    
+    /**
+     * @brief Destructor for the SGD optimizer.
+     *
+     * Default destructor.
+     */
     ~SGD() {};
 
     void optimize(const std::vector<FeatValType>& X, 
@@ -51,7 +85,7 @@ public:
 
         bool is_converged = false;
         bool is_infinity = false;
-        FloatValType best_loss = INF;
+        FloatType best_loss = INF;
         FeatValType wscale = 1.0;
 
         // initialize a lookup table for training X, y
@@ -77,7 +111,7 @@ public:
             }
 
             // apply lr decay policy to compute eta
-            FloatValType eta = this->lr_decay_->compute(iter);            
+            const FloatType eta = this->lr_decay_->compute(iter);            
             for (std::size_t i = 0; i < step_per_iter; ++i) {
                 for (std::size_t j = 0; j < this->batch_size_; ++j) {
                     // compute predicted label proba XW + b
@@ -102,18 +136,16 @@ public:
                                                            &X[(X_data_index[i * this->batch_size_ + j] + 1) * num_features],  
                                                            dloss, 
                                                            weight_update);
-                        for (std::size_t k = 0; k < num_features; ++k) {
-                            weight_update[k] += weight_update[k];
-                        }
+                        std::transform(weight_update.begin(), weight_update.end(), weight_update.begin(),
+                                       [](FeatValType val) { return val * 2; });
                         bias_update += dloss;
                     }
 
                     // scale weight vector by a scalar factor
                     wscale *= std::max(0.0, 1.0 - (eta * this->alpha_));
                     if (wscale < WSCALE_THRESHOLD) {
-                        for (std::size_t k = 0; k < num_features; ++k) {
-                            w0[k] *= wscale;
-                        }
+                        std::transform(w0.begin(), w0.end(), w0.begin(),
+                                      [wscale](FeatValType val) { return val * wscale; });
                         wscale = 1.0;
                     }
                 }
@@ -121,26 +153,31 @@ public:
                 // compute loss/weight_gradient/bias_gradient for one batch data point
                 if (this->batch_size_ > 1) {
                     loss /= static_cast<FeatValType>(this->batch_size_);
-                    for (std::size_t k = 0; k < num_features; ++k) {
-                        weight_update[k] /= static_cast<FeatValType>(this->batch_size_);
-                    }
+                    std::transform(weight_update.begin(), weight_update.end(), weight_update.begin(),
+                                   [this](FeatValType val) { 
+                                        return val / static_cast<FeatValType>(this->batch_size_); 
+                                   });
                     bias_update /= static_cast<FeatValType>(this->batch_size_);
                 }
                 
                 // add L2 penalty for weight
                 if (this->alpha_ > 0.0) {
-                    loss += this->alpha_ * 
+                    const FeatValType l2_penalty = this->alpha_ * 
                         std::inner_product(w0.begin(), w0.end(), w0.begin(), 0.0) / 
                             static_cast<FeatValType>(num_samples);
-                    for (std::size_t k = 0; k < num_features; ++k) {
-                        weight_update[k] += (2.0 * this->alpha_ * w0[k] / static_cast<FeatValType>(num_samples));
-                    }
+                    loss += l2_penalty;
+                    std::transform(weight_update.begin(), weight_update.end(), w0.begin(), weight_update.begin(),
+                                    [this, num_samples](FeatValType update, FeatValType weight) {
+                                        return update + (2.0 * this->alpha_ * weight / 
+                                            static_cast<FeatValType>(num_samples));
+                                    });
                 }
 
                 // update w0: w = w - lr * w and b0: b = b - lr * b
-                for (std::size_t k = 0; k < num_features; ++k) {
-                    w0[k] -= eta * weight_update[k];
-                }
+                std::transform(w0.begin(), w0.end(), weight_update.begin(), w0.begin(),
+                                [eta](FeatValType weight, FeatValType update) { 
+                                    return weight - eta * update; 
+                                });
                 b0 -= eta * bias_update / (10.0 * static_cast<FeatValType>(num_samples));
 
                 // store loss value into loss_history
@@ -161,7 +198,7 @@ public:
                                                    loss_history.end(), 
                                                    decltype(loss_history)::value_type(0));
             if ((tol_ > -INF) && (sum_loss > best_loss - this->tol_ * num_samples)) {
-                no_improvement_count +=1;
+                no_improvement_count++;
             }
             else {
                 no_improvement_count = 0;
