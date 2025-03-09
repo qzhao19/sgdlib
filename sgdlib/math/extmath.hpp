@@ -94,7 +94,7 @@ inline bool isinf(const Type& x) {
  * @tparam Type The type of elements in the vector.
  * 
  * @param x a vector of type T.
- * @return The L2 norm of the vector as a double.
+ * @return The L2 norm of the vector as a custome type.
  * 
  * @note The function is marked as inline, which is suitable for small functions 
  *       to reduce the overhead of function calls.
@@ -173,6 +173,9 @@ template<typename Type,
 inline void dot(IterType begin, IterType end, 
                 const Type c, 
                 std::vector<Type>& out) {
+    if(std::distance(begin, end) != out.size()){
+        THROW_INVALID_ERROR("Output vector size is insufficient.");
+    }
     std::transform(begin, end, 
                    out.begin(), 
                    [c](const Type& elem) {
