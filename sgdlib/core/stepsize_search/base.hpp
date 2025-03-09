@@ -20,8 +20,8 @@ namespace sgdlib {
 template <typename LossFuncType>
 class StepSizeSearch {
 protected:
-    FloatValType lipschitz_;
-    FloatValType linesearch_scaling_;
+    FloatType lipschitz_;
+    FloatType linesearch_scaling_;
     std::shared_ptr<LossFuncType> loss_fn_;
 
     std::vector<FeatValType> X_;
@@ -36,9 +36,9 @@ public:
                         loss_fn_(loss_fn),
                         stepsize_search_params_(stepsize_search_params){};
     
-    ~StepSizeSearch() {};
+    virtual ~StepSizeSearch() = default;
 
-    virtual int search(bool is_saga, FloatValType& step_size) {
+    virtual int search(bool is_saga, FloatType& step_size) {
         return 0;
     };
 
@@ -47,7 +47,7 @@ public:
                        const FeatValType& grad,
                        const FeatValType& xnorm, 
                        const std::size_t& step,
-                       FloatValType& stepsize) {
+                       FloatType& stepsize) {
         return 0;
     };
 
@@ -57,7 +57,7 @@ public:
                        std::vector<FeatValType>& g, 
                        std::vector<FeatValType>& d,
                        FeatValType& fx,
-                       FloatValType& stepsize) {
+                       FloatType& stepsize) {
         return 0;
     };
 

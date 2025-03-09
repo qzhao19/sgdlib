@@ -15,12 +15,12 @@ public:
                         X, y, 
                         loss_fn, 
                         stepsize_search_params) {};
-    ~ConstantSearch() {};
+    ~ConstantSearch() = default;
 
     /** 
      * Compute step size and it is specifically used for the SAG optimizer.
     */
-    int search(bool is_saga, FloatValType& step_size) override {
+    int search(bool is_saga, FloatType& step_size) override {
         std::size_t num_samples = this->y_.size();
 
         std::vector<FeatValType> X_row_norm(num_samples);
@@ -28,11 +28,11 @@ public:
 
         FeatValType max_sum = *std::max_element(X_row_norm.begin(), X_row_norm.end());
 
-        FloatValType alpha_scaled = this->stepsize_search_params_->alpha / num_samples;
-        FloatValType L = 0.25 * (max_sum + 1.0) + alpha_scaled;
+        FloatType alpha_scaled = this->stepsize_search_params_->alpha / num_samples;
+        FloatType L = 0.25 * (max_sum + 1.0) + alpha_scaled;
 
         if (is_saga) {
-            FloatValType mu = std::min(2 * num_samples * alpha_scaled, L);
+            FloatType mu = std::min(2 * num_samples * alpha_scaled, L);
             step_size = 1.0 / (2* L + mu);
         }
         else {

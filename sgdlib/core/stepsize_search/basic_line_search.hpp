@@ -17,9 +17,9 @@ public:
                         stepsize_search_params) {
         std::size_t num_samples = y.size();
         this->lipschitz_ = 1.0 / this->stepsize_search_params_->eta0 - this->stepsize_search_params_->alpha;
-        this->linesearch_scaling_ = std::pow(2.0, static_cast<FloatValType>(this->stepsize_search_params_->max_searches) / num_samples);
+        this->linesearch_scaling_ = std::pow(2.0, static_cast<FloatType>(this->stepsize_search_params_->max_searches) / num_samples);
     };
-    ~BasicLineSearch() {};
+    ~BasicLineSearch() = default;
 
     /** 
      * Compute step size with basic line search and it is specifically used for the SAG optimizer.
@@ -29,7 +29,7 @@ public:
                const FeatValType& grad,
                const FeatValType& xnorm, 
                const std::size_t& step,
-               FloatValType& stepsize) override {
+               FloatType& stepsize) override {
         bool is_valid;
         FeatValType a, b;
 

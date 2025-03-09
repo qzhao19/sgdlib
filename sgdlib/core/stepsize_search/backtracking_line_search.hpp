@@ -22,7 +22,7 @@ public:
         num_samples_ = y.size();
         
     };
-    ~BacktrackingLineSearch() {};
+    ~BacktrackingLineSearch() = default;
 
     int search(const std::vector<FeatValType>& xp, 
                const std::vector<FeatValType>& gp, 
