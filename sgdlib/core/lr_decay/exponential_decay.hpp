@@ -8,7 +8,7 @@ namespace sgdlib {
 class Exponential final: public LRDecay{
 public:
     Exponential(LRDecayParamType lr_decay_param): LRDecay(lr_decay_param) {};
-    ~Exponential() {};
+    ~Exponential() = default;;
 
     /**
      * eta = eta0 * exp(-gamma * epoch) 
