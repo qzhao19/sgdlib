@@ -30,7 +30,7 @@ public:
                std::vector<FeatValType>& g, 
                std::vector<FeatValType>& d,
                FeatValType& fx,
-               FloatType& stepsize) {
+               FloatType& stepsize) override {
         
         num_features_ = x.size();
         FeatValType y_hat;
