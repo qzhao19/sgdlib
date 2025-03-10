@@ -65,7 +65,7 @@ public:
      *
      * Default destructor.
      */
-    ~SAG() {};
+    ~SAG() = default;
 
     void optimize(const std::vector<FeatValType>& X, 
                   const std::vector<LabelValType>& y) override {
