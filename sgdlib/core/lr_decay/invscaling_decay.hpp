@@ -8,7 +8,7 @@ namespace sgdlib {
 class Invscaling final: public LRDecay{
 public:
     Invscaling(LRDecayParamType lr_decay_param): LRDecay(lr_decay_param) {};
-    ~Invscaling() {};
+    ~Invscaling() = default;
 
     /**
      * eta = eta0 / pow(epoch, gamma) 
