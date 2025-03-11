@@ -63,12 +63,12 @@ public:
             
             // compute the loss value and gradient vector
             for (std::size_t i = 0; i < num_samples_; ++i) {
-                y_hat = std::inner_product(&this->X[i * num_features_], 
-                                           &this->X[(i + 1) * num_features_], 
+                y_hat = std::inner_product(&this->X_[i * num_features_], 
+                                           &this->X_[(i + 1) * num_features_], 
                                            x.begin(), 0.0);
-                fx += this->loss_fn_->evaluate(y_hat, this->y[i]);
+                fx += this->loss_fn_->evaluate(y_hat, this->y_[i]);
                 for (std::size_t j = 0; j < num_features_; ++j) {
-                    g[j] += this->loss_fn_->derivate(y_hat, this->y[i]) * this->X[i * num_features_ + j];
+                    g[j] += this->loss_fn_->derivate(y_hat, this->y_[i]) * this->X_[i * num_features_ + j];
                 }
             }
             fx /= static_cast<FeatValType>(num_samples_);
@@ -106,15 +106,15 @@ public:
                 }
             }
 
-            if (stepsize < this->linesearch_params_->min_stepsize) {
+            if (stepsize < this->stepsize_search_params_->min_stepsize) {
                 return LBFGS_ERROR_MINIMUM_STEPSIZE;
             }
 
-            if (stepsize > this->linesearch_params_->max_stepsize) {
+            if (stepsize > this->stepsize_search_params_->max_stepsize) {
                 return LBFGS_ERROR_MAXIMUM_STEPSIZE;
             }
 
-            if (count >= this->linesearch_params_->max_searches) {
+            if (count >= this->stepsize_search_params_->max_searches) {
                 return LBFGS_ERROR_MAXIMUM_SEARCHES;
             }
             stepsize *= width;
