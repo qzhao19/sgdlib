@@ -193,7 +193,7 @@ public:
         init_loss_params();
     };
 
-    ~BaseOptimizer() {};
+    virtual ~BaseOptimizer() = default;
 
     virtual void optimize(const std::vector<FeatValType>& X, 
                           const std::vector<LabelValType>& y) = 0;
