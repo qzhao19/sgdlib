@@ -195,6 +195,7 @@ public:
         init_loss_params();
         if (stepsize_search_params_ == nullptr) {
             stepsize_search_params_ = &DEFAULT_STEPSIZE_SEARCH_PARAMS;
+            PRINT_RUNTIME_INFO(1, "Use default search parameters.");
         }
     };
 
