@@ -179,6 +179,7 @@ public:
                   std::size_t max_iters, 
                   std::size_t mem_size,
                   std::size_t past,
+                  StepSizeSearchParamType* stepsize_search_params,
                   bool shuffle = true, 
                   bool verbose = true): w0_(w0), 
             loss_(loss), 
@@ -188,9 +189,13 @@ public:
             max_iters_(max_iters),
             mem_size_(mem_size),
             past_(past),
+            stepsize_search_params_(stepsize_search_params),
             shuffle_(shuffle),
             verbose_(verbose) {
         init_loss_params();
+        if (stepsize_search_params_ == nullptr) {
+            stepsize_search_params_ = &DEFAULT_STEPSIZE_SEARCH_PARAMS;
+        }
     };
 
     virtual ~BaseOptimizer() = default;
