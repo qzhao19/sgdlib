@@ -46,6 +46,7 @@ public:
           std::size_t max_iters, 
           std::size_t mem_size,
           std::size_t past,
+          StepSizeSearchParamType* stepsize_search_params,
           bool shuffle = true, 
           bool verbose = true): BaseOptimizer(w0,
             loss, 
@@ -55,6 +56,7 @@ public:
             max_iters, 
             mem_size,
             past,
+            stepsize_search_params,
             shuffle, 
             verbose) {};
     
@@ -275,6 +277,11 @@ public:
         }
         this->w_opt_ = x;
     };
+
+    const FeatValType get_intercept() const override {
+        THROW_RUNTIME_ERROR("Not support to call get_intercept method.");
+        return 0.0;
+    }
 };
 
 } // namespace sgdlib
