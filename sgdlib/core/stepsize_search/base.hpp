@@ -53,9 +53,9 @@ public:
 
     virtual int search(const std::vector<FeatValType>& xp, 
                        const std::vector<FeatValType>& gp, 
+                       const std::vector<FeatValType>& d,
                        std::vector<FeatValType>& x,
                        std::vector<FeatValType>& g, 
-                       std::vector<FeatValType>& d,
                        FeatValType& fx,
                        FloatType& stepsize) {
         return 0;
