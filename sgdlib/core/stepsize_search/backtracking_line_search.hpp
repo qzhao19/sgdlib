@@ -26,9 +26,9 @@ public:
 
     int search(const std::vector<FeatValType>& xp, 
                const std::vector<FeatValType>& gp, 
+               const std::vector<FeatValType>& d,
                std::vector<FeatValType>& x,
                std::vector<FeatValType>& g, 
-               std::vector<FeatValType>& d,
                FeatValType& fx,
                FloatType& stepsize) override {
         
@@ -36,7 +36,7 @@ public:
         FeatValType y_hat;
         FloatType dec_factor = this->stepsize_search_params_->dec_factor;
         FloatType inc_factor = this->stepsize_search_params_->inc_factor;
-        
+
         if (stepsize <= 0.0) {
             // step must be positive
             return LBFGS_ERROR_INVALID_PARAMETERS;
@@ -53,14 +53,16 @@ public:
         }
 
         FloatType dg_test = this->stepsize_search_params_->ftol * dg_init;
-        FloatType width;
+        FloatType width, dg;
         int count = 0;
 
         while (true) {
             // x_{k+1} = x_k + stepsize * d_k
-            sgdlib::internal::dot<FeatValType>(d, stepsize);
-            sgdlib::internal::add<FeatValType>(xp, d, x);
-            
+            std::transform(xp.begin(), xp.end(), d.begin(), x.begin(),
+               [stepsize](auto xval, auto dval) {
+                   return xval + stepsize * dval;
+               });
+
             // compute the loss value and gradient vector
             for (std::size_t i = 0; i < num_samples_; ++i) {
                 y_hat = std::inner_product(&this->X_[i * num_features_], 
@@ -87,7 +89,6 @@ public:
                     return count;
                 }
 
-                FloatType dg;
                 sgdlib::internal::dot<FloatType>(d, g, dg);
                 if (dg < this->stepsize_search_params_->wolfe * dg_init) {
                     width = inc_factor;
