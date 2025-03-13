@@ -35,6 +35,7 @@ public:
      * @param max_iters Maximum number of iterations for optimization.
      * @param mem_size The number of corrections to approximate the inverse hessian matrix.
      * @param past Number of past iterations to consider for estimation.
+     * @param stepsize_search_params LBFGS optimization parameters
      * @param shuffle If true, shuffles the data before each epoch (default: true).
      * @param verbose If true, enables logging of optimization progress (default: true).
      */
@@ -102,10 +103,10 @@ public:
         // mem_s: storing changes of parameters in the past
         // mem_y: storing changes of gradient in the past
         // mem_ys: storing value of y_T_k @ s_k
-        std::vector<FeatValType> mem_s(num_features * this->mem_size_);
-        std::vector<FeatValType> mem_y(num_features * this->mem_size_);
-        std::vector<FeatValType> mem_ys(this->mem_size_);
-        std::vector<FeatValType> mem_alpha(this->mem_size_);
+        std::vector<FeatValType> mem_s(num_features * this->mem_size_, 0.0);
+        std::vector<FeatValType> mem_y(num_features * this->mem_size_, 0.0);
+        std::vector<FeatValType> mem_ys(this->mem_size_, 0.0);
+        std::vector<FeatValType> mem_alpha(this->mem_size_, 0.0);
 
         // an array for storing previous values of the objective function
         std::vector<FeatValType> pfx(std::max(static_cast<std::size_t>(1), this->past_));
@@ -157,8 +158,17 @@ public:
             std::copy(g.begin(), g.end(), gp.begin());
             
             // call step size search function
-            int search_status = stepsize_search->search(xp, gp, x, g, d, fx, stepsize);
+            int search_status = stepsize_search->search(xp, gp, d, x, g, fx, stepsize);
+            std::cout << "search_status = " << search_status << std::endl;
+            for (std::size_t k = 0; k < num_features; ++k) {
+                std::cout << "d[" << k << "] = " << d[k] << ", ";
+            }
+            std::cout << std::endl;
+            for (std::size_t k = 0; k < num_features; ++k) {
+                std::cout << "g[" << k << "] = " << g[k] << ", ";
+            }
 
+            std::cout << std::endl;
             if (search_status < 0) {
                 // revert to previous point
                 std::copy(xp.begin(), xp.end(), x.begin());
@@ -171,9 +181,9 @@ public:
             // ||g(x)|| / max(1, ||x||) < tol
             xnorm = sgdlib::internal::sqnorm2<FeatValType>(x, true);
             gnorm = sgdlib::internal::sqnorm2<FeatValType>(g, true);
-
+            
             if (this->verbose_) {
-                PRINT_RUNTIME_INFO(1, "Iteration = ", k, ", fx = ", fx, 
+                PRINT_RUNTIME_INFO(1, "iteration = ", k, ", fx = ", fx, 
                                    ", xnorm value = ", xnorm, 
                                    ", gnorm value = ", gnorm);
             }
@@ -207,8 +217,8 @@ public:
             // s_{k+1} = x_{k+1} - x_{k} = step * d_{k}.
             // y_{k+1} = g_{k+1} - g_{k}.
             for (std::size_t k = 0; k < num_features; ++k) {
-                mem_s[k * num_features + end] = x[k] - xp[k];
-                mem_y[k * num_features + end] = g[k] - gp[k];
+                mem_s[k * this->mem_size_ + end] = x[k] - xp[k];
+                mem_y[k * this->mem_size_ + end] = g[k] - gp[k];
             }
 
             // Compute scalars ys and yy:
@@ -216,15 +226,16 @@ public:
             // yy = y^t @ y.
             // Notice that yy is used for scaling the hessian matrix H_0 (Cholesky factor).
             for (std::size_t k = 0; k < num_features; ++k) {
-                ys += mem_y[k * num_features + end] * mem_s[k * num_features + end];
-                yy += mem_y[k * num_features + end] * mem_y[k * num_features + end];
+                ys += mem_y[k * this->mem_size_ + end] * mem_s[k * this->mem_size_ + end];
+                yy += mem_y[k * this->mem_size_ + end] * mem_y[k * this->mem_size_ + end];
             }
             mem_ys[end] = ys;
-
+            
             // compute negative of gradient: d = -g
-            for (std::size_t k = 0; k < num_features; ++j) {
+            for (std::size_t k = 0; k < num_features; ++k) {
                 d[k] = -g[k];
             }
+
             // bound: number of currently available historical messages 
             // k: number of iterations
             // end: indicates the location of the latest history information.
@@ -244,12 +255,12 @@ public:
                 // alpha_{j} = s^{T}_{j} @ d_{j} * rho_{j}, rho_{j} = 1/mem_ys
                 FeatValType ds = 0.0;
                 for (std::size_t k = 0; k < num_features; ++k) {
-                    ds += mem_s[k * num_features + j] * d[k];
+                    ds += mem_s[k * this->mem_size_ + j] * d[k];
                 }
                 mem_alpha[j] = ds / mem_ys[j];
                 // update d_{i} = d_{i+1} - (alpha_{i} * y_{i})
                 for (std::size_t k = 0; k < num_features; ++k) {
-                    d[k] += (-mem_alpha[j] * mem_y[k * num_features + j]);
+                    d[k] += (-mem_alpha[j]) * mem_y[k * this->mem_size_ + j];
                 }
             }
 
@@ -263,17 +274,18 @@ public:
                 // compute beta_j = rho_{j} * y_{T}_{j} @ d_{J}, rho_{j} = 1/mem_ys
                 FeatValType yd = 0.0;
                 for (std::size_t k = 0; k < num_features; ++k) {
-                    yd = mem_y[k * num_features + j] * d[k];
+                    yd = mem_y[k * this->mem_size_ + j] * d[k];
                 }
                 beta = yd / mem_ys[j];
-                // update 
+                // update gamm_{i+1} = gamm_{i} + (alpha_{j} - beta_{j}) s_{j}
                 for (std::size_t k = 0; k < num_features; ++k) {
-                    d[k] += (-mem_alpha[j] - beta) * mem_s[k * num_features + j];
+                    d[k] += (-mem_alpha[j] - beta) * mem_s[k * this->mem_size_ + j];
                 }
                 // starting the earliest history information to traverse backward 
                 j = (j + 1) % this->mem_size_;
             }
             stepsize = 1.0;  
+
         }
         this->w_opt_ = x;
     };
