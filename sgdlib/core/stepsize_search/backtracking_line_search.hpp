@@ -19,8 +19,7 @@ public:
                                 X, y, 
                                 loss_fn, 
                                 stepsize_search_params) {
-        num_samples_ = y.size();
-        
+        num_samples_ = y.size();        
     };
     ~BacktrackingLineSearch() = default;
 
@@ -33,7 +32,7 @@ public:
                FloatType& stepsize) override {
         
         num_features_ = x.size();
-        FeatValType y_hat;
+        
         FloatType dec_factor = this->stepsize_search_params_->dec_factor;
         FloatType inc_factor = this->stepsize_search_params_->inc_factor;
 
@@ -44,7 +43,7 @@ public:
 
         // initialize fx_init and compute init gradient in search direction
         FeatValType fx_init = fx;
-        FeatValType dg_init = 0.0; 
+        FeatValType dg_init; 
         sgdlib::internal::dot<FeatValType>(d, g, dg_init);
 
         if (dg_init > 0.0) {
@@ -53,9 +52,9 @@ public:
         }
 
         FloatType dg_test = this->stepsize_search_params_->ftol * dg_init;
-        FloatType width, dg;
+        FloatType width;
+        
         int count = 0;
-
         while (true) {
             // x_{k+1} = x_k + stepsize * d_k
             std::transform(xp.begin(), xp.end(), d.begin(), x.begin(),
@@ -64,20 +63,26 @@ public:
                });
 
             // compute the loss value and gradient vector
+            FeatValType y_hat;
+            FeatValType loss = 0.0;
+            std::vector<FeatValType> grad(num_features_);
             for (std::size_t i = 0; i < num_samples_; ++i) {
                 y_hat = std::inner_product(&this->X_[i * num_features_], 
                                            &this->X_[(i + 1) * num_features_], 
                                            x.begin(), 0.0);
-                fx += this->loss_fn_->evaluate(y_hat, this->y_[i]);
+                loss += this->loss_fn_->evaluate(y_hat, this->y_[i]);
                 for (std::size_t j = 0; j < num_features_; ++j) {
-                    g[j] += this->loss_fn_->derivate(y_hat, this->y_[i]) * this->X_[i * num_features_ + j];
+                    grad[j] += this->loss_fn_->derivate(y_hat, this->y_[i]) * this->X_[i * num_features_ + j];
                 }
             }
-            fx /= static_cast<FeatValType>(num_samples_);
-            std::transform(g.begin(), g.end(), g.begin(),
+            loss /= static_cast<FeatValType>(num_samples_);
+            std::transform(grad.begin(), grad.end(), grad.begin(),
                           [this](FeatValType val) { 
                             return val / static_cast<FeatValType>(num_samples_); 
                         });
+            fx = loss;
+            g = grad;
+
             ++count;
 
             if (fx > fx_init + stepsize * dg_test) {
@@ -88,7 +93,7 @@ public:
                 if (this->stepsize_search_params_->condition == "ARMIJO") {
                     return count;
                 }
-
+                FloatType dg;
                 sgdlib::internal::dot<FloatType>(d, g, dg);
                 if (dg < this->stepsize_search_params_->wolfe * dg_init) {
                     width = inc_factor;
