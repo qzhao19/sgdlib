@@ -37,6 +37,10 @@ public:
      * @param is_saga If true, enables the SAGA variant of the algorithm (default: false).
      * @param shuffle If true, shuffles the data before each epoch (default: true).
      * @param verbose If true, enables logging of optimization progress (default: true).
+     * 
+     * @note This constructor calls the constructor of the base class `BaseOptimizer` to 
+     *       complete the initialization of the optimizer.
+     * @see BaseOptimizer
     */
     SAG(const std::vector<FeatValType>& w0, 
         const FeatValType& b0,

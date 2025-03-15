@@ -33,6 +33,10 @@ public:
      * @param random_seed Seed for the random number generator.
      * @param shuffle If true, shuffles the data before each epoch (default: true).
      * @param verbose If true, enables logging of optimization progress (default: true).
+     * 
+     * @note This constructor calls the constructor of the base class `BaseOptimizer` to 
+     *       complete the initialization of the optimizer.
+     * @see BaseOptimizer
      */
     SCD(const std::vector<FeatValType>& w0,
         std::string loss,
@@ -180,7 +184,7 @@ public:
     }
 
     const FeatValType get_intercept() const override {
-        THROW_RUNTIME_ERROR("Not support to call get_intercept method.");
+        THROW_RUNTIME_ERROR("The 'get_intercept' method is not supported for this SCD optimizer.");
         return 0.0;
     }
 };
