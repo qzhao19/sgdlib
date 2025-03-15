@@ -22,7 +22,7 @@ public:
         bool verbose = true;
 
         StepSizeSearchParamType* stepsize_search_params = &DEFAULT_STEPSIZE_SEARCH_PARAMS;
-        stepsize_search_params->max_searches = 10;
+        stepsize_search_params->max_searches = 40;
         stepsize_search_params->max_iters = 20;
 
         optimizer = std::make_unique<sgdlib::LBFGS>(w0,
@@ -40,7 +40,6 @@ public:
     }
     std::unique_ptr<sgdlib::BaseOptimizer> optimizer;
 };
-
 
 TEST_F(LBFGSTest, LBFGSOptimizerTest) {
     std::vector<double> X_train = {
@@ -97,12 +96,13 @@ TEST_F(LBFGSTest, LBFGSOptimizerTest) {
     double intercept;
 
     coef = optimizer->get_coef();
-    intercept = optimizer->get_intercept();
+    // intercept = optimizer->get_intercept();
 
     std::cout << "coefficients = ";
     for (auto c : coef) {
         std::cout << c << " ";
     }
+    std::cout << std::endl;
 };
 
 }
