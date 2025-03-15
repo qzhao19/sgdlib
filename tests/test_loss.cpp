@@ -24,7 +24,7 @@ public:
     std::shared_ptr<sgdlib::LossFunction> loss_fn; 
 };
 
-TEST_F(LossTest, LogLoss) {
+TEST_F(LossTest, LogLossTest) {
     std::vector<double> x1 = {5.2, 3.3, 1.2, 0.3};
     std::vector<double> x2 = {6.4, 3.1, 5.5, 1.8};
     long y1 = 1, y2 = 1;
@@ -70,7 +70,7 @@ TEST_F(LossTest, LogLoss) {
 };
 
 
-TEST_F(LossTest, LogLossAllData) {
+TEST_F(LossTest, LogLossAllDataTest) {
     SetUp("LogLoss");
     std::vector<double> X_train = {
         5.1, 3.5, 1.4, 0.2,4.9, 3. , 1.4, 0.2,4.7, 3.2, 1.3, 0.2,4.6, 3.1, 1.5, 0.2,
