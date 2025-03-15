@@ -53,6 +53,10 @@ public:
 
         FloatType dg_test = this->stepsize_search_params_->ftol * dg_init;
         FloatType width;
+        // define loss and grad vector
+        FeatValType y_hat;
+        FeatValType loss = 0.0;
+        std::vector<FeatValType> grad(num_features_, 0.0);
         
         int count = 0;
         while (true) {
@@ -61,11 +65,11 @@ public:
                [stepsize](auto xval, auto dval) {
                    return xval + stepsize * dval;
                });
+            
+            loss = 0.0;
+            std::memset(grad.data(), 0, grad.size() * sizeof(FeatValType));
 
             // compute the loss value and gradient vector
-            FeatValType y_hat;
-            FeatValType loss = 0.0;
-            std::vector<FeatValType> grad(num_features_);
             for (std::size_t i = 0; i < num_samples_; ++i) {
                 y_hat = std::inner_product(&this->X_[i * num_features_], 
                                            &this->X_[(i + 1) * num_features_], 
