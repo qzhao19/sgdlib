@@ -35,7 +35,7 @@ The library includes the following optimization algorithms:
 
 To build and use sgdlib, the following tools and libraries are required:
 
-- **C++ Compiler**: A C++17-compliant compiler (e.g., GCC 9+, Clang 10+, or MSVC 2019+).
+- **C++ Compiler**: A C++17-compliant compiler GCC 9+.
 - **CMake**: Version 3.26.5 or higher.
 - **Google Test (GTest)**: Version 1.14.0 or higher (for running unit tests).
 
