@@ -180,7 +180,6 @@ public:
                   std::size_t mem_size,
                   std::size_t past,
                   StepSizeSearchParamType* stepsize_search_params,
-                  bool shuffle = true, 
                   bool verbose = true): w0_(w0), 
             loss_(loss), 
             search_policy_(search_policy),
@@ -190,7 +189,6 @@ public:
             mem_size_(mem_size),
             past_(past),
             stepsize_search_params_(stepsize_search_params),
-            shuffle_(shuffle),
             verbose_(verbose) {
         init_loss_params();
         if (stepsize_search_params_ == nullptr) {
