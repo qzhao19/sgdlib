@@ -98,7 +98,9 @@ public:
             // cycle through all the features
             for (feature_index = 0; feature_index < num_features; ++feature_index) {
                 // choose a feature index randomly
-                feature_index = this->random_state_.random_index(0, num_features);
+                if(this->shuffle_) {
+                    feature_index = this->random_state_.random_index(0, num_features);
+                }
                 
                 // if norms of the columns of X is null
                 if (X_col_norm[feature_index] == 0.0) {
@@ -123,8 +125,10 @@ public:
                     weight_update = -w0[feature_index];
                 }
                 
-                pred_descent = -weight_update*grad - this->rho_ / 2.0 * weight_update * weight_update - \
-                this->alpha_ * std::abs(w0[feature_index] + weight_update) + this->alpha_ * std::abs(w0[feature_index]);
+                pred_descent = -weight_update*grad 
+                               - this->rho_ / 2.0 * weight_update * weight_update 
+                               - this->alpha_ * std::abs(w0[feature_index] + weight_update) 
+                               + this->alpha_ * std::abs(w0[feature_index]);
                 
                 if (pred_descent > best_descent) {
                     best_feature_index = feature_index;
@@ -180,11 +184,10 @@ public:
                                 ", try apply different parameters.");
         }
         this->w_opt_ = w0;
-
     }
 
     const FeatValType get_intercept() const override {
-        THROW_RUNTIME_ERROR("The 'get_intercept' method is not supported for this SCD optimizer.");
+        THROW_LOGIC_ERROR("The 'get_intercept' method is not supported for this SCD optimizer.");
         return 0.0;
     }
 };
