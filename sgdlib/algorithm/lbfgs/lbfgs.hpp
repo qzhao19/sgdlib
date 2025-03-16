@@ -40,7 +40,6 @@ public:
      * @param past Number of past iterations to consider for estimation.
      * @param stepsize_search_params Step size search parameters, of type `StepSizeSearchParamType*`. 
      *                               Contains specific parameters for step size search (e.g. dec_factor).
-     * @param shuffle If true, shuffles the data before each epoch (default: true).
      * @param verbose If true, enables logging of optimization progress (default: true).
      * 
      * @note This constructor calls the constructor of the base class `BaseOptimizer` to 
@@ -56,7 +55,6 @@ public:
           std::size_t mem_size,
           std::size_t past,
           StepSizeSearchParamType* stepsize_search_params,
-          bool shuffle = true, 
           bool verbose = true): BaseOptimizer(w0,
             loss, 
             search_policy,
@@ -66,7 +64,6 @@ public:
             mem_size,
             past,
             stepsize_search_params,
-            shuffle, 
             verbose) {};
     
     ~LBFGS() = default;
@@ -106,12 +103,12 @@ public:
 
         // call step search policy
         std::unique_ptr<sgdlib::StepSizeSearch<sgdlib::LossFunction>> stepsize_search;
-        if (this->search_policy_ == "backtracking") {
+        if (this->search_policy_ == "BacktrackingLineSearch") {
             stepsize_search = std::make_unique<sgdlib::BacktrackingLineSearch<sgdlib::LossFunction>>(
                 X, y, this->loss_fn_, this->stepsize_search_params_
             );
         }
-        else if (this->search_policy_ == "bracketing") {
+        else if (this->search_policy_ == "BracketingLineSearch") {
             stepsize_search = std::make_unique<sgdlib::BracketingLineSearch<sgdlib::LossFunction>>(
                 X, y, this->loss_fn_, this->stepsize_search_params_
             );
@@ -289,7 +286,7 @@ public:
     };
 
     const FeatValType get_intercept() const override {
-        THROW_RUNTIME_ERROR("The 'get_intercept' method is not supported for this LBFGS optimizer.");
+        THROW_LOGIC_ERROR("The 'get_intercept' method is not supported for this LBFGS optimizer.");
         return 0.0;
     }
 };
