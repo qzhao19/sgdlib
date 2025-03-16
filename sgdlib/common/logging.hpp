@@ -59,4 +59,6 @@ void throw_error_msg(Args... args) {
 
 #define THROW_INVALID_ERROR(...) throw_error_msg<std::invalid_argument>(__VA_ARGS__)
 
+#define THROW_LOGIC_ERROR(...) throw_error_msg<std::logic_error>(__VA_ARGS__)
+
 #endif //COMMON_LOGGING_HPP_
