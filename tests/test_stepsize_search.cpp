@@ -75,7 +75,7 @@ public:
                 X, y, loss_fn_, stepsize_search_params
             );
         }
-        else if (search_policy == "BacktrackingLineSearch") {
+        else if (search_policy == "BacktrackingLineSearch" || search_policy == "BracketingLineSearch") {
             stepsize_search_params->max_searches = 40;
             stepsize_search_params->condition = "WOLFE";
             stepsize_search_ = std::make_unique<sgdlib::BacktrackingLineSearch<sgdlib::LossFunction>>(
@@ -136,6 +136,40 @@ TEST_F(StepSizeSearchTest, BacktrackingLineSearchTest) {
         }  
     }
 }
+
+TEST_F(StepSizeSearchTest, BracketingLineSearchTest) {
+    SetUp("BracketingLineSearch");
+    double tolerance = 1e-5;
+    std::vector<std::vector<double>> x = {{1., 1., 1., 1.}, 
+                                           {-0.67094175, 0.00470329, 0.23273091, 0.80343884}};
+    std::vector<double> fx = {5.996018216462658, 0.9177489446446626};
+    std::vector<std::vector<double>> g = {{2.75991281, 1.64394249, 1.26730677, 0.32466222}, 
+                                           {-2.32159527, -1.03857245, -1.92900394, -0.68107431}};
+    std::vector<std::vector<double>> d {{-2.75991281, -1.64394249, -1.26730677, -0.32466222}, 
+                                         {0.7449502,  0.38705061, 0.48413709, 0.154796}};
+    std::vector<std::vector<double>> xp = x;
+    double stepsize = 0.2883013346297236;
+
+    std::vector<std::vector<double>> expect_x = {{-0.67094175,  0.00470329,  0.23273091,  0.80343884}, 
+                                                 {-0.21992446,  0.23903643,  0.52584339,  0.89715742}};
+    std::vector<std::vector<double>> expect_g = {{-2.32159528, -1.03857245, -1.92900395, -0.68107431}, 
+                                                 {2.04742451, 1.19381727, 0.98833884, 0.26008274}};
+    std::vector<double> expect_fx = {0.9177489530218861, 0.9059209513061773};
+    std::vector<double> expect_stepsize = {0.6054328027224196, 0.6054328027224196};
+
+    for (std::size_t i = 0; i < 2; ++i) {
+        int status = stepsize_search_->search(xp[i], g[i], d[i], x[i], g[i], fx[i], stepsize);
+
+        EXPECT_NEAR(stepsize, expect_stepsize[i], tolerance);
+        EXPECT_NEAR(fx[i], expect_fx[i], tolerance);
+
+        for (size_t j = 0; j < x[i].size(); ++j) {
+            EXPECT_NEAR(x[i][j], expect_x[i][j], tolerance);
+            EXPECT_NEAR(g[i][j], expect_g[i][j], tolerance);
+        }  
+    }
+}
+
 
 }
 
