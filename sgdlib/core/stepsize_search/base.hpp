@@ -1,6 +1,7 @@
 #ifndef CORE_STEPSIZE_SEARCH_BASE_HPP_
 #define CORE_STEPSIZE_SEARCH_BASE_HPP_
 
+#include "common/consts.hpp"
 #include "common/prereqs.hpp"
 #include "common/predefs.hpp"
 #include "common/registry.hpp"
