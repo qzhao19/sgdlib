@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "sgdlib/common/predefs.hpp"
 #include "sgdlib/common/logging.hpp"
 
 namespace sgdlib {

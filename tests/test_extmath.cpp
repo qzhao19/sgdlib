@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "common/consts.hpp"
 #include "sgdlib/common/predefs.hpp"
 #include "sgdlib/math/extmath.hpp"
 
