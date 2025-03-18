@@ -1,6 +1,7 @@
 #ifndef ALGORITHM_BASE_HPP_
 #define ALGORITHM_BASE_HPP_
 
+#include "common/consts.hpp"
 #include "common/prereqs.hpp"
 #include "common/predefs.hpp"
 #include "common/logging.hpp"
