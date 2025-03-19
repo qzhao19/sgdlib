@@ -77,7 +77,17 @@ public:
 
         std::size_t num_samples = y.size();
         std::size_t num_features = this->w0_.size();
-        std::size_t step_per_iter = num_samples / this->batch_size_;
+        
+        // initialize a lookup table for training X, y
+        std::vector<std::size_t> X_data_index(num_samples);
+        std::iota(X_data_index.begin(), X_data_index.end(), 0);
+
+        // initialize loss, loss_history, gradient, 
+        FeatValType y_hat;
+        FeatValType loss, dloss;
+        FeatValType bias_update = 0.0;
+        std::vector<FeatValType> loss_history(num_samples, 0.0);
+        std::vector<FeatValType> weight_update(num_features, 0.0);
 
 
     }
