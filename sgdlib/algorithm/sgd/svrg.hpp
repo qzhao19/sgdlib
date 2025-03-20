@@ -77,6 +77,7 @@ public:
 
         std::size_t num_samples = y.size();
         std::size_t num_features = this->w0_.size();
+        std::size_t iter = 0;
         
         // initialize a lookup table for training X, y
         std::vector<std::size_t> X_data_index(num_samples);
@@ -88,6 +89,56 @@ public:
         FeatValType bias_update = 0.0;
         std::vector<FeatValType> loss_history(num_samples, 0.0);
         std::vector<FeatValType> weight_update(num_features, 0.0);
+
+        bool is_converged = false;
+        bool is_infinity = false;
+        FloatType best_loss = INF;
+        FeatValType wscale = 1.0;
+
+        // initialize a lookup table for training X, y
+        std::vector<std::size_t> X_data_index(num_samples);
+        std::iota(X_data_index.begin(), X_data_index.end(), 0);
+
+        // initialize loss, loss_history, gradient, 
+        FeatValType y_hat;
+        FeatValType loss, dloss;
+        FeatValType bias_update = 0.0;
+        std::vector<FeatValType> loss_history(this->max_iters_, 0.0);
+        std::vector<FeatValType> weight_update(num_features, 0.0);
+
+        // initialize w0 (weight) and b0 (bias)
+        std::vector<FeatValType> w0 = this->w0_;
+        FeatValType b0 = this->b0_;
+
+
+        for (iter = 0; iter < this->max_iters_; ++iter) {
+            // enable to shuffle mask of data for on batch
+            if (this->shuffle_) {
+                this->random_state_.shuffle<std::size_t>(X_data_index);
+            }
+
+            // compute intial loss value and gradeint for full data
+            for (std::size_t i = 0; i < num_samples; ++i) {
+                y_hat = std::inner_product(&X[X_data_index[i] * num_features], 
+                                           &X[(X_data_index[i] + 1) * num_features], 
+                                           w0.begin(), 0.0);
+                y_hat = y_hat * wscale + b0;
+
+                loss += this->loss_fn_->evaluate(y_hat, y[i]);
+                for (std::size_t j = 0; j < num_features; ++j) {
+                    weight_update[j] += this->loss_fn_->derivate(y_hat, y[X_data_index[i]]) * X[i * num_features + j];
+                }
+            }
+            loss /= static_cast<FeatValType>(num_samples);
+            std::transform(weight_update.begin(), weight_update.end(), weight_update.begin(),
+                          [num_samples](FeatValType val) { 
+                                return val / static_cast<FeatValType>(num_samples); 
+                          });
+
+
+
+        }
+
 
 
     }
