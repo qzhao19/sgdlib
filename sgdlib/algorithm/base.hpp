@@ -36,6 +36,7 @@ protected:
     std::size_t mem_size_;
     std::size_t batch_size_;
     std::size_t num_iters_no_change_;
+    std::size_t num_inner_;
     std::size_t random_seed_;
 
     bool is_saga_;
@@ -197,6 +198,35 @@ public:
             PRINT_RUNTIME_INFO(1, "Use default search parameters.");
         }
     };
+
+    // constructor for SVRG optimizer
+    BaseOptimizer(const std::vector<FeatValType>& w0,
+                std::string loss, 
+                std::string lr_policy,
+                FloatType alpha,
+                FloatType eta0,
+                FloatType tol,
+                FloatType gamma,
+                std::size_t max_iters, 
+                std::size_t num_inner,
+                std::size_t random_seed,
+                bool shuffle = true, 
+                bool verbose = true): w0_(w0),
+            loss_(loss), 
+            lr_policy_(lr_policy),
+            alpha_(alpha),
+            eta0_(eta0),
+            tol_(tol),
+            gamma_(gamma),
+            max_iters_(max_iters), 
+            num_inner_(num_inner),
+            random_seed_(random_seed),
+            shuffle_(shuffle),
+            verbose_(verbose) {
+        init_random_state();
+        init_loss_params();
+        init_lr_params();
+            };
 
     virtual ~BaseOptimizer() = default;
 
