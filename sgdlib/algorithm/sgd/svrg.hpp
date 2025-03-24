@@ -101,6 +101,7 @@ public:
         FeatValType loss, dloss;
         std::vector<FeatValType> loss_history(this->max_iters_, 0.0);
         std::vector<FeatValType> weight_update(num_features, 0.0);
+        std::vector<FeatValType> init_weight_update(num_features, 0.0);
         std::vector<FeatValType> full_weight_update(num_features, 0.0);
 
         // initialize w0 (weight) and b0 (bias)
@@ -130,6 +131,7 @@ public:
                           [num_samples](FeatValType val) { 
                                 return val / static_cast<FeatValType>(num_samples); 
                           });
+            
             // assign w0 to init_w0 vector
             for (std::size_t j = 0; j < num_features; ++j) {
                 init_w0[j] = w0[j];
@@ -137,12 +139,13 @@ public:
             
             // apply lr decay policy to compute eta
             const FloatType eta = this->lr_decay_->compute(iter); 
+            
             // start inner loop
             for (std::size_t n = 0; n < this->num_inner_; ++n) {
                 for (std::size_t m = 0; m < batch_size; ++m) {
                     // compute predicted label proba XW
-                    y_hat = std::inner_product(&X[X_data_index[n * this->batch_size_ + m] * num_features], 
-                                               &X[(X_data_index[n * this->batch_size_ + m] + 1) * num_features], 
+                    y_hat = std::inner_product(&X[X_data_index[n * batch_size + m] * num_features], 
+                                               &X[(X_data_index[n * batch_size + m] + 1) * num_features], 
                                                w0.begin(), 0.0);
                     y_hat = y_hat * wscale;
 
