@@ -125,8 +125,10 @@ public:
                     y_hat = y_hat * wscale + b0;
 
                     // evaluate the loss on one row of X, and calculate the derivatives of the loss
+                    loss = 0.0;
+                    dloss = 0.0;
                     loss += this->loss_fn_->evaluate(y_hat, y[X_data_index[i * this->batch_size_ + j]]);
-                    dloss = this->loss_fn_->derivate(y_hat, y[X_data_index[i * this->batch_size_ + j]]);
+                    dloss += this->loss_fn_->derivate(y_hat, y[X_data_index[i * this->batch_size_ + j]]);
 
                     // clip dloss with large values
                     sgdlib::internal::clip(dloss, -MAX_DLOSS, MAX_DLOSS);
@@ -186,7 +188,6 @@ public:
 
                 // store loss value into loss_history
                 loss_history[i] = loss;
-                loss = 0.0;
             }
 
             // ---Convergence test---
