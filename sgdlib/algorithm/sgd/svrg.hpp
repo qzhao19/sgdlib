@@ -142,16 +142,43 @@ public:
             
             // start inner loop
             for (std::size_t n = 0; n < this->num_inner_; ++n) {
+                // compute grad
                 for (std::size_t m = 0; m < batch_size; ++m) {
-                    // compute predicted label proba XW
                     y_hat = std::inner_product(&X[X_data_index[n * batch_size + m] * num_features], 
                                                &X[(X_data_index[n * batch_size + m] + 1) * num_features], 
                                                w0.begin(), 0.0);
                     y_hat = y_hat * wscale;
+                    for (std::size_t j = 0; j < num_features; ++j) {
+                        weight_update[j] += this->loss_fn_->derivate(y_hat, y[X_data_index[n * batch_size + m]]) * X[n * num_features + m];
+                    }
+                }
+                std::transform(weight_update.begin(), weight_update.end(), weight_update.begin(),
+                               [batch_size](FeatValType val) { 
+                                    return val / static_cast<FeatValType>(batch_size); 
+                               });
 
-                    
+                // compute init grad
+                for (std::size_t m = 0; m < batch_size; ++m) {
+                    y_hat = std::inner_product(&X[X_data_index[n * batch_size + m] * num_features], 
+                                                &X[(X_data_index[n * batch_size + m] + 1) * num_features], 
+                                                init_w0.begin(), 0.0);
+                    y_hat = y_hat * wscale;
+                    for (std::size_t j = 0; j < num_features; ++j) {
+                        init_weight_update[j] += this->loss_fn_->derivate(y_hat, y[X_data_index[n * batch_size + m]]) * X[n * num_features + m];
+                    }
+                }
+                std::transform(init_weight_update.begin(), init_weight_update.end(), init_weight_update.begin(),
+                               [batch_size](FeatValType val) { 
+                                    return val / static_cast<FeatValType>(batch_size); 
+                               });
+                
+                // update weights
+                for (std::size_t j = 0; j < num_features; ++j) {
+                    w0[j] -= eta * (weight_update[j] - init_weight_update[j] + full_weight_update[j]);
                 }
 
+                // convergence test
+                
             }
 
 
