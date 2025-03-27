@@ -72,48 +72,35 @@ public:
 
         std::size_t num_samples = y.size();
         std::size_t num_features = this->w0_.size();
-        std::size_t iter = 0;
+        std::size_t iter = 0, sample_index = 0;
         std::size_t batch_size = num_samples / this->num_inner_;
 
         // initialize a lookup table for training X, y
         std::vector<std::size_t> X_data_index(num_samples);
         std::iota(X_data_index.begin(), X_data_index.end(), 0);
 
-        // initialize loss, loss_history, gradient, 
-        FeatValType y_hat;
-        FeatValType loss, dloss;
-        std::vector<FeatValType> loss_history(num_samples, 0.0);
-        std::vector<FeatValType> weight_update(num_features, 0.0);
-
         bool is_converged = false;
         bool is_infinity = false;
         FloatType best_loss = INF;
         FeatValType wscale = 1.0;
         // lr for regularization coefficient
-        FloatType eta_alpha = this->eta0_ * this->alpha_;
+        // FloatType eta_alpha = this->eta0_ * this->alpha_;
 
         // initialize a lookup table for training X, y
         std::vector<std::size_t> X_data_index(num_samples);
         std::iota(X_data_index.begin(), X_data_index.end(), 0);
 
         // initialize loss, loss_history, gradient, 
-        FeatValType y_hat;
-        FeatValType loss, dloss;
-        std::vector<FeatValType> loss_history(this->max_iters_, 0.0);
-        std::vector<FeatValType> weight_update(num_features, 0.0);
-        std::vector<FeatValType> init_weight_update(num_features, 0.0);
+        FeatValType y_hat, dloss;
+        std::vector<FeatValType> grad(num_samples, 0.0);
+        // std::vector<FeatValType> loss_history(this->max_iters_, 0.0);
         std::vector<FeatValType> full_weight_update(num_features, 0.0);
+        std::vector<std::size_t> update_history(num_features, 0);
 
         // initialize w0 (weight) and b0 (bias)
         std::vector<FeatValType> w0 = this->w0_;
-        std::vector<FeatValType> init_w0 = w0;
-
 
         for (iter = 0; iter < this->max_iters_; ++iter) {
-            // enable to shuffle mask of data for on batch
-            if (this->shuffle_) {
-                this->random_state_.shuffle<std::size_t>(X_data_index);
-            }
             // compute intial gradeint for full data
             // update full_weight_update is zero for beginning of iteration
             std::memset(full_weight_update.data(), 0, full_weight_update.size() * sizeof(FeatValType));
@@ -122,19 +109,11 @@ public:
                                            &X[(i + 1) * num_features], 
                                            w0.begin(), 0.0);
                 y_hat = y_hat * wscale;
-
+                
+                grad[i] = -this->loss_fn_->derivate(y_hat, y[i]);
                 for (std::size_t j = 0; j < num_features; ++j) {
-                    full_weight_update[j] += this->loss_fn_->derivate(y_hat, y[i]) * X[i * num_features + j];
+                    full_weight_update[j] += grad[i] * X[i * num_features + j];
                 }
-            }
-            std::transform(full_weight_update.begin(), full_weight_update.end(), full_weight_update.begin(),
-                          [num_samples](FeatValType val) { 
-                                return val / static_cast<FeatValType>(num_samples); 
-                          });
-            
-            // assign w0 to init_w0 vector
-            for (std::size_t j = 0; j < num_features; ++j) {
-                init_w0[j] = w0[j];
             }
             
             // apply lr decay policy to compute eta
@@ -142,44 +121,50 @@ public:
             
             // start inner loop
             for (std::size_t n = 0; n < this->num_inner_; ++n) {
-                // compute grad
-                for (std::size_t m = 0; m < batch_size; ++m) {
-                    y_hat = std::inner_product(&X[X_data_index[n * batch_size + m] * num_features], 
-                                               &X[(X_data_index[n * batch_size + m] + 1) * num_features], 
-                                               w0.begin(), 0.0);
-                    y_hat = y_hat * wscale;
-                    for (std::size_t j = 0; j < num_features; ++j) {
-                        weight_update[j] += this->loss_fn_->derivate(y_hat, y[X_data_index[n * batch_size + m]]) * X[n * num_features + m];
-                    }
+                // check if we have to shuffle the samples
+                if (this->shuffle_) {
+                    sample_index = this->random_state_.sample<std::size_t>(X_data_index);
                 }
-                std::transform(weight_update.begin(), weight_update.end(), weight_update.begin(),
-                               [batch_size](FeatValType val) { 
-                                    return val / static_cast<FeatValType>(batch_size); 
-                               });
-
-                // compute init grad
-                for (std::size_t m = 0; m < batch_size; ++m) {
-                    y_hat = std::inner_product(&X[X_data_index[n * batch_size + m] * num_features], 
-                                                &X[(X_data_index[n * batch_size + m] + 1) * num_features], 
-                                                init_w0.begin(), 0.0);
-                    y_hat = y_hat * wscale;
-                    for (std::size_t j = 0; j < num_features; ++j) {
-                        init_weight_update[j] += this->loss_fn_->derivate(y_hat, y[X_data_index[n * batch_size + m]]) * X[n * num_features + m];
-                    }
+                else {
+                    sample_index = n;
                 }
-                std::transform(init_weight_update.begin(), init_weight_update.end(), init_weight_update.begin(),
-                               [batch_size](FeatValType val) { 
-                                    return val / static_cast<FeatValType>(batch_size); 
-                               });
                 
-                // update weights
+                // just-in-time update for full weight 1/n * sum(d(f_k_w))
+                // n - update_history[j]: time differnece from last update, 
+                // and accumulate the unapplied gradient
+                if (n > 0) {
+                    for (std::size_t j = 0; j < num_features; ++j) {
+                        w0[j] += eta / wscale * (n - update_history[j]) * full_weight_update[j];
+                        update_history[j] = n;
+                    }
+                }
+
+                y_hat = std::inner_product(&X[sample_index * num_features], 
+                                           &X[(sample_index + 1) * num_features], 
+                                           w0.begin(), 0.0);
+                y_hat = y_hat * wscale;
+
+                dloss = -this->loss_fn_->derivate(y_hat, y[sample_index]);
+
+                // wscale should be updated
+                wscale *= (1.0 - eta);
+
+                // update w0
                 for (std::size_t j = 0; j < num_features; ++j) {
-                    w0[j] -= eta * (weight_update[j] - init_weight_update[j] + full_weight_update[j]);
+                    w0[j] += eta * (grad[sample_index] - dloss) / wscale;
                 }
 
-                // convergence test
-                
+                // possible underflow
+                if (wscale < WSCALE_THRESHOLD) {
+                    std::transform(w0.begin(), w0.end(), w0.begin(),
+                                   [wscale](FeatValType val) { 
+                                       return val * wscale; 
+                                   });
+                    wscale = 1.0;
+                }   
             }
+
+            // convergence test
 
 
         }
