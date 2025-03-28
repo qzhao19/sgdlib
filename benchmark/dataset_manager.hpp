@@ -6,9 +6,10 @@
 #include <mutex>
 #include <stdexcept>
 
+template <typename FeatureType, typename LabelType>
 class DatasetManager {
 public:
-    static DatasetManager& getInstance() {
+    static DatasetManager& get_instance() {
         static DatasetManager instance;
         return instance;
     }
@@ -31,14 +32,14 @@ public:
         while (std::getline(file, line)) {
             std::istringstream iss(line);
             
-            int label;
+            LabelType label;
             if (!(iss >> label)) {
                 throw std::runtime_error("Invalid label format in file: " + filepath);
             }
             labels_.push_back(label);
 
-            std::vector<float> row;
-            float value;
+            std::vector<FeatureType> row;
+            FeatureType value;
             while (iss >> value) {
                 row.push_back(value);
             }
@@ -59,8 +60,8 @@ public:
         loaded_ = true;
     }
 
-    const std::vector<int>& labels() const { return labels_; }
-    const std::vector<std::vector<float>>& features() const { return features_; }
+    const std::vector<LabelType>& labels() const { return labels_; }
+    const std::vector<std::vector<FeatureType>>& features() const { return features_; }
 
     DatasetManager(const DatasetManager&) = delete;
     DatasetManager& operator=(const DatasetManager&) = delete;
@@ -69,8 +70,8 @@ private:
     DatasetManager() = default;
     ~DatasetManager() = default;
 
-    std::vector<int> labels_;
-    std::vector<std::vector<float>> features_;
+    std::vector<LabelType> labels_;
+    std::vector<std::vector<FeatureType>> features_;
     bool loaded_ = false;
     std::mutex mutex_;
 };
