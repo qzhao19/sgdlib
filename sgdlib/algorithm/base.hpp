@@ -111,7 +111,7 @@ public:
         init_loss_params();
         init_lr_params();
     };
-
+    
     // constructor for SAG/SAGA optimizer
     BaseOptimizer(const std::vector<FeatValType>& w0,
                   const FeatValType& b0,
@@ -229,7 +229,20 @@ public:
             };
 
     virtual ~BaseOptimizer() = default;
-
+    
+    /**
+     * @brief Optimize the model using the given data and labels.
+     *
+     * This function performs the optimization process to find the optimal model parameters
+     * that minimize the loss function. It takes the input data `X` and corresponding labels `y`
+     * as input, and updates the model parameters `w_opt_` and/or `b_opt_` accordingly.
+     *
+     * @param X The feature matrix (1D array) containing the input data.
+     * @param y The corresponding labels for the input data.
+     *
+     * @note This function is a pure virtual function and must be implemented by derived classes.
+     * @see DerivedClass::optimize(const std::vector<FeatValType>& X, const std::vector<LabelValType>& y)
+     */
     virtual void optimize(const std::vector<FeatValType>& X, 
                           const std::vector<LabelValType>& y) = 0;
 
