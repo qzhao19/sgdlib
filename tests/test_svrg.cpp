@@ -4,7 +4,7 @@
 #include <gmock/gmock.h>
 
 #include "sgdlib/algorithm/base.hpp"
-#include "sgdlib/algorithm/sgd/sgd.hpp"
+#include "sgdlib/algorithm/sgd/svrg.hpp"
 
 namespace sgdlib {
 
@@ -20,21 +20,19 @@ public:
         double tol = 0.0001;
         double gamma = 0.5;
         std::size_t max_iters = 100; 
-        std::size_t batch_size = 1;
-        std::size_t num_iters_no_change = 5;
+        std::size_t num_inner = 1;
         std::size_t random_seed = -1;
         bool shuffle = true;
         bool verbose = true;
 
-        optimizer = std::make_unique<sgdlib::SGD>(w0, b0,
+        optimizer = std::make_unique<sgdlib::SVRG>(w0,
             loss, 
             lr_policy, 
             alpha, eta0, 
             tol, 
             gamma,
             max_iters, 
-            batch_size, 
-            num_iters_no_change,
+            num_inner, 
             random_seed,
             shuffle, 
             verbose
@@ -100,14 +98,12 @@ TEST_F(SGDTest, SVRGOptimizerTest) {
     double intercept;
 
     coef = optimizer->get_coef();
-    intercept = optimizer->get_intercept();
 
     std::cout << "coefficients = ";
     for (auto c : coef) {
         std::cout << c << " ";
     }
     std::cout << std::endl;
-    std::cout << "intercept = " << intercept <<std::endl;
 };
     
 }
