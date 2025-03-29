@@ -130,7 +130,7 @@ TEST_F(StepSizeSearchTest, BacktrackingLineSearchTest) {
         EXPECT_NEAR(stepsize, expect_stepsize[i], tolerance);
         EXPECT_NEAR(fx[i], expect_fx[i], tolerance);
 
-        for (size_t j = 0; j < x[i].size(); ++j) {
+        for (std::size_t j = 0; j < x[i].size(); ++j) {
             EXPECT_NEAR(x[i][j], expect_x[i][j], tolerance);
             EXPECT_NEAR(g[i][j], expect_g[i][j], tolerance);
         }  
@@ -163,7 +163,7 @@ TEST_F(StepSizeSearchTest, BracketingLineSearchTest) {
         EXPECT_NEAR(stepsize, expect_stepsize[i], tolerance);
         EXPECT_NEAR(fx[i], expect_fx[i], tolerance);
 
-        for (size_t j = 0; j < x[i].size(); ++j) {
+        for (std::size_t j = 0; j < x[i].size(); ++j) {
             EXPECT_NEAR(x[i][j], expect_x[i][j], tolerance);
             EXPECT_NEAR(g[i][j], expect_g[i][j], tolerance);
         }  

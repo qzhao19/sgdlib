@@ -64,7 +64,7 @@ TEST_F(LossTest, LogLossTest) {
     double tol = 1e-6;
     std::vector<double> expect_g = {-1.18196268e-04, -7.49848596e-05, 
                                     -2.73777758e-05, -6.85518909e-06};
-    for (size_t i = 0; i < g.size(); ++i) {
+    for (std::size_t i = 0; i < g.size(); ++i) {
         EXPECT_NEAR(g[i], expect_g[i], tol);
     }
 };
@@ -146,7 +146,7 @@ TEST_F(LossTest, LogLossAllDataTest) {
     std::vector<double> expect_grad = {2.75991, 1.64394, 1.26731, 0.324662};
 
     EXPECT_NEAR(loss, 5.99602, tolerance);
-    for (size_t i = 0; i < grad.size(); ++i) {
+    for (std::size_t i = 0; i < grad.size(); ++i) {
         EXPECT_NEAR(grad[i], expect_grad[i], tolerance);
     } 
 }

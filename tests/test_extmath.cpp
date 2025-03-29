@@ -86,7 +86,7 @@ TEST(ExtmathTest, RowNormsTest){
     sgdlib::internal::row_norms<double>(x, sq, out);
     std::vector<double> expect = {6.28171951, 9.16842407, 5.82450856};
     double tolerance = 1e-8;
-    for (size_t i = 0; i < out.size(); ++i) {
+    for (std::size_t i = 0; i < out.size(); ++i) {
         EXPECT_NEAR(expect[i], out[i], tolerance);
     }
 };
@@ -100,7 +100,7 @@ TEST(ExtmathTest, ColNormsTest){
     sgdlib::internal::col_norms<double>(x, sq, out);
     std::vector<double> expect = {90.5625, 30.11, 33.4324, 3.34};
     double tolerance = 1e-8;
-    for (size_t i = 0; i < out.size(); ++i) {
+    for (std::size_t i = 0; i < out.size(); ++i) {
         EXPECT_NEAR(expect[i], out[i], tolerance);
     }
 };
