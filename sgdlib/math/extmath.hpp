@@ -261,8 +261,8 @@ void row_norms(const std::vector<Type>& x,
 
     // compute the sum of every nth element
     std::size_t count = 0;
-    for (size_t i = 0; i < num_elems; i += ncols) {
-        size_t end = std::min(i + ncols, num_elems);
+    for (std::size_t i = 0; i < num_elems; i += ncols) {
+        std::size_t end = std::min(i + ncols, num_elems);
         if (count == 0) {
             out[count] = prefix_sum[end - 1];
         } else {
