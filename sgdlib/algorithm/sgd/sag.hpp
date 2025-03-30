@@ -109,7 +109,8 @@ public:
         FeatValType xnorm;
         FeatValType bias_update = 0.0;
         FeatValType grad_correction = 0.0;
-        std::vector<FeatValType> loss_history(num_samples, 0.0);
+        std::vector<FeatValType> loss_history;
+        loss_history.reserve(num_samples * this->max_iters_);
         std::vector<FeatValType> prev_weight(num_features, 0.0);
         std::vector<FeatValType> weight_update(num_features, 0.0);
         
@@ -134,7 +135,6 @@ public:
         std::size_t counter = 0;
         for (iter = 0; iter < this->max_iters_; ++iter) {
             for (std::size_t i = 0; i < num_samples; ++i) {
-
                 // check if we have to shuffle the samples
                 if (this->shuffle_) {
                     sample_index = this->random_state_.sample<std::size_t>(X_data_index);
@@ -166,6 +166,7 @@ public:
                     }
                 }
 
+                loss = 0.0;
                 // compute loss value and its derivative (gradient) of this sample
                 y_hat = std::inner_product(&X[sample_index * num_features], 
                                            &X[(sample_index + 1) * num_features], 
@@ -255,8 +256,7 @@ public:
                 }
 
                 // store loss value into loss_history
-                loss_history[i] = loss;
-                loss = 0.0;
+                loss_history.push_back(loss);
             }
 
             // break if raise an error in inner loop
@@ -276,8 +276,8 @@ public:
             sgdlib::internal::dot<FeatValType>(w0, wscale);
 
             // calc loss info
-            FeatValType sum_loss = std::accumulate(loss_history.begin(), 
-                                                   loss_history.end(), 
+            FeatValType sum_loss = std::accumulate(loss_history.begin() + (iter * num_samples), 
+                                                   loss_history.begin() + ((iter + 1) * num_samples), 
                                                    decltype(loss_history)::value_type(0));
             // check if convergence test is reached
             FeatValType max_change = 0.0, max_weight = 0.0;
@@ -301,6 +301,13 @@ public:
                                        ", change = ", max_change / max_weight);
                 }
             }
+        }
+        // shrink the loss_history
+        loss_history.shrink_to_fit();
+
+        // call callback function
+        if (callback_) {
+            callback_(loss_history);
         }
 
         if (is_infinity) {
