@@ -14,70 +14,10 @@
 namespace sgdlib {
 
 class BaseOptimizer {
-protected:
-    std::vector<FeatValType> w0_;
-    FeatValType b0_;
-    
-    std::string loss_;
-    std::string penalty_;
-    std::string lr_policy_;
-    std::string search_policy_;
-
-    FloatType alpha_;
-    FloatType beta_;
-    FloatType delta_;
-    FloatType rho_;
-    FloatType eta0_;
-    FloatType tol_;
-    FloatType gamma_;
-        
-    std::size_t past_;
-    std::size_t max_iters_;
-    std::size_t mem_size_;
-    std::size_t batch_size_;
-    std::size_t num_iters_no_change_;
-    std::size_t num_inner_;
-    std::size_t random_seed_;
-
-    bool is_saga_;
-    bool shuffle_;
-    bool verbose_;
-
-    LossParamType loss_params_;
-    LRDecayParamType lr_decay_params_;
-    StepSizeSearchParamType* stepsize_search_params_;
-
-    std::vector<FeatValType> w_opt_;
-    FeatValType b_opt_;
-    sgdlib::internal::RandomState random_state_;
-
-    std::shared_ptr<sgdlib::LossFunction> loss_fn_;
-    std::unique_ptr<sgdlib::LRDecay> lr_decay_;
-
-    void init_random_state() {
-        if (random_seed_ == -1) {
-            random_state_ = sgdlib::internal::RandomState();
-        }
-        else {
-            random_state_ = sgdlib::internal::RandomState(random_seed_);
-        }
-    }
-
-    void init_loss_params() {
-        // initialize loss function 
-        // margin threshold for hinge loss
-        loss_params_["threshold"] = 1.0;
-        loss_fn_ = LossFunctionRegistry()->Create(loss_, loss_params_);
-    }
-
-    void init_lr_params() {
-        // initialize learning rate scheduler
-        lr_decay_params_["eta0"] = eta0_;
-        lr_decay_params_["gamma"] = gamma_;
-        lr_decay_ = LRDecayRegistry()->Create(lr_policy_, lr_decay_params_);
-    }
-
 public:
+    // public callback type for optimizer
+    using CallbackType = std::function<void(const std::vector<FeatValType>&)>;
+
     BaseOptimizer() {};
 
     // constructor for SGD optimizer
@@ -106,7 +46,8 @@ public:
             num_iters_no_change_(num_iters_no_change),
             random_seed_(random_seed),
             shuffle_(shuffle),
-            verbose_(verbose) {
+            verbose_(verbose), 
+            callback_(nullptr) {
         init_random_state();
         init_loss_params();
         init_lr_params();
@@ -134,7 +75,8 @@ public:
             random_seed_(random_seed),
             is_saga_(is_saga),
             shuffle_(shuffle),
-            verbose_(verbose) {
+            verbose_(verbose),
+            callback_(nullptr) {
         init_random_state();
         init_loss_params();
         // initialize stepsize search params;
@@ -160,7 +102,8 @@ public:
             max_iters_(max_iters), 
             random_seed_(random_seed),
             shuffle_(shuffle),
-            verbose_(verbose) {
+            verbose_(verbose),
+            callback_(nullptr) {
         init_random_state();
         init_loss_params();
 
@@ -246,7 +189,7 @@ public:
     virtual void optimize(const std::vector<FeatValType>& X, 
                           const std::vector<LabelValType>& y) = 0;
 
-    const std::vector<FeatValType> get_coef() const {
+    const std::vector<FeatValType> get_weights() const {
         return w_opt_;
     }
 
@@ -254,6 +197,75 @@ public:
         return b_opt_;
     }
 
+    
+    void set_callback(CallbackType callback) {
+        callback_ = callback;
+    }
+
+protected:
+    std::vector<FeatValType> w0_;
+    FeatValType b0_;
+    
+    std::string loss_;
+    std::string penalty_;
+    std::string lr_policy_;
+    std::string search_policy_;
+
+    FloatType alpha_;
+    FloatType beta_;
+    FloatType delta_;
+    FloatType rho_;
+    FloatType eta0_;
+    FloatType tol_;
+    FloatType gamma_;
+        
+    std::size_t past_;
+    std::size_t max_iters_;
+    std::size_t mem_size_;
+    std::size_t batch_size_;
+    std::size_t num_iters_no_change_;
+    std::size_t num_inner_;
+    std::size_t random_seed_;
+
+    bool is_saga_;
+    bool shuffle_;
+    bool verbose_;
+
+    LossParamType loss_params_;
+    LRDecayParamType lr_decay_params_;
+    StepSizeSearchParamType* stepsize_search_params_;
+
+    std::vector<FeatValType> w_opt_;
+    FeatValType b_opt_;
+    sgdlib::internal::RandomState random_state_;
+
+    std::shared_ptr<sgdlib::LossFunction> loss_fn_;
+    std::unique_ptr<sgdlib::LRDecay> lr_decay_;
+
+    CallbackType callback_;
+
+    void init_random_state() {
+        if (random_seed_ == -1) {
+            random_state_ = sgdlib::internal::RandomState();
+        }
+        else {
+            random_state_ = sgdlib::internal::RandomState(random_seed_);
+        }
+    }
+
+    void init_loss_params() {
+        // initialize loss function 
+        // margin threshold for hinge loss
+        loss_params_["threshold"] = 1.0;
+        loss_fn_ = LossFunctionRegistry()->Create(loss_, loss_params_);
+    }
+
+    void init_lr_params() {
+        // initialize learning rate scheduler
+        lr_decay_params_["eta0"] = eta0_;
+        lr_decay_params_["gamma"] = gamma_;
+        lr_decay_ = LRDecayRegistry()->Create(lr_policy_, lr_decay_params_);
+    }
 };
 
 } // namespace sgdlib
