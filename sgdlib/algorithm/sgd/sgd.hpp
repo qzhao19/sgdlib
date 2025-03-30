@@ -100,7 +100,8 @@ public:
         FeatValType y_hat;
         FeatValType loss, dloss;
         FeatValType bias_update = 0.0;
-        std::vector<FeatValType> loss_history(step_per_iter, 0.0);
+        std::vector<FeatValType> loss_history;
+        loss_history.reserve(num_samples * this->max_iters_);
         std::vector<FeatValType> weight_update(num_features, 0.0);
         
         // initialize w0 (weight) and b0 (bias)
@@ -187,7 +188,7 @@ public:
                 b0 -= eta * bias_update / (10.0 * static_cast<FeatValType>(num_samples));
 
                 // store loss value into loss_history
-                loss_history[i] = loss;
+                loss_history.push_back(loss);
             }
 
             // ---Convergence test---
@@ -199,8 +200,8 @@ public:
             }
 
             // compute sum of the loss value for one full batch
-            FeatValType sum_loss = std::accumulate(loss_history.begin(), 
-                                                   loss_history.end(), 
+            FeatValType sum_loss = std::accumulate(loss_history.begin() + (iter * step_per_iter), 
+                                                   loss_history.begin() + ((iter + 1) * step_per_iter), 
                                                    decltype(loss_history)::value_type(0));
             if ((tol_ > -INF) && (sum_loss > best_loss - this->tol_ * num_samples)) {
                 no_improvement_count++;
@@ -226,6 +227,12 @@ public:
                                    ", xnorm2 = ", sgdlib::internal::sqnorm2<FeatValType>(w0, true), 
                                    ", avg loss = ", sum_loss / static_cast<FeatValType>(step_per_iter));
             }
+        }
+        // shrink the loss_history
+        loss_history.shrink_to_fit();
+
+        if (callback_) {
+            callback_(loss_history);
         }
 
         if (is_infinity) {
