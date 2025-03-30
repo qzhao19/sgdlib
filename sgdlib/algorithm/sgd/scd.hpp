@@ -71,6 +71,8 @@ public:
         std::vector<FeatValType> w0 = this->w0_;
 
         // initialize loss, loss_history, weight_update, 
+        std::vector<FeatValType> loss_history;
+        loss_history.reserve(this->max_iters_);
         std::vector<FeatValType> xi_w(num_samples, 0.0);
         FeatValType weight_update, grad, loss, dloss;
         
@@ -156,15 +158,20 @@ public:
                 xi_w[i] += weight_update * X[i * num_features + feature_index];
             }
 
+            // compute loss
+            loss = 0.0;
+            for (std::size_t i = 0; i < num_samples; ++i) {
+                loss += this->loss_fn_->evaluate(xi_w[i], y[i]);
+            }
+            loss /= static_cast<FeatValType>(num_samples); 
+            // store loss value into loss_history
+            loss_history.push_back(loss);
+
             // print info
             if (this->verbose_) {
-                for (std::size_t i = 0; i < num_samples; ++i) {
-                    loss += this->loss_fn_->evaluate(xi_w[i], y[i]);
-                }
                 PRINT_RUNTIME_INFO(5, "Epoch = ", iter + 1, 
                                    ", wnorm1 = ", sgdlib::internal::norm1<FeatValType>(w0) , 
-                                   ", loss = ", loss / static_cast<FeatValType>(num_samples));
-                loss = 0.0;
+                                   ", loss = ", loss);
             }
 
             // convergence check maximum coordinate update
@@ -179,6 +186,14 @@ public:
                 is_converged = false;
             }
         }
+        // shrink the loss_history
+        loss_history.shrink_to_fit();
+        
+        // call callback function
+        if (callback_) {
+            callback_(loss_history);
+        }
+
         if (!is_converged) {
             THROW_RUNTIME_ERROR("Not converge, current number of epoch ", (iter + 1), 
                                 ", try apply different parameters.");
