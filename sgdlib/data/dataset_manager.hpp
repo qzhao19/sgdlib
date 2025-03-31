@@ -1,9 +1,10 @@
-#ifndef CORE_DATA_DATASET_MANAGER_HPP_
-#define CORE_DATA_DATASET_MANAGER_HPP_
+#ifndef DATA_DATASET_MANAGER_HPP_
+#define DATA_DATASET_MANAGER_HPP_
 
 #include "common/consts.hpp"
 #include "common/prereqs.hpp"
 #include "common/predefs.hpp"
+#include "common/logging.hpp"
 
 namespace sgdlib {
 
@@ -28,12 +29,12 @@ public:
         if (loaded_) return;
 
         if (num_features_ == 0) {
-            throw std::logic_error("num_features must be positive");
+            THROW_LOGIC_ERROR("num_features must be positive");
         }
 
         std::ifstream file(filepath.data());
         if (!file) {
-            throw std::runtime_error(std::string("Failed to open file: ") + filepath.data());
+            THROW_RUNTIME_ERROR("Failed to open file: ", filepath.data());
         }
 
         clear_unsafe(); // Clear existing data
@@ -46,10 +47,10 @@ public:
             std::istringstream iss(line);
             LabelType label;
             if (!(iss >> label)) {
-                throw std::runtime_error(std::string("Invalid label in: ") + line);
+                THROW_RUNTIME_ERROR("Invalid label in: ", line);
             }
 
-            std::vector<FeatType> sample(num_features_, FeatType{});
+            std::vector<FeatType> sample(num_features_, 0.0);
             parse_features(iss, sample);
             
             labels_.push_back(std::move(label));
@@ -58,7 +59,7 @@ public:
         }
 
         if (labels_.empty()) {
-            throw std::runtime_error("Empty dataset");
+            THROW_RUNTIME_ERROR("Empty dataset");
         }
 
         loaded_ = true;
@@ -111,7 +112,7 @@ private:
     explicit DatasetManager(std::size_t num_features) 
         : num_features_(num_features) {
         if (num_features == 0) {
-            throw std::invalid_argument("num_features cannot be zero");
+            THROW_INVALID_ERROR("num_features cannot be zero");
         }
     }
 
@@ -122,7 +123,7 @@ private:
         while (iss >> token) {
             const auto colon_pos = token.find(':');
             if (colon_pos == std::string::npos) {
-                throw std::runtime_error("Missing ':' in feature: " + token);
+                THROW_RUNTIME_ERROR("Missing ':' in feature: ", token);
             }
 
             try {
@@ -140,22 +141,21 @@ private:
                 }();
 
                 if (dim == 0 || dim > num_features_) {
-                    throw std::out_of_range(
-                        "Feature dim " + std::to_string(dim) + 
-                        " out of range [1," + std::to_string(num_features_) + "]");
+                    THROW_OUT_RANGE_ERROR("Feature dim ", std::to_string(dim), 
+                        " out of range [1,", std::to_string(num_features_), "]");
                 }
                 sample[dim - 1] = value;
             } catch (const std::exception& e) {
-                throw std::runtime_error("Failed to parse feature '" + token + "': " + e.what());
+                THROW_RUNTIME_ERROR("Failed to parse feature '", token, "': ", e.what());
             }
         }
     }
 
     void validate_index(std::size_t index) const {
         if (index >= labels_.size()) {
-            throw std::out_of_range(
-                "Index " + std::to_string(index) + 
-                " >= sample count " + std::to_string(labels_.size()));
+            THROW_OUT_RANGE_ERROR(
+                "Index ", std::to_string(index), 
+                " >= sample count ", std::to_string(labels_.size()));
         }
     }
 
@@ -180,6 +180,5 @@ private:
     mutable std::mutex mutex_;
 };
     
-}
-
-#endif
+} // namespace sgdlib
+#endif /*DATA_DATASET_MANAGER_HPP_ */ 
