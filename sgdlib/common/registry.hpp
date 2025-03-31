@@ -6,9 +6,17 @@
 #include "common/predefs.hpp"
 
 namespace sgdlib {
+namespace detail {
+
+// forward declration
+template <typename ObjectPtrType, typename... Args>
+class Registry;
 
 template <typename ObjectPtrType, typename... Args>
-class Registry final {
+class Registerer;
+
+template <typename ObjectPtrType, typename... Args>
+class Registry {
 public:
     using Creator = std::function<ObjectPtrType(Args...)>;
 
@@ -77,24 +85,27 @@ public:
     }
 };
 
+} // namespace detail
+} // namespace sgdlib
+
 #define DECLARE_TYPED_REGISTRY(RegistryName, ObjectType, PtrType, ...)                 \
-    ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* RegistryName();            \
-    typedef ::sgdlib::Registerer<PtrType<ObjectType>, ##__VA_ARGS__>                   \
-        Registerer##RegistryName;
+    ::sgdlib::detail::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* RegistryName();    \
+    using Registerer##RegistryName = ::sgdlib::detail::Registerer<PtrType<ObjectType>, ##__VA_ARGS__>; \
+
 
 #define DEFINE_TYPED_REGISTRY(RegistryName, ObjectType, PtrType, ...)                  \
-    ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* RegistryName() {           \
-        static ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* registry =      \
-            new ::sgdlib::Registry<PtrType<ObjectType>, ##__VA_ARGS__>();              \
+    ::sgdlib::detail::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* RegistryName() {           \
+        static ::sgdlib::detail::Registry<PtrType<ObjectType>, ##__VA_ARGS__>* registry =      \
+            new ::sgdlib::detail::Registry<PtrType<ObjectType>, ##__VA_ARGS__>();              \
         return registry;                                                               \
     }
 
 #define REGISTER_TYPED_CLASS(RegistryName, key, ...)                                   \
     namespace {                                                                        \
-      static ::sgdlib::Registerer##RegistryName ANONYMOUS_VARIABLE(anon##RegistryName)(  \
+      static ::sgdlib::detail::Registerer##RegistryName ANONYMOUS_VARIABLE(anon##RegistryName)( \
         key,                                                                           \
         RegistryName(),                                                                \
-        ::sgdlib::Registerer##RegistryName::DefaultCreator<__VA_ARGS__>,               \
+        ::sgdlib::detail::Registerer##RegistryName::DefaultCreator<__VA_ARGS__>,                \
         DemangleType<__VA_ARGS__>());                                                  \
     }
 
@@ -119,8 +130,5 @@ public:
 // key is the name, the second is derived class
 #define REGISTER_CLASS(RegistryName, key, ...)                                         \
     REGISTER_TYPED_CLASS(RegistryName, #key, __VA_ARGS__)
-
-
-} // end namespace
 
 #endif // COMMON_REGISTRY_HPP_
