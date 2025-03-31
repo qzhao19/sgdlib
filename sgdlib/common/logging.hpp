@@ -3,6 +3,9 @@
 
 #include "common/prereqs.hpp"
 
+namespace sgdlib {
+namespace detail {
+
 /**
  * @brief Prints runtime information at specified intervals.
  *
@@ -47,18 +50,22 @@ template <typename ExceptionType, typename... Args>
 void throw_error_msg(Args... args) {
     std::ostringstream err_msg;
     err_msg << "ERROR: ";
-
     (err_msg << ... << args) << std::endl;
     throw ExceptionType(err_msg.str());
 }
 
+} // namespace detail
+} // namespace sgdlib
+
 #define PRINT_RUNTIME_INFO(print_interval, ...) \
-    print_runtime_info(print_interval, __VA_ARGS__)
+    sgdlib::detail::print_runtime_info(print_interval, __VA_ARGS__)
 
-#define THROW_RUNTIME_ERROR(...) throw_error_msg<std::runtime_error>(__VA_ARGS__)
+#define THROW_RUNTIME_ERROR(...) sgdlib::detail::throw_error_msg<std::runtime_error>(__VA_ARGS__)
 
-#define THROW_INVALID_ERROR(...) throw_error_msg<std::invalid_argument>(__VA_ARGS__)
+#define THROW_INVALID_ERROR(...) sgdlib::detail::throw_error_msg<std::invalid_argument>(__VA_ARGS__)
 
-#define THROW_LOGIC_ERROR(...) throw_error_msg<std::logic_error>(__VA_ARGS__)
+#define THROW_LOGIC_ERROR(...) sgdlib::detail::throw_error_msg<std::logic_error>(__VA_ARGS__)
+
+#define THROW_OUT_RANGE_ERROR(...) sgdlib::detail::throw_error_msg<std::out_of_range>(__VA_ARGS__)
 
 #endif //COMMON_LOGGING_HPP_
