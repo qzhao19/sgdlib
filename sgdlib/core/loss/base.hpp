@@ -5,9 +5,10 @@
 #include "common/prereqs.hpp"
 #include "common/predefs.hpp"
 #include "common/registry.hpp"
-#include "math/extmath.hpp"
+#include "math/math_ops.hpp"
 
 namespace sgdlib {
+namespace detail {
 
 /** 
  * @file base.hpp
@@ -63,6 +64,7 @@ public:
 DECLARE_SHARED_REGISTRY(LossFunctionRegistry, LossFunction, LossParamType);
 DEFINE_SHARED_REGISTRY(LossFunctionRegistry, LossFunction, LossParamType);
 
+} // namespace detail
 } // namespace sgdlib
 
 #endif // CORE_LOSS_BASE_HPP_
