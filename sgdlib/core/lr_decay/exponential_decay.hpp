@@ -4,6 +4,7 @@
 #include "base.hpp"
 
 namespace sgdlib {
+namespace detail {
 
 class Exponential final: public LRDecay{
 public:
@@ -19,6 +20,7 @@ public:
     }
 };
 
+} // namespace detail
 } // namespace sgdlib
 
 #endif // CORE_LR_DECAY_EXPONENTIAL_DECAY_HPP_
