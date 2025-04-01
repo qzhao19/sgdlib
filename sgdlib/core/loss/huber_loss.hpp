@@ -4,6 +4,7 @@
 #include "base.hpp"
 
 namespace sgdlib {
+namespace detail {
 
 /** 
  * @file huber_loss.hpp
@@ -27,6 +28,7 @@ public:
     
 };
 
+} // namespace detail
 } // namespace sgdlib
 
 #endif // CORE_LOSS_HUBER_LOSS_HPP_
