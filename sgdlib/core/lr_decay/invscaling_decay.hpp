@@ -4,6 +4,7 @@
 #include "base.hpp"
 
 namespace sgdlib {
+namespace detail {
 
 class Invscaling final: public LRDecay{
 public:
@@ -18,6 +19,7 @@ public:
     }
 };
 
+} // namespace detail
 } // namespace sgdlib
 
 #endif // CORE_LR_DECAY_INVSCALING_DECAY_HPP_
