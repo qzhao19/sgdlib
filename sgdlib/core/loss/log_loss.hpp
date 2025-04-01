@@ -4,6 +4,7 @@
 #include "base.hpp"
 
 namespace sgdlib {
+namespace detail {
 
 /**
  * @file log_loss.hpp
@@ -58,6 +59,7 @@ public:
 
 };
 
+} // namespace detail
 } // namespace sgdlib
 
 #endif // CORE_LOSS_LOG_LOSS_HPP_
