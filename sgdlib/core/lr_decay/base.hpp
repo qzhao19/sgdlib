@@ -7,7 +7,8 @@
 #include "common/registry.hpp"
 
 namespace sgdlib {
-
+namespace detail {
+    
 /** 
  * @file base.hpp
  * 
@@ -30,6 +31,7 @@ public:
 DECLARE_UNIQUE_REGISTRY(LRDecayRegistry, LRDecay, LRDecayParamType);
 DEFINE_UNIQUE_REGISTRY(LRDecayRegistry, LRDecay, LRDecayParamType);
 
+} // namespace detail
 } // namespace sgdlib
 
 #endif // CORE_LR_DECAY_BASE_HPP_
