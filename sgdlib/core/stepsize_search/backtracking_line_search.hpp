@@ -4,6 +4,7 @@
 #include "base.hpp"
 
 namespace sgdlib {
+namespace detail {
 
 template <typename LossFuncType>
 class BacktrackingLineSearch final: public StepSizeSearch<LossFuncType> {
@@ -44,7 +45,7 @@ public:
         // initialize fx_init and compute init gradient in search direction
         FeatValType fx_init = fx;
         FeatValType dg_init; 
-        sgdlib::internal::dot<FeatValType>(d, g, dg_init);
+        sgdlib::detail::dot<FeatValType>(d, g, dg_init);
 
         if (dg_init > 0.0) {
             // moving direction increases the objective function value
@@ -98,7 +99,7 @@ public:
                     return count;
                 }
                 FloatType dg;
-                sgdlib::internal::dot<FloatType>(d, g, dg);
+                sgdlib::detail::dot<FloatType>(d, g, dg);
                 if (dg < this->stepsize_search_params_->wolfe * dg_init) {
                     width = inc_factor;
                 }
@@ -133,6 +134,7 @@ public:
 
 };
 
+} // namespace detail
 } // namespace sgdlib
 
 #endif // CORE_STEPSIZE_SEARCH_BACKTRACKING_LINE_SEARCH_HPP_
