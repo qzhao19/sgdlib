@@ -4,6 +4,7 @@
 #include "base.hpp"
 
 namespace sgdlib {
+namespace detail {
 
 template <typename LossFuncType>
 class ConstantSearch final: public StepSizeSearch<LossFuncType>{
@@ -24,7 +25,7 @@ public:
         std::size_t num_samples = this->y_.size();
 
         std::vector<FeatValType> X_row_norm(num_samples);
-        sgdlib::internal::row_norms<FeatValType>(this->X_, true, X_row_norm);
+        sgdlib::detail::row_norms<FeatValType>(this->X_, true, X_row_norm);
 
         FeatValType max_sum = *std::max_element(X_row_norm.begin(), X_row_norm.end());
 
@@ -43,6 +44,7 @@ public:
     }
 };
 
+} // namespace detail
 } // namespace sgdlib
 
 #endif // CORE_STEPSIZE_SEARCH_CONSTANT_SEARCH_HPP_
