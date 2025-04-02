@@ -4,6 +4,7 @@
 #include "base.hpp"
 
 namespace sgdlib {
+namespace detail {
 
 template <typename LossFuncType>
 class BasicLineSearch final: public StepSizeSearch<LossFuncType> {
@@ -58,6 +59,7 @@ public:
     }
 };
 
+} // namespace detail
 } // namespace sgdlib
 
 #endif // CORE_STEPSIZE_SEARCH_BASIC_LINE_SEARCH_HPP_
