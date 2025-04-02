@@ -6,9 +6,10 @@
 #include "common/predefs.hpp"
 #include "common/registry.hpp"
 #include "core/loss.hpp"
-#include "math/extmath.hpp"
+#include "math/math_ops.hpp"
 
 namespace sgdlib {
+namespace detail {
 
 /** 
  * @file base.hpp
@@ -64,6 +65,7 @@ public:
 
 };
 
+} // namespace detail
 } // namespace sgdlib
 
 #endif // CORE_STEPSIZE_SEARCH_BASE_HPP_
