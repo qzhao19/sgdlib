@@ -9,7 +9,7 @@
 #include "core/lr_decay.hpp"
 #include "core/stepsize_search.hpp"
 #include "math/random.hpp"
-#include "math/extmath.hpp"
+#include "math/math_ops.hpp"
 
 namespace sgdlib {
 
@@ -237,19 +237,19 @@ protected:
 
     std::vector<FeatValType> w_opt_;
     FeatValType b_opt_;
-    sgdlib::internal::RandomState random_state_;
+    sgdlib::detail::RandomState random_state_;
 
-    std::shared_ptr<sgdlib::LossFunction> loss_fn_;
-    std::unique_ptr<sgdlib::LRDecay> lr_decay_;
+    std::shared_ptr<sgdlib::detail::LossFunction> loss_fn_;
+    std::unique_ptr<sgdlib::detail::LRDecay> lr_decay_;
 
     CallbackType callback_;
 
     void init_random_state() {
         if (random_seed_ == -1) {
-            random_state_ = sgdlib::internal::RandomState();
+            random_state_ = sgdlib::detail::RandomState();
         }
         else {
-            random_state_ = sgdlib::internal::RandomState(random_seed_);
+            random_state_ = sgdlib::detail::RandomState(random_seed_);
         }
     }
 
@@ -257,14 +257,14 @@ protected:
         // initialize loss function 
         // margin threshold for hinge loss
         loss_params_["threshold"] = 1.0;
-        loss_fn_ = LossFunctionRegistry()->Create(loss_, loss_params_);
+        loss_fn_ = sgdlib::detail::LossFunctionRegistry()->Create(loss_, loss_params_);
     }
 
     void init_lr_params() {
         // initialize learning rate scheduler
         lr_decay_params_["eta0"] = eta0_;
         lr_decay_params_["gamma"] = gamma_;
-        lr_decay_ = LRDecayRegistry()->Create(lr_policy_, lr_decay_params_);
+        lr_decay_ = sgdlib::detail::LRDecayRegistry()->Create(lr_policy_, lr_decay_params_);
     }
 };
 
