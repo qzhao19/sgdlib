@@ -132,14 +132,14 @@ public:
                     dloss += this->loss_fn_->derivate(y_hat, y[X_data_index[i * this->batch_size_ + j]]);
 
                     // clip dloss with large values
-                    sgdlib::internal::clip(dloss, -MAX_DLOSS, MAX_DLOSS);
+                    sgdlib::detail::clip(dloss, -MAX_DLOSS, MAX_DLOSS);
 
                     if (dloss != 0.0) {
                         // Scales sample x by constant wscale and add it to weight:
                         // deflation of the sample feature values, adding to weights 
                         // means that this scaled sample directly affects the final output
                         dloss /= wscale;
-                        sgdlib::internal::dot<FeatValType>(&X[X_data_index[i * this->batch_size_ + j] * num_features],
+                        sgdlib::detail::dot<FeatValType>(&X[X_data_index[i * this->batch_size_ + j] * num_features],
                                                            &X[(X_data_index[i * this->batch_size_ + j] + 1) * num_features],  
                                                            dloss, 
                                                            weight_update);
@@ -193,8 +193,7 @@ public:
 
             // ---Convergence test---
             // check under/overflow
-            if (sgdlib::internal::isinf<FeatValType>(w0) || 
-                sgdlib::internal::isinf<FeatValType>(b0)) {
+            if (sgdlib::detail::isinf<FeatValType>(w0) || sgdlib::detail::isinf<FeatValType>(b0)) {
                 is_infinity = true;
                 break;
             }
@@ -224,7 +223,7 @@ public:
 
             if (this->verbose_) {
                 PRINT_RUNTIME_INFO(2, "Epoch = ", iter + 1, 
-                                   ", xnorm2 = ", sgdlib::internal::sqnorm2<FeatValType>(w0, true), 
+                                   ", xnorm2 = ", sgdlib::detail::sqnorm2<FeatValType>(w0, true), 
                                    ", avg loss = ", sum_loss / static_cast<FeatValType>(step_per_iter));
             }
         }
@@ -245,7 +244,6 @@ public:
                                 ", the batch size ", this->batch_size_,
                                 ", try to apply different parameters.");
         }
-
         this->w_opt_ = w0;
         this->b_opt_ = b0;
     }
