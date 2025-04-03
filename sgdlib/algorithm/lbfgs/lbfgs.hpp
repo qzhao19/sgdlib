@@ -83,6 +83,10 @@ public:
         FloatType rate, beta;
         FeatValType fx = 0.0, ys = 0.0, yy = 0.0;
         
+        // init the loss history vector
+        std::vector<FeatValType> loss_history;
+        loss_history.reserve(num_samples * this->max_iters_);
+        
         // intermediate variables: previous x, gradient, previous gradient, directions
         std::vector<FeatValType> xp(num_features);
         std::vector<FeatValType> g(num_features);
@@ -102,14 +106,14 @@ public:
         std::vector<FeatValType> pfx(std::max(static_cast<std::size_t>(1), this->past_));
 
         // call step search policy
-        std::unique_ptr<sgdlib::StepSizeSearch<sgdlib::LossFunction>> stepsize_search;
+        std::unique_ptr<sgdlib::detail::StepSizeSearch<sgdlib::detail::LossFunction>> stepsize_search;
         if (this->search_policy_ == "BacktrackingLineSearch") {
-            stepsize_search = std::make_unique<sgdlib::BacktrackingLineSearch<sgdlib::LossFunction>>(
+            stepsize_search = std::make_unique<sgdlib::detail::BacktrackingLineSearch<sgdlib::detail::LossFunction>>(
                 X, y, this->loss_fn_, this->stepsize_search_params_
             );
         }
         else if (this->search_policy_ == "BracketingLineSearch") {
-            stepsize_search = std::make_unique<sgdlib::BracketingLineSearch<sgdlib::LossFunction>>(
+            stepsize_search = std::make_unique<sgdlib::detail::BracketingLineSearch<sgdlib::detail::LossFunction>>(
                 X, y, this->loss_fn_, this->stepsize_search_params_
             );
         }
@@ -142,8 +146,8 @@ public:
         }
 
         // compute norm2 of g and d to make sure initial vars are not stationary point
-        FeatValType xnorm = sgdlib::internal::sqnorm2<FeatValType>(x, true);
-        FeatValType gnorm = sgdlib::internal::sqnorm2<FeatValType>(g, true);
+        FeatValType xnorm = sgdlib::detail::sqnorm2<FeatValType>(x, true);
+        FeatValType gnorm = sgdlib::detail::sqnorm2<FeatValType>(g, true);
 
         // Convergence test 0 -- gradient
         // make sure that the initial variables are not a minimizer
@@ -153,7 +157,7 @@ public:
         }
 
         // intial step size stepsize = 1.0 / norm2(d)
-        FeatValType stepsize = 1.0 / sgdlib::internal::sqnorm2<FeatValType>(d, true);
+        FeatValType stepsize = 1.0 / sgdlib::detail::sqnorm2<FeatValType>(d, true);
 
         k = 1;
         end = 0;
@@ -172,11 +176,14 @@ public:
                 THROW_RUNTIME_ERROR("lbfgs exit, the point return to the privious point.");
             }
 
+            // restore loss fx into loss_history
+            loss_history.push_back(fx);
+
             // Convergence test 1 -- gradient test
             // criterion is given by the following formula:
             // ||g(x)|| / max(1, ||x||) < tol
-            xnorm = sgdlib::internal::sqnorm2<FeatValType>(x, true);
-            gnorm = sgdlib::internal::sqnorm2<FeatValType>(g, true);
+            xnorm = sgdlib::detail::sqnorm2<FeatValType>(x, true);
+            gnorm = sgdlib::detail::sqnorm2<FeatValType>(g, true);
             
             if (this->verbose_) {
                 PRINT_RUNTIME_INFO(1, "iteration = ", k, 
@@ -282,6 +289,12 @@ public:
             yy = 0.0;
             stepsize = 1.0;
         }
+        loss_history.shrink_to_fit();
+
+        if (callback_) {
+            callback_(loss_history);
+        }
+
         this->w_opt_ = x;
     };
 
