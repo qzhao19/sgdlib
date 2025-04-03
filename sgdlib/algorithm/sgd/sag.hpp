@@ -116,15 +116,15 @@ public:
         
         // compute step size 
         FloatType step_size = 0.0;
-        std::unique_ptr<sgdlib::StepSizeSearch<sgdlib::LossFunction>> stepsize_search; 
+        std::unique_ptr<sgdlib::detail::StepSizeSearch<sgdlib::detail::LossFunction>> stepsize_search; 
         if (this->search_policy_ == "Constant") {
-            stepsize_search = std::make_unique<sgdlib::ConstantSearch<sgdlib::LossFunction>>(
+            stepsize_search = std::make_unique<sgdlib::detail::ConstantSearch<sgdlib::detail::LossFunction>>(
                 X, y, this->loss_fn_, this->stepsize_search_params_
             );
             search_status = stepsize_search->search(is_saga_, step_size);
         }
         else if (this->search_policy_ == "BasicLineSearch") {
-            stepsize_search = std::make_unique<sgdlib::BasicLineSearch<sgdlib::LossFunction>>(
+            stepsize_search = std::make_unique<sgdlib::detail::BasicLineSearch<sgdlib::detail::LossFunction>>(
                 X, y, this->loss_fn_, this->stepsize_search_params_
             );
         }
@@ -134,6 +134,7 @@ public:
 
         std::size_t counter = 0;
         for (iter = 0; iter < this->max_iters_; ++iter) {
+            // loop samples 
             for (std::size_t i = 0; i < num_samples; ++i) {
                 // check if we have to shuffle the samples
                 if (this->shuffle_) {
@@ -160,7 +161,7 @@ public:
                         }
                         update_history[j] = counter;
                     }
-                    if (sgdlib::internal::isinf<FeatValType>(w0)) {
+                    if (sgdlib::detail::isinf<FeatValType>(w0)) {
                         is_infinity = true;
                         break;
                     }
@@ -190,7 +191,7 @@ public:
 
                 // make the weight update to grad_sum
                 // update = x * grad, 
-                sgdlib::internal::dot<FeatValType>(&X[sample_index * num_features], 
+                sgdlib::detail::dot<FeatValType>(&X[sample_index * num_features], 
                                                    &X[(sample_index + 1) * num_features], 
                                                    dloss,
                                                    weight_update);
@@ -212,7 +213,7 @@ public:
                 else {
                     b0 -= step_size * bias_update / static_cast<FeatValType>(num_seens);
                 }
-                if (sgdlib::internal::isinf<FeatValType>(b0)) {
+                if (sgdlib::detail::isinf<FeatValType>(b0)) {
                     is_infinity = true;
                     break;
                 }
@@ -239,10 +240,10 @@ public:
                         update_history[j] = counter + 1;
                     }
                     cumulative_sum[counter] = 0.0;
-                    sgdlib::internal::dot<FeatValType>(w0, wscale);
+                    sgdlib::detail::dot<FeatValType>(w0, wscale);
                     wscale = 1.0;
 
-                    if (sgdlib::internal::isinf<FeatValType>(w0)) {
+                    if (sgdlib::detail::isinf<FeatValType>(w0)) {
                         is_infinity = true;
                         break;
                     }
@@ -273,7 +274,7 @@ public:
                     w0[j] -= (cumulative_sum[counter - 1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                 }
             }
-            sgdlib::internal::dot<FeatValType>(w0, wscale);
+            sgdlib::detail::dot<FeatValType>(w0, wscale);
 
             // calc loss info
             FeatValType sum_loss = std::accumulate(loss_history.begin() + (iter * num_samples), 
@@ -296,7 +297,7 @@ public:
             else {
                 if (this->verbose_) {
                     PRINT_RUNTIME_INFO(2, "Epoch = ", iter + 1, 
-                                       ", xnorm = ", sgdlib::internal::sqnorm2<FeatValType>(w0, true), 
+                                       ", xnorm = ", sgdlib::detail::sqnorm2<FeatValType>(w0, true), 
                                        ", loss = ", sum_loss / static_cast<FeatValType>(num_samples), 
                                        ", change = ", max_change / max_weight);
                 }
