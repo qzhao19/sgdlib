@@ -85,7 +85,7 @@ public:
 
         // compute column-wise norm2
         std::vector<FeatValType> X_col_norm(num_features);
-        sgdlib::internal::col_norms<FeatValType>(X, false, X_col_norm);
+        sgdlib::detail::col_norms<FeatValType>(X, false, X_col_norm);
 
         FeatValType max_weight, max_weight_update;
         for (iter = 0; iter < this->max_iters_; ++iter) {
@@ -127,6 +127,12 @@ public:
                     weight_update = -w0[feature_index];
                 }
                 
+                // weight_update*grad: dot product of grad and weight_update
+                // -this->rho_ / 2.0 * weight_update * weight_update: L2 regularization term
+                //                                                      avoid too much w updates
+                // -this->alpha_ * std::abs(w0[feature_index] + weight_update): L1 regularization term
+                //                                                              for weights after updated
+                // +this->alpha_ * std::abs(w0[feature_index]): L1 regularization term for current weight
                 pred_descent = -weight_update*grad 
                                - this->rho_ / 2.0 * weight_update * weight_update 
                                - this->alpha_ * std::abs(w0[feature_index] + weight_update) 
@@ -170,7 +176,7 @@ public:
             // print info
             if (this->verbose_) {
                 PRINT_RUNTIME_INFO(5, "Epoch = ", iter + 1, 
-                                   ", wnorm1 = ", sgdlib::internal::norm1<FeatValType>(w0) , 
+                                   ", wnorm1 = ", sgdlib::detail::norm1<FeatValType>(w0) , 
                                    ", loss = ", loss);
             }
 

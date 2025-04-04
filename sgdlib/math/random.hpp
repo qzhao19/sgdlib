@@ -4,22 +4,33 @@
 #include "common/prereqs.hpp"
 
 namespace sgdlib {
-namespace internal {
+namespace detail {
 
-class RandomState final {
+class RandomState {
 protected:
     // random eigine 
     std::mt19937  engine_;
 
 public:
-    // Create and initialize random number generator with the current system time
+    /**
+     * Default constructor for the RandomState class.
+     * Initializes the random number generator using the current system time as the seed.
+     * This ensures that each instance of RandomState created at different times
+     * will likely produce different sequences of random numbers.
+     */
     RandomState(): engine_(static_cast<unsigned long>(time(nullptr))) {};
 
     /**
-     * Create and initialize random number generator with a seed
-     * @param seed
-    */
+     * Create and initialize random number generator with a specified seed.
+     * This constructor allows users to set a specific starting point for the random number sequence,
+     * which is useful for reproducibility in testing and simulations.
+     * 
+     * @param seed The seed value used to initialize the random number generator.
+     *             Using the same seed will result in the same sequence of random numbers.
+     */
     RandomState(unsigned long seed): engine_(seed) {};
+
+    ~RandomState() = default;
 
     /**
      * Provide a double random number from a uniform distribution between [low, high).
@@ -86,7 +97,7 @@ public:
 
 }; 
 
-} // namespace internal
+} // namespace detail
 } // namespace sgdlib
 
 #endif // COMMON_RANDOM_HPP_
