@@ -35,21 +35,21 @@
         #error "SSE4.1 is required when USE_SIMD is defined. Compile with -msse4.1"
     #else
         #include <smmintrin.h>
-        #define HAS_SSE4_1 1
+        #define USE_SSE4_1 1
     #endif
 
     // check AVX2（optional）
     #if defined(__AVX2__)
         #include <immintrin.h>
-        #define HAS_AVX2 1
+        #define USE_AVX2 1
     #else
-        #define HAS_AVX2 0
+        #define USE_AVX2 0
         #pragma message("AVX2 not available (will use SSE4.1)")
     #endif
 
     // define the active SIMD level
     // Case 1: use SIMD（AVX2 level 2，SSE4.1 level 1)
-    #if HAS_AVX2
+    #if USE_AVX2
         #define SIMD_TARGET_LEVEL 2  // AVX2
     #else
         #define SIMD_TARGET_LEVEL 1  // SSE4.1
@@ -58,8 +58,8 @@
 // Case 2: use scalar
 #else
     #define SIMD_TARGET_LEVEL 0
-    #define HAS_SSE4_1 0
-    #define HAS_AVX2 0
+    #define USE_SSE4_1 0
+    #define USE_AVX2 0
 #endif // USE_SIMD
 
 
