@@ -54,6 +54,90 @@ void throw_error_msg(Args... args) {
     throw ExceptionType(err_msg.str());
 }
 
+
+class Logger {
+private:
+    inline static std::atomic<bool> initialized_{false};
+    inline static std::once_flag init_flag_;
+    inline static std::string log_name_;
+
+    //
+    static void initialize_impl(const std::string& log_name = "sgdlib",
+                                const std::filesystem::path& log_dir = "./logs",
+                                bool log_to_stderr = false) {
+        try {
+            // check and create the log dir
+            if (!log_dir.empty()) {
+                std::error_code ecode;
+                bool dir_exist = std::filesystem::create_directories(log_dir, ecode);
+                if (ecode || !std::filesystem::exists(log_dir)) {
+                    std::cerr << "Failed to create log directory: " << ecode.message() << "\n";
+                    throw std::runtime_error("Log directory creation failed");
+                }
+
+                if (!std::filesystem::is_directory(log_dir)) {
+                    throw std::runtime_error("Log path is not a directory");
+                }
+            }
+            // setup glog params
+            FLAGS_log_dir = log_dir.string();
+            FLAGS_logtostderr = log_to_stderr;
+            FLAGS_minloglevel = 0;
+
+            // init glog
+            google::InitGoogleLogging(log_name.c_str());
+            google::InstallFailureSignalHandler();
+
+            // update
+            log_name_ = log_name;
+            initialized_.store(true, std::memory_order_release);
+
+            // write starting info
+            LOG(INFO) << "Logger initialized successfully. Log directory: " << log_dir;
+        } catch (const std::exception& error) {
+            std::cerr << "Logger initialization failed: " << error.what() << std::endl;
+            initialized_.store(false, std::memory_order_release);
+            throw;
+        }
+    }
+
+    struct CleanupGuard {
+        ~CleanupGuard() {
+            if (Logger::initialized_.load(std::memory_order_acquire)) {
+                google::ShutdownGoogleLogging();
+            }
+        }
+    };
+    inline static CleanupGuard cleanup_;
+
+public:
+    // delete copy and operator const
+    Logger() = delete;
+    Logger(const Logger&) = delete;
+    Logger& operator=(const Logger&) = delete;
+
+    static bool is_initialized() noexcept {
+        return initialized_.load(std::memory_order_acquire);
+    }
+
+    static void initialize(const std::string& log_name = "sgdlib",
+                           const std::string& log_dir = "./logs",
+                           bool log_to_stderr = false) {
+        std::call_once(init_flag_, initialize_impl, log_name, log_dir, log_to_stderr);
+    }
+
+    // keep following implementation:
+    // init_flag_ = std::once_flag() is illegal
+    // static void reset() {
+    //     if (is_initialized()) {
+    //         google::ShutdownGoogleLogging();
+
+    //     }
+    //     initialized_.store(false, std::memory_order_release);
+    //     init_flag_ = std::once_flag();
+    // }
+};
+
 } // namespace detail
 } // namespace sgdlib
 
@@ -67,5 +151,11 @@ void throw_error_msg(Args... args) {
 #define THROW_LOGIC_ERROR(...) sgdlib::detail::throw_error_msg<std::logic_error>(__VA_ARGS__)
 
 #define THROW_OUT_RANGE_ERROR(...) sgdlib::detail::throw_error_msg<std::out_of_range>(__VA_ARGS__)
+
+#define SGDLIB_LOG(severity) \
+    (sgdlib::detail::Logger::is_initialized() ? \
+        LOG(severity) : \
+        (sgdlib::detail::Logger::initialize(), LOG(severity)))
+
 
 #endif //COMMON_LOGGING_HPP_
