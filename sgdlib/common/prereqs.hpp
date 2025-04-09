@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -47,6 +48,10 @@
         #pragma message("AVX2 not available (will use SSE4.1)")
     #endif
 
+    #if USE_AVX2 && USE_SSE4_1
+        #error "Both AVX2 and SSE4.1 are defined. Only one can be used at a time."
+    #endif
+
     // define the active SIMD level
     // Case 1: use SIMD（AVX2 level 2，SSE4.1 level 1)
     #if USE_AVX2
@@ -62,5 +67,7 @@
     #define USE_AVX2 0
 #endif // USE_SIMD
 
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
 
 #endif // COMMON_PREREQS_HPP_

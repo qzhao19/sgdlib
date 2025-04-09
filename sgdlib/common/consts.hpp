@@ -27,46 +27,46 @@ using LRDecayParamType = std::unordered_map<std::string, FloatType>;
 enum {
     // unknown error
     LBFGS_ERROR_UNKNOWNERROR = -1024,
-    
+
     // insufficient memory
     LBFGS_ERROR_OUTOFMEMORY,
-    
+
     // invalid stopping criterion
     LBFGS_ERROR_INVALID_PARAMETERS,
-   
-    // increase gradient  
+
+    // increase gradient
     LBFGS_ERROR_INCREASE_GRADIENT,
-    
+
     // line-search step became smaller than min_stepsize
     LBFGS_ERROR_MINIMUM_STEPSIZE,
 
     // line-search step became larger than min_stepsize
     LBFGS_ERROR_MAXIMUM_STEPSIZE,
-    
+
     // line-search routine reaches the maximum number of evaluations
     LBFGS_ERROR_MAXIMUM_SEARCHES,
 };
 
 struct StepSizeSearchParam {
-    // regularization coefficients for L2 
+    // regularization coefficients for L2
     FloatType alpha;
 
     // initial learning rate
     FloatType eta0;
 
-    // Controls the rate of step reduction, 
+    // Controls the rate of step reduction,
     // decreasing the step size until the condition is met.
     FloatType dec_factor;
 
-    // increase coefficient, Control the increase rate of the step size, 
-    // used to enlarge the step size when the step size is too small, 
+    // increase coefficient, Control the increase rate of the step size,
+    // used to enlarge the step size when the step size is too small,
     // to avoid the convergence problem caused by the step size is too small.
     FloatType inc_factor;
 
     // parameter to control the accuracy of the line search
     FloatType ftol;
 
-    // coefficient for the Wolfe condition,which 
+    // coefficient for the Wolfe condition,which
     // is valid only when the backtracking line-search
     FloatType wolfe;
 
@@ -88,8 +88,8 @@ struct StepSizeSearchParam {
 
 using StepSizeSearchParamType = StepSizeSearchParam;
 static StepSizeSearchParamType DEFAULT_STEPSIZE_SEARCH_PARAMS = {
-    0.0, 0.01, 0.5, 2.1, 
-    1e-4, 0.9, 1e+20, 1e-20, 
+    0.0, 0.01, 0.5, 2.1,
+    1e-4, 0.9, 1e+20, 1e-20,
     20, 10, "WOLFE"
 };
 
@@ -107,7 +107,7 @@ constexpr FloatType inf = std::numeric_limits<FloatType>::infinity();
 #endif
 
 const std::unordered_map<std::string, std::string> LOSS_FUNCTION = {{"log_loss", "LogLoss"}};
-const std::unordered_map<std::string, std::string> LEARNING_RATE = {{"invscaling", "Invscaling"}, 
+const std::unordered_map<std::string, std::string> LEARNING_RATE = {{"invscaling", "Invscaling"},
                                                                     {"exponential", "Exponential"}};
 const std::unordered_set<std::string> PENALTY_TYPES = {"none", "l1", "l2"};
 
