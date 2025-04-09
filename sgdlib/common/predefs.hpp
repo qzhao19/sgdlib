@@ -3,7 +3,7 @@
 
 #include "common/prereqs.hpp"
 
-// disable copy and assign a class 
+// disable copy and assign a class
 #ifndef DISABLE_COPY_AND_ASSIGN
 #define DISABLE_COPY_AND_ASSIGN(classname)           \
     classname(const classname&) = delete;            \
