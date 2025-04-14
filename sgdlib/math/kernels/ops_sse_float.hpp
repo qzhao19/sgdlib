@@ -62,7 +62,7 @@ inline void vec_clip_sse_float(float min, float max, float* x, std::size_t n) no
  * @return true If any element in the array is ±∞
  * @return false If all elements are finite
  */
-inline bool isinf_sse_float(const float* x, std::size_t n) noexcept {
+inline bool vec_isinf_sse_float(const float* x, std::size_t n) noexcept {
     if (n == 0) return false;
     if (n < 4) {
         for (std::size_t i = 0; i < n; ++i) {
@@ -96,16 +96,61 @@ inline bool isinf_sse_float(const float* x, std::size_t n) noexcept {
     }
 
     // process the rest of elems
-    if (const std::size_t tail_size = n & 4ULL) {
-        const float* tail_ptr = xbegin + (n & ~3ULL);
-        for (std::size_t i = 0; i < tail_size; ++i) {
-            if (std::isinf(tail_ptr[i])) {
-                return true;
-            }
-        }
-    }
-    return false;
+    return (n & 3ULL) ? std::isinf(x[n - 1])
+        || (n & 2ULL ? std::isinf(x[n - 2]) : false)
+        || (n & 1ULL ? std::isinf(x[n - 3]) : false) :
+        false;
 };
+
+/**
+ * @brief Computes the L2 norm of the input array `x` using SSE intrinsics for acceleration.
+ *
+ * This function leverages SSE intrinsics to process 4 floating-point elements at a time for
+ * improved performance. For small arrays with fewer than 4 elements or the remaining elements
+ * after SIMD processing, it performs scalar computations. It can return either the squared
+ * L2 norm or its square root based on the `squared` parameter.
+ *
+ * @param x A pointer to the input array of floating-point numbers.
+ * @param n The number of elements in the array `x`.
+ * @param squared If `true`, returns the squared L2 norm; if `false`, returns the square root of the L2 norm.
+ * @return float The computed L2 norm (either squared or its square root depending on the `squared` parameter).
+ */
+inline float vec_norm2_sse_float(const float* x, std::size_t n, bool squared) noexcept {
+    if (n == 0) return 0.0f;
+    if (n < 4) {
+        float sum = 0.0f;
+        switch (n) {
+            case 3: sum += x[2] * x[2]; [[fallthrough]];
+            case 2: sum += x[1] * x[1]; [[fallthrough]];
+            case 1: sum += x[0] * x[0];
+        }
+        return squared ? sum : std::sqrt(sum);
+    }
+
+    // compute aligned bound = xsize - xsize % 4
+    const float* ptr = x;
+    const float* aligned_bound = x + (n & ~3ULL);
+
+    __m128 sum = _mm_setzero_ps();
+    for (; ptr < aligned_bound; ptr += 4) {
+        const __m128 vec = _mm_loadu_ps(ptr);
+        sum = _mm_add_ps(sum, _mm_mul_ps(vec, vec));
+    }
+
+    const __m128 shuf = _mm_movehdup_ps(sum);  // [a,b,c,d] -> [b,b,d,d]
+    const __m128 sums = _mm_add_ps(sum, shuf); // [a+b, b+b, c+d, d+d]
+    const __m128 sumv = _mm_add_ss(sums, _mm_movehl_ps(sums, sums)); // add [a+b, c+d] -> [a+b+c+d]
+    float total = _mm_cvtss_f32(sumv);
+
+    switch (n & 3ULL) {
+        case 3: total += x[n - 1] * x[n - 1]; [[fallthrough]];
+        case 2: total += x[n - 2] * x[n - 2]; [[fallthrough]];
+        case 1: total += x[n - 3] * x[n - 3];
+        default: break;
+    }
+
+    return squared ? total : std::sqrt(total);
+}
 
 
 
