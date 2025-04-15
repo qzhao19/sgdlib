@@ -52,7 +52,7 @@ public:
 
             std::vector<FeatType> sample(num_features_, 0.0);
             parse_features(iss, sample);
-            
+
             labels_.push_back(std::move(label));
             features_.insert(features_.end(), sample.begin(), sample.end());
             ++samples_loaded;
@@ -109,7 +109,7 @@ public:
     DatasetManager& operator=(const DatasetManager&) = delete;
 
 private:
-    explicit DatasetManager(std::size_t num_features) 
+    explicit DatasetManager(std::size_t num_features)
         : num_features_(num_features) {
         if (num_features == 0) {
             THROW_INVALID_ERROR("num_features cannot be zero");
@@ -131,17 +131,17 @@ private:
                 const FeatType value = [&]{
                     if constexpr (std::is_same_v<FeatType, float>) {
                         return std::stof(token.substr(colon_pos + 1));
-                    } 
+                    }
                     else if constexpr (std::is_same_v<FeatType, double>) {
                         return std::stod(token.substr(colon_pos + 1));
-                    } 
+                    }
                     else {
                         return static_cast<FeatType>(std::stod(token.substr(colon_pos + 1)));
                     }
                 }();
 
                 if (dim == 0 || dim > num_features_) {
-                    THROW_OUT_RANGE_ERROR("Feature dim ", std::to_string(dim), 
+                    THROW_OUT_RANGE_ERROR("Feature dim ", std::to_string(dim),
                         " out of range [1,", std::to_string(num_features_), "]");
                 }
                 sample[dim - 1] = value;
@@ -154,7 +154,7 @@ private:
     void validate_index(std::size_t index) const {
         if (index >= labels_.size()) {
             THROW_OUT_RANGE_ERROR(
-                "Index ", std::to_string(index), 
+                "Index ", std::to_string(index),
                 " >= sample count ", std::to_string(labels_.size()));
         }
     }
@@ -174,11 +174,11 @@ private:
 
     std::vector<LabelType> labels_;
     std::vector<FeatType> features_;
-    const std::size_t num_features_; 
+    const std::size_t num_features_;
     bool loaded_ = false;
     std::size_t max_samples_ = 0;
     mutable std::mutex mutex_;
 };
-    
+
 } // namespace sgdlib
-#endif /*DATA_DATASET_MANAGER_HPP_ */ 
+#endif /*DATA_DATASET_MANAGER_HPP_ */
