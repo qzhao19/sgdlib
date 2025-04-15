@@ -8,14 +8,14 @@
 
 namespace sgdlib {
 namespace detail {
-    
-/** 
+
+/**
  * @file base.hpp
- * 
+ *
  * @class LRDecay
- * 
+ *
  * @brief Abstract base class representing learning rate decay
- * 
+ *
 */
 class LRDecay {
 protected:

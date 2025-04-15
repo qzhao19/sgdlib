@@ -12,7 +12,7 @@ public:
     ~Exponential() = default;;
 
     /**
-     * eta = eta0 * exp(-gamma * epoch) 
+     * eta = eta0 * exp(-gamma * epoch)
     */
     FloatType compute(std::size_t epoch) override {
         return lr_decay_param_["eta0"] * \
