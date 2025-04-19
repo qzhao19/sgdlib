@@ -8,8 +8,8 @@ namespace detail {
 
 class RandomState {
 protected:
-    // random eigine 
-    std::mt19937  engine_;
+    // random eigine
+    std::mt19937 engine_;
 
 public:
     /**
@@ -24,7 +24,7 @@ public:
      * Create and initialize random number generator with a specified seed.
      * This constructor allows users to set a specific starting point for the random number sequence,
      * which is useful for reproducibility in testing and simulations.
-     * 
+     *
      * @param seed The seed value used to initialize the random number generator.
      *             Using the same seed will result in the same sequence of random numbers.
      */
@@ -52,14 +52,14 @@ public:
     */
     long uniform_int(long low,
                      long high) {
-        
+
         std::uniform_int_distribution<long> dist(low, high - 1);
-        return dist(engine_);          
+        return dist(engine_);
     };
 
     /**
      * Shuffles the elements of a vector randomly.
-     * 
+     *
      * @param x A reference to the vector of type `Type` to be shuffled.
     */
     template<typename Type>
@@ -78,7 +78,7 @@ public:
 
         // randomly generate an index of x
         std::size_t index = dist(engine_);
-        
+
         // swap selected value with the last element of x
         // std::swap(x[index], x.back());
         // --size;
@@ -86,16 +86,16 @@ public:
         return x[index];
     }
 
-    /** 
+    /**
      * Randomlt generate an index from the range [low, high).
     */
-    std::size_t random_index(std::size_t low, 
+    std::size_t random_index(std::size_t low,
                              std::size_t high) {
         std::uniform_int_distribution<std::size_t> dist(low, high - 1);
-        return dist(engine_); 
+        return dist(engine_);
     }
 
-}; 
+};
 
 } // namespace detail
 } // namespace sgdlib
