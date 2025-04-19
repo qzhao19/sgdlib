@@ -18,10 +18,11 @@ namespace detail {
  * @param max The maximum value to clip to.
  * @param x A pointer to the input array of double-precision floating-point numbers.
  * @param n The number of elements in the array `x`.
-
  */
 inline void vecclip_sse_double(double* x, double min, double max, std::size_t n) noexcept {
     if (n == 0 || x == nullptr) return ;
+    if (min > max) return ;
+
     // Create an SSE register with all elements set to the min/max value
     const __m128d xmin = _mm_set1_pd(min);
     const __m128d xmax = _mm_set1_pd(max);
@@ -250,11 +251,11 @@ inline double vecnorm1_sse_double(const double* x, std::size_t n) noexcept {
  * @exception noexcept guaranteed
  * @complexity O(n) with ~2x speedup vs scalar implementation
  *
- * Example usage:
+ * @example:
  *   double data[1000];
  *   vecscale_sse_double(data, 1000, 3.14); // data *= 3.14
  */
-inline void vecscale_sse_double(double* x, std::size_t n, const double c) noexcept {
+inline void vecscale_sse_double(double* x, const double c, std::size_t n) noexcept {
     if (n == 0 || x == nullptr) return ;
     if (c == 1.0) return ;
 
@@ -279,7 +280,47 @@ inline void vecscale_sse_double(double* x, std::size_t n, const double c) noexce
     if (x < bound) {
         *x *= c;
     }
-}
+};
+
+inline double vecdot_sse_double(const double* x, const double* y, std::size_t n, std::size_t m) noexcept {
+    if (x == nullptr || y == nullptr) return 0.0;
+    if (n != m) return 0.0;
+    if (n == 0) return 0.0;
+
+    // for small size array
+    if (n <= 2) {
+        double sum = 0.0;
+        if (n >= 1) sum += x[0] * y[0];
+        if (n == 2) sum += x[1] * y[1];
+        return sum;
+    }
+
+    const double* xptr = x;
+    const double* yptr = y;
+    const double* aligned_bound = x + (n & ~1ULL);
+
+    // load sum of vec to register
+    __m128d sum = _mm_setzero_pd();
+
+    for (; xptr < aligned_bound; xptr += 2, yptr +=2) {
+        const __m128d xvec = _mm_loadu_pd(xptr);
+        const __m128d yvec = _mm_loadu_pd(yptr);
+        sum = _mm_add_pd(sum, _mm_mul_pd(xvec, yvec));
+    }
+
+    double total;
+    // Extract high element of sum register
+    // add low and high
+    __m128d sumh = _mm_unpackhi_pd(sum, sum);
+    __m128d tmp = _mm_add_pd(sum, sumh);
+    _mm_store_sd(&total, tmp);
+
+    if (n & 1ULL) {
+        total += x[n - 1] * y[n - 1];
+    }
+    return total;
+};
+
 
 
 }
