@@ -7,19 +7,33 @@ namespace sgdlib {
 namespace detail {
 
 /**
- * @brief Clips each element in the input array `x` to be within the range [min, max].
- *        using SSE intrinsics for float.
+ * Clips (clamps) elements of a float vector to specified [min, max] range using SSE intrinsics.
+ * Performs in-place modification: x[i] = min(max(x[i], min), max)
  *
- * This function uses SSE intrinsics to process 4 float elements at a time for performance.
- * Any remaining elements are processed individually using `std::clamp`.
+ * @param[in,out] x    Pointer to input/output vector (must be non-null and at least length n)
+ * @param[in] min      Lower bound of clipping range (inclusive)
+ * @param[in] max      Upper bound of clipping range (inclusive)
+ * @param[in] n        Number of elements to process
  *
- * @param min The minimum value to clip to.
- * @param max The maximum value to clip to.
- * @param x A pointer to the input array of floating-point numbers.
- * @param n The number of elements in the array `x`.
+ * @note
+ * - Uses SSE4.2 instruction set (requires CPU support)
+ * - Processes 4 elements per cycle in main computation loop
+ * - For small vectors (n < 4), falls back to scalar operation
+ * - Behavior is undefined if min > max
+ * - More efficient than std::transform with std::clamp for large vectors
+ * - No explicit alignment requirements but performance improves with 16-byte aligned data
  *
+ * @example
+ *   float data[] = {-1.0f, 0.5f, 2.0f, 3.0f};
+ *   vecclip_sse_float(data, 0.0f, 1.0f, 4);
+ *   // data becomes [0.0f, 0.5f, 1.0f, 1.0f]
+ *
+ * @see _mm_min_ps, _mm_max_ps (Intel Intrinsics Guide)
+ * @see std::clamp (alternative for scalar clipping)
  */
 inline void vecclip_sse_float(float* x, float min, float max, std::size_t n) noexcept {
+    if (n == 0 || x == nullptr) return ;
+    if (min > max) return ;
     // if n < 4
     if (n < 4) {
         for (std::size_t i = 0; i < n; ++i) {
@@ -51,20 +65,35 @@ inline void vecclip_sse_float(float* x, float min, float max, std::size_t n) noe
 };
 
 /**
- * @brief Checks if any element in the input array `x` is infinite (either +∞ or -∞)
- *        using SSE. intrinsics for float.
+ * Checks if a float vector contains any infinity values using SSE intrinsics.
  *
- * This function uses SSE intrinsics to process 4 float elements at a time for performance.
- * Early returns when any infinite value is detected. Processes remaining elements with
- * std::isinf after the SIMD operations.
+ * @param[in] x  Pointer to the input vector (must be non-null and at least length n)
+ * @param[in] n  Number of elements in the vector
  *
- * @param x A pointer to the input array of floating-point numbers.
- * @param n The number of elements in the array `x`.
- * @return true If any element in the array is ±∞
- * @return false If all elements are finite
+ * @return true if any element is ±infinity, false otherwise
+ *         Returns false if:
+ *         - x is nullptr
+ *         - n == 0
+ *
+ * @note
+ * - Uses SSE4.2 instruction set (requires CPU support)
+ * - Processes 4 elements per cycle in the main computation loop
+ * - For small vectors (n < 4), falls back to scalar checking
+ * - Detects both positive and negative infinity
+ * - More efficient than std::any_of with std::isinf for large vectors
+ *
+ * @example
+ *   float data[] = {1.0f, 2.0f, INFINITY, 4.0f};
+ *   bool result = hasinf_sse_float(data, 4);  // Returns true
+ *
+ *   float clean[] = {1.0f, 2.0f, 3.0f};
+ *   bool result2 = hasinf_sse_float(clean, 3); // Returns false
+ *
+ * @see _mm_cmpeq_ps, _mm_movemask_ps (Intel Intrinsics Guide)
+ * @see std::isinf (alternative for scalar checking)
  */
 inline bool hasinf_sse_float(const float* x, std::size_t n) noexcept {
-    if (n == 0) return false;
+    if (n == 0 || x == nullptr) return false;
     if (n < 4) {
         for (std::size_t i = 0; i < n; ++i) {
             if (std::isinf(x[i])) {
@@ -104,20 +133,37 @@ inline bool hasinf_sse_float(const float* x, std::size_t n) noexcept {
 };
 
 /**
- * @brief Computes the L2 norm of the input array `x` using SSE intrinsics for acceleration.
+ * Computes the L2 norm (Euclidean norm) or squared L2 norm of a float vector using SSE intrinsics.
  *
- * This function leverages SSE intrinsics to process 4 floating-point elements at a time for
- * improved performance. For small arrays with fewer than 4 elements or the remaining elements
- * after SIMD processing, it performs scalar computations. It can return either the squared
- * L2 norm or its square root based on the `squared` parameter.
+ * @param[in] x        Pointer to the input vector (must be 16-byte aligned for optimal performance)
+ * @param[in] n        Number of elements in the vector
+ * @param[in] squared  When true, returns the squared norm (avoiding sqrt computation)
  *
- * @param x A pointer to the input array of floating-point numbers.
- * @param n The number of elements in the array `x`.
- * @param squared If `true`, returns the squared L2 norm; if `false`, returns the square root of the L2 norm.
- * @return float The computed L2 norm (either squared or its square root depending on the `squared` parameter).
+ * @return The L2 norm (if squared=false) or squared L2 norm (if squared=true) of the input vector.
+ *         Returns 0.0f if:
+ *         - x is nullptr
+ *         - n == 0
+ *
+ * @note
+ * - Uses SSE4.2 instruction set (requires CPU support)
+ * - Processes 4 elements per cycle in the main computation loop
+ * - For small vectors (n < 4), falls back to scalar computation
+ * - The squared option provides faster computation when the exact norm isn't needed
+ * - No explicit alignment requirements but performance improves with aligned data
+ *
+ * @example
+ *   // Compute regular L2 norm
+ *   float x[] = {3.0f, 4.0f, 0.0f, 0.0f};
+ *   float norm = vecnorm2_sse_float(x, 4, false);  // Returns 5.0f (sqrt(3²+4²))
+ *
+ *   // Compute squared norm
+ *   float squared_norm = vecnorm2_sse_float(x, 4, true);  // Returns 25.0f (3²+4²)
+ *
+ * @see _mm_mul_ps, _mm_sqrt_ps, _mm_hadd_ps (Intel Intrinsics Guide)
+ * @see https://en.wikipedia.org/wiki/Norm_(mathematics)#Euclidean_norm
  */
 inline float vecnorm2_sse_float(const float* x, std::size_t n, bool squared) noexcept {
-    if (n == 0) return 0.0f;
+    if (n == 0 || x == nullptr) return 0.0f;
     if (n < 4) {
         float sum = 0.0f;
         switch (n) {
@@ -144,9 +190,9 @@ inline float vecnorm2_sse_float(const float* x, std::size_t n, bool squared) noe
     float total = _mm_cvtss_f32(sumv);
 
     switch (n & 3ULL) {
-        case 3: total += x[n - 1] * x[n - 1]; [[fallthrough]];
+        case 3: total += x[n - 3] * x[n - 3]; [[fallthrough]];
         case 2: total += x[n - 2] * x[n - 2]; [[fallthrough]];
-        case 1: total += x[n - 3] * x[n - 3];
+        case 1: total += x[n - 1] * x[n - 1];
         default: break;
     }
 
@@ -209,9 +255,9 @@ inline float vecnorm1_sse_float(const float* x, std::size_t n) noexcept {
     float total = _mm_cvtss_f32(sumv);
 
     switch (n & 3ULL) {
-        case 3: total += std::abs(x[n - 1]); [[fallthrough]];
+        case 3: total += std::abs(x[n - 3]); [[fallthrough]];
         case 2: total += std::abs(x[n - 2]); [[fallthrough]];
-        case 1: total += std::abs(x[n - 3]);
+        case 1: total += std::abs(x[n - 1]);
         default: break;
     }
     return total;
@@ -237,11 +283,11 @@ inline float vecnorm1_sse_float(const float* x, std::size_t n) noexcept {
  * @exception noexcept guaranteed
  * @complexity O(n) with ~4x speedup vs scalar
  *
- * Example:
+ * @example:
  *   float data[100];
  *   vecscale_sse_float(data, 100, 2.5f); // data *= 2.5
  */
-inline void vecscale_sse_float(float* x, std::size_t n, const float c) noexcept {
+inline void vecscale_sse_float(float* x, const float c, std::size_t n) noexcept {
     if (x == nullptr || c == 1.0f) return;
 
     // for small size array
@@ -275,6 +321,121 @@ inline void vecscale_sse_float(float* x, std::size_t n, const float c) noexcept 
         default: break;
     }
 };
+
+
+/**
+ * Computes the dot product of two single-precision floating-point vectors
+ * using SSE (Streaming SIMD Extensions) intrinsics.
+ *
+ * @param[in] x Pointer to the first input vector
+ * @param[in] y Pointer to the second input vector
+ * @param[in] n Number of elements in vector x
+ * @param[in] m Number of elements in vector y (must equal n for valid computation)
+ *
+ * @return The dot product of vectors x and y as a single-precision float.
+ *         Returns 0.0f if:
+ *         - Either x or y is nullptr
+ *         - Vector lengths n and m don't match
+ *         - n == 0
+ *
+ * @note
+ * - Uses SSE4.1 instruction set (requires CPU support)
+ * - Processes 4 elements per cycle in the main computation loop
+ * - Automatically handles remaining elements (1-3) when n is not a multiple of 4
+ * - For small vectors (n < 4), back to scalar computation
+ * - No explicit alignment requirements but performance improves with aligned data
+ * - Provides approximately 4x speedup over scalar implementation for large vectors
+ *
+ * @example
+ *   float x[] = {1.0f, 2.0f, 3.0f, 4.0f};
+ *   float y[] = {5.0f, 6.0f, 7.0f, 8.0f};
+ *   float result = vecdot_sse_float(x, y, 4, 4);  // Returns 70.0f (1*5 + 2*6 + 3*7 + 4*8)
+ *
+ * @see _mm_mul_ps, _mm_add_ps, _mm_hadd_ps (Intel Intrinsics Guide)
+ */
+inline float vecdot_sse_float(const float* x, const float* y, std::size_t n, std::size_t m) noexcept {
+    if (x == nullptr || y == nullptr) return 0.0f;
+    if (n != m) return 0.0f;
+    if (n == 0) return 0.0f;
+
+    // handle small size case n < 4
+    if (n < 4 && m < 4) {
+        float sum = 0.0f;
+        for (std::size_t i = 0; i < n; ++i) {
+            sum += x[i] * y[i];
+        }
+        return sum;
+    }
+
+    // get aligned array bound
+    const float* xptr = x;
+    const float* yptr = y;
+    const float* aligned_bound = x + (n & ~3ULL);
+
+    // load sum of vec to register
+    __m128 sum = _mm_setzero_ps();
+
+    // loop array x and y in chunks of 4 elems
+    for (; xptr < aligned_bound; xptr += 4, yptr += 4) {
+        const __m128 xvec = _mm_loadu_ps(xptr);
+        const __m128 yvec = _mm_loadu_ps(yptr);
+        sum = _mm_add_ps(sum, _mm_mul_ps(xvec, yvec));
+    }
+
+    // 1st impelmetation
+    // const __m128 shuf = _mm_movehdup_ps(sum);
+    // const __m128 sums = _mm_add_ps(shuf, sum);
+    // const __m128 sumh = _mm_add_ps(sum, _mm_movehl_ps(sums, sums));
+
+    // 2ed implementation
+    // _mm_movehl_ps: [a,b,c,d] => [c,d,c,d]
+    // _mm_add_ps: tmp = [a+c,b+d,c+c,d+d]
+    // 0x55 = 0b01'01'01'01，
+    // _mm_shuffle_ps(tmp, tmp, 0x55) → [b+d, b+d, b+d, b+d]
+    const __m128 shuf = _mm_movehl_ps(sum, sum);
+    const __m128 tmp = _mm_add_ps(sum, shuf);
+    const __m128 sumh = _mm_add_ps(tmp, _mm_shuffle_ps(tmp, tmp, 0x55));
+    float total = _mm_cvtss_f32(sumh);
+
+    switch (n & 3ULL) {
+        case 3: total += x[n - 3] * y[n - 3]; [[fallthrough]];
+        case 2: total += x[n - 2] * y[n - 2]; [[fallthrough]];
+        case 1: total += x[n - 1] * y[n - 1];
+    }
+    return total;
+};
+
+inline void vecadd_sse_float(const float* xbegin,
+                             const float* xend,
+                             const float c,
+                             std::size_t n,
+                             float* out) noexcept {
+    if (xbegin == nullptr || xend == nullptr || xend <= xbegin) {
+        return;
+    }
+
+    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
+    if (n != m) return ;
+
+    // for small size n < 4
+    if (n < 4 || m < 4) {
+        for (std::size_t i = 0; i < n; +++i) {
+            out[i] += xbegin[i] * c;
+        }
+        return ;
+    }
+
+    const float* ptr = xbegin;
+    const float* aligned_bound = xbegin + (n & ~3ULL);
+
+    // load sum of vec to register
+    __m128 sum = _mm_setzero_ps();
+
+    
+
+
+
+}
 
 
 }
