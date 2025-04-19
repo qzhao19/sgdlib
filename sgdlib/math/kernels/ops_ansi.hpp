@@ -17,7 +17,7 @@ namespace detail {
  * @note This function modifies the input vector in place.
  */
 template<typename T>
-inline void vecclip_ansi(T min, T max, std::vector<T>& x) {
+inline void vecclip_ansi(std::vector<T>& x, T min, T max) noexcept {
     std::transform(x.begin(), x.end(), x.begin(),
         [min, max](const T val) {
             return std::clamp(val, min, max);
@@ -34,7 +34,7 @@ inline void vecclip_ansi(T min, T max, std::vector<T>& x) {
  * @return True if any element in the input vector is infinite, false otherwise.
  */
 template<typename T>
-inline bool hasinf_ansi(const std::vector<T>& x) {
+inline bool hasinf_ansi(const std::vector<T>& x) noexcept {
     for (std::size_t i = 0; i < x.size(); ++i) {
         if (std::isinf(x[i])) {
             return true;
@@ -55,7 +55,7 @@ inline bool hasinf_ansi(const std::vector<T>& x) {
  *       to reduce the overhead of function calls.
  */
 template<typename T>
-inline T vecnorm2_ansi(const std::vector<T>& x, bool squared) {
+inline T vecnorm2_ansi(const std::vector<T>& x, bool squared) noexcept {
     if (x.empty()) return 0.0;
     T l2_norm = std::inner_product(x.begin(), x.end(),
                                    x.begin(),
@@ -72,7 +72,7 @@ inline T vecnorm2_ansi(const std::vector<T>& x, bool squared) {
  * @return The L1 norm of the vector as a T.
  */
 template<typename T>
-inline T vecnorm1_ansi(const std::vector<T>& x) {
+inline T vecnorm1_ansi(const std::vector<T>& x) noexcept {
     return std::accumulate(x.begin(), x.end(), static_cast<T>(0),
         [](T acc, const T& value) {
             return acc + std::abs(value);
@@ -89,14 +89,61 @@ inline T vecnorm1_ansi(const std::vector<T>& x) {
  *
  * @note The function is marked as inline, which is suitable for small functions
  *       to reduce the overhead of function calls.
-*/
+ */
 template<typename T>
-inline void vecscale_ansi(std::vector<T>& x, const T& c) {
+inline void vecscale_ansi(std::vector<T>& x, const T& c) noexcept {
     std::transform(x.begin(), x.end(),
                    x.begin(),
                   [&c](const T& val) { return val * c; });
 }
 
+/**
+ * @brief Applies a scalar multiplication operation to a vector.
+ * It computes the sum of the products of all elements within
+ * the iterator range from begin to end with a constant c.
+ *
+ * @tparam T The type of elements in the vector.
+ *
+ * @param[in] x vector of type T,
+ * @param[in] y vector of type T,
+ * @param out The reference to a vector that stores the result of the dot product.
+ *
+ * @note The function is marked as inline, which is suitable for small functions
+ *       to reduce the overhead of function calls.
+ *
+ */
+template<typename T>
+inline T vecdot_ansi(const std::vector<T>& x, const std::vector<T>& y) noexcept {
+    T prod = std::inner_product(x.begin(), x.end(),
+                                y.begin(),
+                                static_cast<T>(0));
+    return prod;
+}
+
+/**
+ * Computes out[i] = x[i] * c for all elements in [xbegin, xend)
+ *
+ * @tparam T Numeric type (float, double, int, etc.)
+ *
+ * @param xbegin Pointer to the first input element
+ * @param xend Pointer to one past the last input element
+ * @param c Scalar multiplier
+ * @param out Output vector (will be resized to match input size)
+ *
+ * @note
+ * - Provides strong exception safety
+ * - Prevents aliasing issues
+ */
+template<typename T>
+inline void vecadd_ansi(const T* xbegin,
+                        const T* xend,
+                        const T c,
+                        std::vector<T>& out) {
+    // more safe
+    out.assign(xbegin, xend);
+    std::transform(out.begin(), out.end(), out.begin(),
+                    [c](T val) { return val * c; });
+};
 
 
 
