@@ -80,21 +80,24 @@ inline T vecnorm1_ansi(const std::vector<T>& x) noexcept {
 };
 
 /**
- * @brief Applies a scalar multiplication operation to a vector.
+ * @brief Computes element-wise scaling: out[i] = x[i] * c
  *
- * @tparam T The type of elements in the vector.
+ * @tparam T Numeric type (float, double, int, etc.)
  *
- * @param[in,out] x vector of type T, which will be scaled by the scalar 'c'.
- * @param[in] c constant scalar value
+ * @param[in] x     Input vector
+ * @param[in] c     Scalar multiplier
+ * @param[out] out  Output vector (will be resized to match x)
  *
  * @note The function is marked as inline, which is suitable for small functions
  *       to reduce the overhead of function calls.
  */
 template<typename T>
-inline void vecscale_ansi(std::vector<T>& x, const T& c) noexcept {
+inline void vecscale_ansi(const std::vector<T>& x,
+                          const T& c,
+                          std::vector<T>& out) noexcept {
     std::transform(x.begin(), x.end(),
-                   x.begin(),
-                  [&c](const T& val) { return val * c; });
+                   out.begin(),
+                   [&c](const T& val) { return val * c; });
 }
 
 /**
