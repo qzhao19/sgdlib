@@ -255,34 +255,44 @@ inline double vecnorm1_sse_double(const double* x, std::size_t n) noexcept {
  *   double data[1000];
  *   vecscale_sse_double(data, 1000, 3.14); // data *= 3.14
  */
-inline void vecscale_sse_double(double* x, const double c, std::size_t n) noexcept {
+inline void vecscale_sse_double(const double* x,
+                                const double c,
+                                std::size_t n,
+                                double* out) noexcept {
     if (n == 0 || x == nullptr) return ;
     if (c == 1.0) return ;
 
-    // for small size array
+    // for small size n <= 2
     if (n <= 2) {
-        if (n >= 1) x[0] *= c;
-        if (n == 2) x[1] *= c;
+        if (n >= 1) out[0] = x[0] * c;
+        if (n == 2) out[1] = x[1] * c;
         return ;
     }
 
-    const double* bound = x + n;
+    // define ptr points to x and aligned end
+    const double* ptr = x;
     const double* aligned_bound = x + (n & ~1ULL);
 
-     // load scalar to register
-     const __m128d scalar = _mm_set1_pd(c);
+    // load constant into register
+    const __m128d scalar = _mm_set1_pd(c);
 
-    for (; x < aligned_bound; x += 2) {
-        __m128d vec = _mm_mul_pd(_mm_loadu_pd(x), scalar);
-        _mm_storeu_pd(x, vec);
+    // main SIMD loop
+    for (; ptr < aligned_bound; ptr += 2, out += 2) {
+        const __m128d xvec = _mm_loadu_pd(ptr);
+        const __m128d outx = _mm_mul_pd(xvec, scalar);
+        _mm_storeu_pd(out, outx);
     }
 
-    if (x < bound) {
-        *x *= c;
+    // handle remaining elements
+    if (n & 1ULL) {
+        out[n - 1] = x[n - 1] * c;
     }
 };
 
-inline double vecdot_sse_double(const double* x, const double* y, std::size_t n, std::size_t m) noexcept {
+inline double vecdot_sse_double(const double* x,
+                                const double* y,
+                                std::size_t n,
+                                std::size_t m) noexcept {
     if (x == nullptr || y == nullptr) return 0.0;
     if (n != m) return 0.0;
     if (n == 0) return 0.0;
@@ -302,7 +312,7 @@ inline double vecdot_sse_double(const double* x, const double* y, std::size_t n,
     // load sum of vec to register
     __m128d sum = _mm_setzero_pd();
 
-    for (; xptr < aligned_bound; xptr += 2, yptr +=2) {
+    for (; xptr < aligned_bound; xptr += 2, yptr += 2) {
         const __m128d xvec = _mm_loadu_pd(xptr);
         const __m128d yvec = _mm_loadu_pd(yptr);
         sum = _mm_add_pd(sum, _mm_mul_pd(xvec, yvec));
@@ -321,7 +331,47 @@ inline double vecdot_sse_double(const double* x, const double* y, std::size_t n,
     return total;
 };
 
+inline void vecscale_sse_double(const double* xbegin,
+                                const double* xend,
+                                const double c,
+                                std::size_t n,
+                                double* out) noexcept {
+    if (xbegin == nullptr || xend == nullptr ||
+        xend <= xbegin || out == nullptr) {
+        return;
+    }
+    if (n == 0) return ;
 
+    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
+    if (n != m) return ;
+
+    // handle small size n <= 2
+    if (n <= 2) {
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] = xbegin[i] * c;
+        }
+        return;
+    }
+
+    // define ptr points to xbegin
+    const double* ptr = xbegin;
+    const double* aligned_bound = xbegin + (n & ~1ULL);
+
+    // load constant c to register
+    const __m128d scalar = _mm_set1_pd(c);
+
+    // main SIMD processing
+    for (; ptr < aligned_bound; ptr += 2, out += 2) {
+        const __m128d xvec = _mm_loadu_pd(ptr);
+        const __m128d outvec = _mm_mul_pd(xvec, scalar);
+        _mm_storeu_pd(out, outvec);
+    }
+
+    // handle tail case
+    if (n & 1ULL) {
+        out[n - 1] = xbegin[n - 1] * c;
+    }
+};
 
 }
 }
