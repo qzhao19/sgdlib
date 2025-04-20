@@ -28,8 +28,8 @@ public:
         }
         registry_[key] = creator;
     }
-    void Register(const std::string& key, 
-                  Creator creator, 
+    void Register(const std::string& key,
+                  Creator creator,
                   const std::string& help_msg) {
         Register(key, creator);
         help_msg_[key] = help_msg;
@@ -50,8 +50,8 @@ public:
         return keys;
     }
 
-    const std::unordered_map<std::string, std::string>& help_msg() const { 
-        return help_msg_; 
+    const std::unordered_map<std::string, std::string>& help_msg() const {
+        return help_msg_;
     }
     const char* help_msg(const std::string& key) const {
         auto it = help_msg_.find(key);
