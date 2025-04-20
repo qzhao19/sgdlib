@@ -170,6 +170,7 @@ inline float vecnorm2_sse_float(const float* x, std::size_t n, bool squared) noe
             case 3: sum += x[2] * x[2]; [[fallthrough]];
             case 2: sum += x[1] * x[1]; [[fallthrough]];
             case 1: sum += x[0] * x[0];
+            default: break;
         }
         return squared ? sum : std::sqrt(sum);
     }
@@ -228,6 +229,7 @@ inline float vecnorm1_sse_float(const float* x, std::size_t n) noexcept {
             case 3: sum += std::abs(x[2]); [[fallthrough]];
             case 2: sum += std::abs(x[1]); [[fallthrough]];
             case 1: sum += std::abs(x[0]);
+            default: break;
         }
         return sum;
     }
@@ -287,38 +289,51 @@ inline float vecnorm1_sse_float(const float* x, std::size_t n) noexcept {
  *   float data[100];
  *   vecscale_sse_float(data, 100, 2.5f); // data *= 2.5
  */
-inline void vecscale_sse_float(float* x, const float c, std::size_t n) noexcept {
-    if (x == nullptr || c == 1.0f) return;
+inline void vecscale_sse_float(const float* x,
+                               const float c,
+                               std::size_t n,
+                               float* out) noexcept {
+    // conditionn check
+    if (x == nullptr || out == nullptr) return;
+    if (c == 1.0f) return ;
 
     // for small size array
     if (n < 4) {
-        switch (n) {
-            case 3: x[2] *= c; [[fallthrough]];
-            case 2: x[1] *= c; [[fallthrough]];
-            case 1: x[0] *= c;
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] = x[i] * c;
         }
         return;
     }
 
-    // compute bound of array x and aligned bound
-    const float* bound = x + n;
+    // compute aligned bound na dptr points to x
+    const float* ptr = x;
     const float* aligned_bound = x + (n & ~3ULL);
 
-    // load scalar to register
+    // load constant c into register
     const __m128 scalar = _mm_set1_ps(c);
 
-    // _mm_mul_ps: x[i] * c
-    for (; x < aligned_bound; x += 4) {
-        __m128 vec = _mm_mul_ps(_mm_loadu_ps(x), scalar);
-        _mm_storeu_ps(x, vec);
+    // maon SIMD loop
+    for (; ptr < aligned_bound; ptr += 4, out += 4) {
+        const __m128 xvec = _mm_loadu_ps(ptr);
+        // const __m128 outvec= _mm_mul_ps(xvec, scalar);
+        _mm_storeu_ps(out, _mm_mul_ps(xvec, scalar));
     }
 
-    // handle remaining elements
-    switch (bound - x){
-        case 3: x[2] *= c; [[fallthrough]];
-        case 2: x[1] *= c; [[fallthrough]];
-        case 1: x[0] *= c;
-        default: break;
+    // tail handling
+    // const std::size_t remaining = n & 3;
+    // const std::size_t offset = n - remaining;
+    // switch (n & 3ULL) {
+    //     case 3: out[n - 3] = x[n - 3] * c; [[fallthrough]];
+    //     case 2: out[n - 2] = x[n - 2] * c; [[fallthrough]];
+    //     case 1: out[n - 1] = x[n - 1] * c;
+    //     default: break;
+    // }
+    const std::size_t remaining = n & 3;
+    if (remaining != 0) {
+        const std::size_t offset = n - remaining;
+        for (std::size_t i = 0; i < remaining; ++i) {
+            out[offset + i] = x[offset + i] * c;
+        }
     }
 };
 
@@ -401,40 +416,55 @@ inline float vecdot_sse_float(const float* x, const float* y, std::size_t n, std
         case 3: total += x[n - 3] * y[n - 3]; [[fallthrough]];
         case 2: total += x[n - 2] * y[n - 2]; [[fallthrough]];
         case 1: total += x[n - 1] * y[n - 1];
+        default: break;
     }
     return total;
 };
 
-inline void vecadd_sse_float(const float* xbegin,
-                             const float* xend,
-                             const float c,
-                             std::size_t n,
-                             float* out) noexcept {
-    if (xbegin == nullptr || xend == nullptr || xend <= xbegin) {
+
+inline void vecscale_sse_float(const float* xbegin,
+                            const float* xend,
+                            const float c,
+                            std::size_t n,
+                            float* out) noexcept {
+    if (xbegin == nullptr || xend == nullptr ||
+        xend <= xbegin || out == nullptr) {
         return;
     }
+    if (n == 0 || c == 1.0f) return ;
 
     const std::size_t m = static_cast<std::size_t>(xend - xbegin);
     if (n != m) return ;
 
     // for small size n < 4
-    if (n < 4 || m < 4) {
-        for (std::size_t i = 0; i < n; +++i) {
-            out[i] += xbegin[i] * c;
+    if (n < 4) {
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] = xbegin[i] * c;
         }
         return ;
     }
-
+    // define ptr to xbegin and aligned end
     const float* ptr = xbegin;
     const float* aligned_bound = xbegin + (n & ~3ULL);
 
-    // load sum of vec to register
-    __m128 sum = _mm_setzero_ps();
+    // load scalar to register
+    const __m128 scalar = _mm_set1_ps(c);
 
-    
+    // main SIMD processing, primary vectorized loop
+    for (; ptr < aligned_bound; ptr += 4, out += 4) {
+        const __m128 xvec = _mm_loadu_ps(ptr);
+        const __m128 outvec = _mm_mul_ps(xvec, scalar);
+        _mm_storeu_ps(out, outvec);
+    }
 
-
-
+    // tail handling
+    const std::size_t offset = n - (n & 3ULL);
+    switch (n & 3ULL) {
+        case 3: out[offset + 2] = xbegin[offset + 2] * c; [[fallthrough]];
+        case 2: out[offset + 1] = xbegin[offset + 1] * c; [[fallthrough]];
+        case 1: out[offset] = xbegin[offset] * c;
+        default: break;
+    }
 }
 
 
