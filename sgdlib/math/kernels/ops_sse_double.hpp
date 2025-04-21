@@ -27,12 +27,10 @@ inline void vecclip_sse_double(double* x, double min, double max, std::size_t n)
     const __m128d xmin = _mm_set1_pd(min);
     const __m128d xmax = _mm_set1_pd(max);
 
-    // check if x is aligned to 16 bytes
-    if (reinterpret_cast<uintptr_t>(x) % 16 != 0) {
+    // check if x is aligned to 16 bytes == 2 elems
+    if (n < 2) {
         x[0] = std::clamp(x[0], min, max);
-        x++;
-        n--;
-        if (n == 0) return ;
+        return ;
     }
 
     // compute aligned bound
@@ -77,14 +75,9 @@ inline void vecclip_sse_double(double* x, double min, double max, std::size_t n)
 inline bool hasinf_sse_double(const double* x, std::size_t n) noexcept {
     if (n == 0 || x == nullptr) return false;
 
-    // check if x is aligned to 16 bytes
-    if (reinterpret_cast<uintptr_t>(x) % 16 != 0) {
-        if (std::isinf(x[0])) {
-            return true;
-        }
-        x++;
-        n--;
-        if (n == 0) return false;
+    // check if x has 2 elems
+    if (n < 2) {
+        return std::isinf(x[0]) ? true : false;
     }
 
     // load x positif inf + x negative inf to SIMD register
@@ -126,15 +119,14 @@ inline bool hasinf_sse_double(const double* x, std::size_t n) noexcept {
  * @return double The computed L2 norm (either squared or its square root
  *         depending on the `squared` parameter).
  */
-inline double vecnorm2_sse_double(const double* x, std::size_t n, bool squared) noexcept {
+inline double vecnorm2_sse_double(const double* x,
+                                  std::size_t n,
+                                  bool squared) noexcept {
     if (n == 0 || x == nullptr) return 0.0;
     // For small arrays with less than or equal to two elements
-    if (n <= 2) {
+    if (n < 2) {
         double sum = 0.0;
-        switch (n) {
-            case 2: sum += x[1] * x[1]; [[fallthrough]];
-            case 1: sum += x[0] * x[0];
-        }
+        sum += x[0] * x[0];
         return squared ? sum : std::sqrt(sum);
     }
 
@@ -160,12 +152,12 @@ inline double vecnorm2_sse_double(const double* x, std::size_t n, bool squared) 
     if (n & 1ULL) {
         total += x[n - 1] * x[n - 1];
     }
-
     return squared ? total : std::sqrt(total);
 };
 
 /**
- * Computes the L1 norm (sum of absolute values) of a double-precision array using SSE intrinsics.
+ * @brief Computes the L1 norm (sum of absolute values) of a double-precision
+ *        array using SSE intrinsics.
  *
  * @param[in] x  Pointer to input array (must be non-null unless n=0)
  * @param[in] n  Number of elements in array
@@ -187,15 +179,13 @@ inline double vecnorm2_sse_double(const double* x, std::size_t n, bool squared) 
  *   double data[4] = {1.0, -2.0, 3.0, -4.0};
  *   double norm = vecnorm1_sse_double(data, 4); // Returns 10.0
  */
-inline double vecnorm1_sse_double(const double* x, std::size_t n) noexcept {
+inline double vecnorm1_sse_double(const double* x,
+                                  std::size_t n) noexcept {
     if (n == 0 || x == nullptr) return 0.0;
     // For small arrays with less than or equal to two elements
-    if (n <= 2) {
+    if (n < 2) {
         double sum = 0.0;
-        switch (n) {
-            case 2: sum += std::abs(x[1]); [[fallthrough]];
-            case 1: sum += std::abs(x[0]);
-        }
+        sum += std::abs(x[0]);
         return sum;
     }
 
@@ -228,13 +218,14 @@ inline double vecnorm1_sse_double(const double* x, std::size_t n) noexcept {
 };
 
 /**
- * Performs in-place scaling of a double-precision array using SSE2 intrinsics.
+ * @brief Performs in-place scaling of a double-precision array using SSE4.2 intrinsics.
  *
  * Computes: x[i] = x[i] * c  for all i in [0, n-1]
  *
  * @param[in,out] x  Pointer to the array to be scaled (modified in-place)
  * @param[in]     n  Number of elements in the array
  * @param[in]     c  Scaling factor
+ * @param[out]    out Output vector (same size with x)
  *
  * @details Features:
  *   - Vectorized using SSE4.2 (processes 4.2 doubles per SIMD operation)
@@ -253,19 +244,18 @@ inline double vecnorm1_sse_double(const double* x, std::size_t n) noexcept {
  *
  * @example:
  *   double data[1000];
- *   vecscale_sse_double(data, 1000, 3.14); // data *= 3.14
+ *   vecscale_sse_double(data, 3.14, 1000, out); // data *= 3.14
  */
 inline void vecscale_sse_double(const double* x,
                                 const double c,
                                 std::size_t n,
                                 double* out) noexcept {
-    if (n == 0 || x == nullptr) return ;
-    if (c == 1.0) return ;
+    if (x == nullptr || out == nullptr) return ;
+    if (n == 0 || c == 1.0f) return ;
 
     // for small size n <= 2
-    if (n <= 2) {
-        if (n >= 1) out[0] = x[0] * c;
-        if (n == 2) out[1] = x[1] * c;
+    if (n < 2) {
+        out[0] = x[0] * c;
         return ;
     }
 
@@ -285,23 +275,297 @@ inline void vecscale_sse_double(const double* x,
 
     // handle remaining elements
     if (n & 1ULL) {
-        out[n - 1] = x[n - 1] * c;
+        out[0] = ptr[0] * c;
     }
 };
 
+/**
+ * @brief Performs SIMD-accelerated vector scaling (multiplication by constant) for double-precision arrays.
+ *
+ * Computes out[i] = x[i] * c for each element in the range [xbegin, xend) using SSE instructions.
+ * Optimized for double-precision floating-point data with automatic fallback to scalar operations.
+ *
+ * @param[in] xbegin  Pointer to the first element of the input array (must be valid if n > 0)
+ * @param[in] xend    Pointer to one past the last element of the input array
+ * @param[in] c       Scaling constant to multiply each element by
+ * @param[in] n       Number of elements to process (must equal distance between xbegin and xend)
+ * @param[out] out    Pointer to the output array (must have capacity for at least n elements)
+ *
+ * @note Features:
+ * - Uses SSE4.2 instructions for processing 2 doubles at a time when n >= 2
+ * - Falls back to scalar operations for small arrays (n < 2)
+ * - Handles remaining elements (n % 2) after SIMD processing
+ * - No-throw guarantee (noexcept)
+ * - Memory-safe: checks pointer validity before access
+ *
+ * @warning Behavior is undefined if:
+ * - xbegin and xend don't form a valid range (xend >= xbegin)
+ * - n doesn't match the actual array size
+ * - Input and output ranges overlap
+ * - Pointers are null when n > 0
+ *
+ * @example
+ * std::vector<double> x(100, 2.0);
+ * std::vector<double> out(100);
+ * vecscale_sse_double(x.data(), x.data() + x.size(), 3.14, x.size(), out.data());
+ */
+inline void vecscale_sse_double(const double* xbegin,
+                                const double* xend,
+                                const double c,
+                                std::size_t n,
+                                double* out) noexcept {
+    if (xbegin == nullptr || xend == nullptr || out == nullptr) return;
+    if (n == 0 || c == 1.0) return ;
+    if (xend <= xbegin) return ;
+    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
+    if (n != m) return ;
+
+    // call vecscale_sse_double function
+    vecscale_sse_double(xbegin, c, n, out);
+};
+
+/**
+ * @brief Performs SIMD-accelerated element-wise addition of two
+ *        double-precision arrays.
+ *
+ * Computes out[i] = x[i] + y[i] for each element using SSE2 instructions.
+ * Optimized for 64-bit floating-point data with automatic scalar fallback.
+ *
+ * @param x       [in] Pointer to first input array (must not be null if n > 0)
+ * @param y       [in] Pointer to second input array (must not be null if n > 0)
+ * @param n       [in] Number of elements to process (primary size parameter)
+ * @param m       [in] Secondary size parameter (currently unused, reserved for
+ *                     future compatibility)
+ * @param out     [out] Pointer to output array (must have capacity for n elements)
+ *
+ * @note Features:
+ * - Uses SSE4.2 instructions to process 2 doubles per operation when n ≥ 2
+ * - Falls back to scalar processing for small arrays (n < 2)
+ * - Handles remaining elements (n % 2) after vector processing
+ * - No-throw guarantee (noexcept qualified)
+ * - Supports unaligned memory accesses
+ * - Parameter m is currently unused but maintained for interface consistency
+ *
+ * @warning Undefined behavior if:
+ * - Input pointers are null when n > 0
+ * - Array sizes are smaller than n
+ * - Input and output ranges overlap
+ * - n doesn't match actual array dimensions
+ *
+ * @example Typical Usage:
+ * std::vector<double> a(1000, 1.0);
+ * std::vector<double> b(1000, 2.0);
+ * std::vector<double> result(1000);
+ * vecadd_sse_double(a.data(), b.data(), a.size(), 0, result.data());
+ */
+inline void vecadd_sse_double(const double* x,
+                              const double* y,
+                              const std::size_t n,
+                              const std::size_t m,
+                              double* out) noexcept {
+    if (x == nullptr || y == nullptr) return ;
+    if (out == nullptr) return ;
+    if (n == 0 || m == 0) return ;
+    if (m != n) return ;
+
+    if (n < 2) {
+        out[0] = x[0] + y[0];
+        return ;
+    }
+
+    // define ptr points to x and aligned end
+    const double* xptr = x;
+    const double* yptr = y;
+    const double* aligned_bound = x + (n & ~1ULL);
+
+    for (; xptr < aligned_bound; xptr += 2, yptr += 2, out += 2) {
+        const __m128d xvec = _mm_loadu_pd(xptr);
+        const __m128d yvec = _mm_loadu_pd(yptr);
+        _mm_storeu_pd(out, _mm_add_pd(xvec, yvec));
+    }
+
+    if (n & 1ULL) {
+        out[0] = xptr[0] + yptr[0];
+    }
+};
+
+/**
+ * @brief Performs SIMD-accelerated vector addition with scaling for double-precision arrays.
+ *
+ * Computes the element-wise operation: out[i] = x[i] * c + y[i] using SSE2 instructions.
+ * Optimized for 64-bit floating-point data with automatic scalar fallback.
+ *
+ * @param x       [in] Pointer to first input array (must be valid if n > 0)
+ * @param y       [in] Pointer to second input array (must be valid if n > 0)
+ * @param c       [in] Scaling factor to apply to x elements before addition
+ * @param n       [in] Number of elements to process (primary size parameter)
+ * @param m       [in] Secondary size parameter (currently unused, reserved for future extension)
+ * @param out     [out] Pointer to output array (must have capacity for n elements)
+ *
+ * @note Implementation Details:
+ * - Uses SSE4.2 instructions to process 2 doubles per operation (when n ≥ 2)
+ * - Broadcasts scaling factor c to SSE register for vectorized multiplication
+ * - Falls back to scalar processing for small arrays (n < 2)
+ * - Handles remaining elements (n % 2) after vector processing
+ * - No-throw guarantee (noexcept qualified)
+ * - Supports unaligned memory accesses
+ * - Current implementation ignores parameter m
+ *
+ * @warning Undefined behavior if:
+ * - Input pointers are null when n > 0
+ * - Array sizes are smaller than n
+ * - Input and output ranges overlap
+ * - n doesn't match actual array dimensions
+ *
+ * @example Basic Usage:
+ * std::vector<double> a(1000, 1.0);
+ * std::vector<double> b(1000, 2.0);
+ * std::vector<double> result(1000);
+ * vecadd_sse_double(a.data(), b.data(), 3.14, a.size(), 0, result.data());
+ */
+inline void vecadd_sse_double(const double* x,
+                              const double* y,
+                              const double c,
+                              const std::size_t n,
+                              const std::size_t m,
+                              double* out) noexcept {
+    if (x == nullptr || y == nullptr) return ;
+    if (out == nullptr) return ;
+    if (n == 0 || m == 0) return ;
+    if (m != n) return ;
+
+    if (n < 2) {
+        out[0] = x[0] * c + y[0];
+        return ;
+    }
+
+    // load constant c into register
+    const __m128d scalar = _mm_set1_pd(c);
+
+    // define ptr points to x and aligned end
+    const double* xptr = x;
+    const double* yptr = y;
+    const double* aligned_bound = x + (n & ~1ULL);
+
+    for (; xptr < aligned_bound; xptr += 2, yptr += 2, out += 2) {
+        const __m128d xvec = _mm_loadu_pd(xptr);
+        const __m128d yvec = _mm_loadu_pd(yptr);
+        _mm_storeu_pd(out, _mm_add_pd(_mm_mul_pd(xvec, scalar), yvec));
+    }
+
+    if (n & 1ULL) {
+        out[0] = xptr[0] * c + yptr[0];
+    }
+}
+
+/**
+ * @brief Performs SIMD-accelerated element-wise subtraction of two double-precision
+ *        floating-point arrays.
+ *
+ * Computes out[i] = x[i] - y[i] for each element using SSE4.2 instructions.
+ * Optimized for 64-bit floating-point data with automatic scalar fallback.
+ *
+ * @param[in] x      Pointer to first input array (minuend array)
+ * @param[in] y      Pointer to second input array (subtrahend array)
+ * @param[in] n      Number of elements to process (primary size parameter)
+ * @param[in] m      Secondary size parameter (currently unused, reserved for future)
+ * @param[out] out   Pointer to output array (must have capacity for at least n elements)
+ *
+ * @note Implementation Details:
+ * - Uses SSE4.2 instructions to process 2 double per operation when n ≥ 2
+ * - Automatically falls back to scalar operations for small arrays (n < 2)
+ * - Handles remaining elements (n % 2) after vector processing
+ * - No-throw guarantee (noexcept qualified)
+ * - Supports unaligned memory accesses
+ * - Current implementation ignores parameter m
+ *
+ * @warning Undefined behavior if:
+ * - Input pointers are null when n > 0
+ * - Array sizes are smaller than n
+ * - Input and output ranges overlap
+ * - n doesn't match actual array dimensions
+ *
+ * @example Basic Usage:
+ * std::vector<double> a(1000, 5.0);
+ * std::vector<double> b(1000, 3.0);
+ * std::vector<double> result(1000);
+ * vecdiff_sse_double(a.data(), b.data(), a.size(), 0, result.data());
+ * // result will contain 2.0f in each element
+ */
+inline void vecdiff_sse_double(const double* x,
+                               const double* y,
+                               const std::size_t n,
+                               const std::size_t m,
+                               double* out) noexcept {
+    if (x == nullptr || y == nullptr) return ;
+    if (out == nullptr) return ;
+    if (n == 0 || m == 0) return ;
+    if (m != n) return ;
+
+    if (n < 2) {
+        out[0] = x[0] - y[0];
+        return ;
+    }
+
+    // define ptr points to x and aligned end
+    const double* xptr = x;
+    const double* yptr = y;
+    const double* aligned_bound = x + (n & ~1ULL);
+
+    for (; xptr < aligned_bound; xptr += 2, yptr += 2, out += 2) {
+        const __m128d xvec = _mm_loadu_pd(xptr);
+        const __m128d yvec = _mm_loadu_pd(yptr);
+        _mm_storeu_pd(out, _mm_sub_pd(xvec, yvec));
+    }
+
+    if (n & 1ULL) {
+        out[0] = xptr[0] - yptr[0];
+    }
+};
+
+/**
+ * @brief Computes the dot product of two double-precision vectors using SSE4.2 intrinsics.
+ *
+ * Calculates the sum of element-wise products: Σ(x[i] * y[i]) for i = 0 to n-1.
+ * Optimized for 64-bit floating-point data with automatic scalar fallback.
+ *
+ * @param[in] x   Pointer to first input vector (must be valid if n > 0)
+ * @param[in] y   Pointer to second input vector (must be valid if n > 0)
+ * @param[in] n   Number of elements to process (primary size parameter)
+ * @param[in] m   Secondary size parameter (currently unused, reserved for future)
+ * @return        The computed dot product as a double-precision value
+ *
+ * @note Implementation Details:
+ * - Uses SSE2 instructions to process 2 doubles per operation when n ≥ 2
+ * - Maintains partial sums in SSE registers for better precision
+ * - Automatically falls back to scalar operations for small vectors (n < 2)
+ * - No-throw guarantee (noexcept qualified)
+ * - Supports unaligned memory accesses
+ * - Current implementation ignores parameter m
+ *
+ * @warning Undefined behavior if:
+ * - Input pointers are null when n > 0
+ * - Vector sizes are smaller than n
+ * - Parameter n doesn't match actual array dimensions
+ *
+ * @example Basic Usage:
+ * std::vector<double> a = {1.0, 2.0, 3.0};
+ * std::vector<double> b = {4.0, 5.0, 6.0};
+ * double result = vecdot_sse_double(a.data(), b.data(), a.size(), 0);
+ * // result = 1.0*4.0 + 2.0*5.0 + 3.0*6.0 = 32.0
+ */
 inline double vecdot_sse_double(const double* x,
                                 const double* y,
                                 std::size_t n,
                                 std::size_t m) noexcept {
     if (x == nullptr || y == nullptr) return 0.0;
+    if (n == 0 || m == 0) return 0.0;
     if (n != m) return 0.0;
-    if (n == 0) return 0.0;
 
     // for small size array
-    if (n <= 2) {
+    if (n < 2) {
         double sum = 0.0;
-        if (n >= 1) sum += x[0] * y[0];
-        if (n == 2) sum += x[1] * y[1];
+        sum += x[0] * y[0];
         return sum;
     }
 
@@ -331,47 +595,9 @@ inline double vecdot_sse_double(const double* x,
     return total;
 };
 
-inline void vecscale_sse_double(const double* xbegin,
-                                const double* xend,
-                                const double c,
-                                std::size_t n,
-                                double* out) noexcept {
-    if (xbegin == nullptr || xend == nullptr ||
-        xend <= xbegin || out == nullptr) {
-        return;
-    }
-    if (n == 0) return ;
 
-    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
-    if (n != m) return ;
 
-    // handle small size n <= 2
-    if (n <= 2) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = xbegin[i] * c;
-        }
-        return;
-    }
 
-    // define ptr points to xbegin
-    const double* ptr = xbegin;
-    const double* aligned_bound = xbegin + (n & ~1ULL);
-
-    // load constant c to register
-    const __m128d scalar = _mm_set1_pd(c);
-
-    // main SIMD processing
-    for (; ptr < aligned_bound; ptr += 2, out += 2) {
-        const __m128d xvec = _mm_loadu_pd(ptr);
-        const __m128d outvec = _mm_mul_pd(xvec, scalar);
-        _mm_storeu_pd(out, outvec);
-    }
-
-    // handle tail case
-    if (n & 1ULL) {
-        out[n - 1] = xbegin[n - 1] * c;
-    }
-};
 
 }
 }
