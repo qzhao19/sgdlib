@@ -34,7 +34,7 @@ namespace detail {
 inline void vecclip_sse_float(float* x, float min, float max, std::size_t n) noexcept {
     if (n == 0 || x == nullptr) return ;
     if (min > max) return ;
-    // if n < 4
+    // handle small size n < 4
     if (n < 4) {
         for (std::size_t i = 0; i < n; ++i) {
             x[i] = std::clamp(x[i], min, max);
@@ -94,6 +94,8 @@ inline void vecclip_sse_float(float* x, float min, float max, std::size_t n) noe
  */
 inline bool hasinf_sse_float(const float* x, std::size_t n) noexcept {
     if (n == 0 || x == nullptr) return false;
+
+    // handle small size n < 4
     if (n < 4) {
         for (std::size_t i = 0; i < n; ++i) {
             if (std::isinf(x[i])) {
@@ -143,7 +145,6 @@ inline bool hasinf_sse_float(const float* x, std::size_t n) noexcept {
  *         Returns 0.0f if:
  *         - x is nullptr
  *         - n == 0
- *
  * @note
  * - Uses SSE4.2 instruction set (requires CPU support)
  * - Processes 4 elements per cycle in the main computation loop
@@ -223,6 +224,7 @@ inline float vecnorm2_sse_float(const float* x, std::size_t n, bool squared) noe
  */
 inline float vecnorm1_sse_float(const float* x, std::size_t n) noexcept {
     if (n == 0 || x == nullptr) return 0.0f;
+    // handle small size n < 4
     if (n < 4) {
         float sum = 0.0f;
         switch (n) {
@@ -270,11 +272,12 @@ inline float vecnorm1_sse_float(const float* x, std::size_t n) noexcept {
  *
  * Performs element-wise multiplication: x[i] = x[i] * c for all i in [0,n-1]
  *
- * @param[in,out] x  Pointer to float array to scale (modified in-place)
+ * @param[in]     x  Pointer to float array to scale (modified in-place)
  * @param[in]     n  Number of elements in array
  * @param[in]     c  Scaling factor
+ * @param[out]    out Output vector (same size with x)
  *
- * @note Optimized implementation details:
+ * @details Optimized implementation details:
  *       - Uses SSE SIMD to process 4 elements per cycle
  *       - Handles unaligned memory accesses safely
  *       - Special cases:
@@ -295,7 +298,7 @@ inline void vecscale_sse_float(const float* x,
                                float* out) noexcept {
     // conditionn check
     if (x == nullptr || out == nullptr) return;
-    if (c == 1.0f) return ;
+    if (n == 0 || c == 1.0) return ;
 
     // for small size array
     if (n < 4) {
@@ -319,24 +322,289 @@ inline void vecscale_sse_float(const float* x,
         _mm_storeu_ps(out, _mm_mul_ps(xvec, scalar));
     }
 
-    // tail handling
-    // const std::size_t remaining = n & 3;
-    // const std::size_t offset = n - remaining;
-    // switch (n & 3ULL) {
-    //     case 3: out[n - 3] = x[n - 3] * c; [[fallthrough]];
-    //     case 2: out[n - 2] = x[n - 2] * c; [[fallthrough]];
-    //     case 1: out[n - 1] = x[n - 1] * c;
-    //     default: break;
-    // }
-    const std::size_t remaining = n & 3;
-    if (remaining != 0) {
-        const std::size_t offset = n - remaining;
-        for (std::size_t i = 0; i < remaining; ++i) {
-            out[offset + i] = x[offset + i] * c;
-        }
+    // handle remaining elements
+    // const float* tail_ptr = x + (n & ~3ULL);
+    switch (n & 3ULL) {
+        case 3: out[2] = ptr[2] * c; [[fallthrough]];
+        case 2: out[1] = ptr[1] * c; [[fallthrough]];
+        case 1: out[0] = ptr[0] * c;
+        default: break;
     }
 };
 
+/**
+ * @brief Performs SIMD-accelerated vector scaling (element-wise multiplication) for
+ *        single-precision floating-point arrays.
+ *
+ * Computes out[i] = x[i] * c for each element in the range [xbegin, xend) using SSE intrinsics.
+ * Optimized for 32-bit floating-point data with automatic fallback to scalar operations.
+ *
+ * @param xbegin  [in] Pointer to the first element of the input array (must be valid if n > 0)
+ * @param xend    [in] Pointer to one past the last element of the input array
+ * @param c       [in] Scaling factor to multiply each element by
+ * @param n       [in] Number of elements to process (must equal distance between xbegin and xend)
+ * @param out     [out] Pointer to the output array (must have capacity for at least n elements)
+ *
+ * @note Implementation Details:
+ * - Uses SSE instructions to process 4 floats simultaneously when n >= 4
+ * - Automatically falls back to scalar operations for small arrays (n < 4)
+ * - Handles remaining elements (n % 4) after SIMD processing
+ * - No-throw guarantee (noexcept qualified)
+ * - Memory-safe: validates pointers before access
+ * - Supports unaligned memory accesses
+ *
+ * @warning Undefined behavior if:
+ * - xbegin > xend (invalid range)
+ * - n doesn't match actual array size
+ * - Input and output ranges overlap
+ * - Any pointer is null when n > 0
+ * - Memory is not properly allocated
+ *
+ * @performance Expected to be 3-4x faster than scalar implementation for large arrays
+ *
+ * @example Basic Usage:
+ * std::vector<float> data(1000, 2.0f);
+ * std::vector<float> result(1000);
+ * vecscale_sse_float(data.data(), data.data() + data.size(), 3.14f, data.size(), result.data());
+ */
+inline void vecscale_sse_float(const float* xbegin,
+                               const float* xend,
+                               const float c,
+                               std::size_t n,
+                               float* out) noexcept {
+    if (xbegin == nullptr || xend == nullptr || out == nullptr) return;
+    if (n == 0 || c == 1.0) return ;
+    if (xend <= xbegin) return ;
+    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
+    if (n != m) return ;
+
+    // call vecscale_sse_float function
+    vecscale_sse_float(xbegin, c, n, out);
+};
+
+/**
+ * @brief Performs SIMD-accelerated element-wise addition of two float arrays.
+ *
+ * Computes out[i] = x[i] + y[i] for each element using SSE instructions when possible.
+ * This function is optimized for float arrays and handles both aligned and unaligned memory.
+ *
+ * @param[in] x        Pointer to first input array (must not be nullptr unless n=0)
+ * @param[in] y        Pointer to second input array (must not be nullptr unless n=0)
+ * @param[in] n        Number of elements to process (primary size parameter)
+ * @param[in] m        Secondary size parameter (unused in current implementation)
+ * @param[out] out     Pointer to output array (must not be nullptr unless n=0)
+ *
+ * @details Safety checks:
+ * - Returns immediately if x, y or out are nullptr (unless n=0)
+ * - Returns if n=0 or m=0
+ * - The m parameter is currently unused but kept for interface compatibility
+ * - Uses SSE instructions (__m128) when n >= 4
+ * - Falls back to scalar operations for small arrays (n < 4)
+ * - Handles remaining elements (n % 4) after SIMD processing
+ *
+ * @example
+ * - float vec1[] = {1.0f, 2.0f, 3.0f, 4.0f};
+ * - float vec2[] = {5.0f, 6.0f, 7.0f, 8.0f};
+ * - float result[4];
+ * - vecadd_sse_float(vec1, vec2, 4, 4, result);
+ * result = {6.0f, 8.0f, 10.0f, 12.0f}
+ *
+ * @note The function is marked as `noexcept` to indicate that it does not throw exceptions.
+ *
+ * @warning All pointers must point to valid memory if n > 0
+ * @warning Behavior is undefined if input/output arrays overlap
+ * @warning The m parameter is currently not used (m != m check is a no-op)
+ */
+inline void vecadd_sse_float(const float* x,
+                             const float* y,
+                             const std::size_t n,
+                             const std::size_t m,
+                             float* out) noexcept {
+    if (x == nullptr || y == nullptr) return ;
+    if (out == nullptr) return ;
+    if (n == 0 || m == 0) return ;
+    if (m != n) return ;
+
+    // handle small size array n < 4
+    if (n < 4) {
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] = x[i] + y[i];
+        }
+        return ;
+    }
+
+    // define ptr points to x
+    const float* xptr = x;
+    const float* yptr = y;
+    const float* aligned_bound = x + (n & ~3ULL);
+
+    // main SIMD loop
+    for (; xptr < aligned_bound; xptr += 4, yptr += 4, out += 4) {
+        const __m128 xvec = _mm_loadu_ps(xptr);
+        const __m128 yvec = _mm_loadu_ps(yptr);
+        _mm_storeu_ps(out, _mm_add_ps(xvec, yvec));
+    }
+
+    // handle remaining elements
+    switch (n & 3ULL) {
+        case 3: out[2] = xptr[2] + yptr[2]; [[fallthrough]];
+        case 2: out[1] = xptr[1] + yptr[1]; [[fallthrough]];
+        case 1: out[0] = xptr[0] + yptr[0];
+        default: break;
+    }
+};
+
+/**
+ * @brief Performs SIMD-accelerated vector addition with scaling for
+ *        single-precision floating-point arrays.
+ *
+ * Computes out[i] = x[i] * c + y[i] for each element using SSE4.2 intrinsics.
+ * Optimized for 32-bit floating-point data with automatic fallback to scalar operations.
+ *
+ * @param x       [in] Pointer to first input array (must be valid if n > 0)
+ * @param y       [in] Pointer to second input array (must be valid if n > 0)
+ * @param c       [in] Scaling factor to multiply x elements by before addition
+ * @param n       [in] Primary size parameter (number of elements to process)
+ * @param m       [in] Secondary size parameter (currently unused, reserved for future use)
+ * @param out     [out] Pointer to output array (must have capacity for at least n elements)
+ *
+ * @note Implementation Details:
+ * - Uses SSE instructions to process 4 floats simultaneously when n >= 4
+ * - Automatically falls back to scalar operations for small arrays (n < 4)
+ * - Handles remaining elements (n % 4) after SIMD processing
+ * - No-throw guarantee (noexcept qualified)
+ * - Supports unaligned memory accesses
+ * - Current implementation ignores parameter m (reserved for future extension)
+ *
+ * @warning Undefined behavior if:
+ * - Any pointer is null when n > 0
+ * - Array sizes don't match (x, y, and out must all have at least n elements)
+ * - Input and output ranges overlap
+ * - n doesn't match actual array sizes
+ *
+ * @performance Expected to be 3-4x faster than scalar implementation for large arrays
+ *
+ * @example Basic Usage:
+ * std::vector<float> x(1000, 2.0f);
+ * std::vector<float> y(1000, 1.0f);
+ * std::vector<float> result(1000);
+ * vecadd_sse_float(x.data(), y.data(), 3.14f, x.size(), 0, result.data());
+ */
+inline void vecadd_sse_float(const float* x,
+                             const float* y,
+                             const float c,
+                             const std::size_t n,
+                             const std::size_t m,
+                             float* out) noexcept {
+    if (x == nullptr || y == nullptr) return ;
+    if (out == nullptr) return ;
+    if (n == 0 || m == 0) return ;
+    if (m != n) return ;
+
+    if (n < 4) {
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] = c * x[i] + y[i];
+        }
+        return ;
+    }
+
+    // define xptr and yptr point to x and y
+    const float* xptr = x;
+    const float* yptr = y;
+    const float* aligned_bound = x + (n & ~3ULL);
+
+    // load constant c into register
+    const __m128 scalar = _mm_set1_ps(c);
+
+    // start SIMD loop
+    for (; xptr < aligned_bound; xptr += 4, yptr += 4, out += 4) {
+        const __m128 xvec = _mm_loadu_ps(xptr);
+        const __m128 yvec = _mm_loadu_ps(yptr);
+        // _mm_storeu_ps(out, _mm_mul_ps(_mm_add_ps(xvec, scalar), yvec));
+        _mm_storeu_ps(out, _mm_add_ps(_mm_mul_ps(xvec, scalar), yvec));
+    }
+
+    // handle remaining elements
+    switch (n & 3ULL) {
+        case 3: out[2] = xptr[2] * c + yptr[2]; [[fallthrough]];
+        case 2: out[1] = xptr[1] * c + yptr[1]; [[fallthrough]];
+        case 1: out[0] = xptr[0] * c + yptr[0];
+        default: break;
+    }
+};
+
+/**
+ * @brief Performs SIMD-accelerated element-wise subtraction of two single-precision
+ *        floating-point arrays.
+ *
+ * Computes out[i] = x[i] - y[i] for each element using SSE instructions.
+ * Optimized for 32-bit floating-point data with automatic scalar fallback.
+ *
+ * @param x       [in] Pointer to first input array (minuend array)
+ * @param y       [in] Pointer to second input array (subtrahend array)
+ * @param n       [in] Number of elements to process (primary size parameter)
+ * @param m       [in] Secondary size parameter (currently unused, reserved for future)
+ * @param out     [out] Pointer to output array (must have capacity for at least n elements)
+ *
+ * @note Implementation Details:
+ * - Uses SSE instructions to process 4 floats per operation when n ≥ 4
+ * - Automatically falls back to scalar operations for small arrays (n < 4)
+ * - Handles remaining elements (n % 4) after vector processing
+ * - No-throw guarantee (noexcept qualified)
+ * - Supports unaligned memory accesses
+ * - Current implementation ignores parameter m
+ *
+ * @warning Undefined behavior if:
+ * - Input pointers are null when n > 0
+ * - Array sizes are smaller than n
+ * - Input and output ranges overlap
+ * - n doesn't match actual array dimensions
+ *
+ * @example Basic Usage:
+ * std::vector<float> a(1000, 5.0f);
+ * std::vector<float> b(1000, 3.0f);
+ * std::vector<float> result(1000);
+ * vecdiff_sse_float(a.data(), b.data(), a.size(), 0, result.data());
+ * // result will contain 2.0f in each element
+ */
+inline void vecdiff_sse_float(const float* x,
+                              const float* y,
+                              const std::size_t n,
+                              const std::size_t m,
+                              float* out) noexcept {
+    if (x == nullptr || y == nullptr) return ;
+    if (out == nullptr) return ;
+    if (n == 0 || m == 0) return ;
+    if (m != n) return ;
+
+    // handle small size n < 4
+    if (n < 4) {
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] = x[i] - y[i];
+        }
+        return ;
+    }
+
+    // define xptr and yptr point to x and y
+    const float* xptr = x;
+    const float* yptr = y;
+    const float* aligned_bound = x + (n & ~3ULL);
+
+    // start SIMD loop
+    for (; xptr < aligned_bound; xptr += 4, yptr += 4, out += 4) {
+        const __m128 xvec = _mm_loadu_ps(xptr);
+        const __m128 yvec = _mm_loadu_ps(yptr);
+        _mm_storeu_ps(out, _mm_sub_ps(xvec, yvec));
+    }
+
+    // handle remaining elements
+    switch (n & 3ULL) {
+        case 3: out[2] = xptr[2] - yptr[2]; [[fallthrough]];
+        case 2: out[1] = xptr[1] - yptr[1]; [[fallthrough]];
+        case 1: out[0] = xptr[0] - yptr[0];
+        default: break;
+    }
+};
 
 /**
  * Computes the dot product of two single-precision floating-point vectors
@@ -354,7 +622,7 @@ inline void vecscale_sse_float(const float* x,
  *         - n == 0
  *
  * @note
- * - Uses SSE4.1 instruction set (requires CPU support)
+ * - Uses SSE4.2 instruction set (requires CPU support)
  * - Processes 4 elements per cycle in the main computation loop
  * - Automatically handles remaining elements (1-3) when n is not a multiple of 4
  * - For small vectors (n < 4), back to scalar computation
@@ -368,7 +636,10 @@ inline void vecscale_sse_float(const float* x,
  *
  * @see _mm_mul_ps, _mm_add_ps, _mm_hadd_ps (Intel Intrinsics Guide)
  */
-inline float vecdot_sse_float(const float* x, const float* y, std::size_t n, std::size_t m) noexcept {
+inline float vecdot_sse_float(const float* x,
+                              const float* y,
+                              std::size_t n,
+                              std::size_t m) noexcept {
     if (x == nullptr || y == nullptr) return 0.0f;
     if (n != m) return 0.0f;
     if (n == 0) return 0.0f;
@@ -422,50 +693,6 @@ inline float vecdot_sse_float(const float* x, const float* y, std::size_t n, std
 };
 
 
-inline void vecscale_sse_float(const float* xbegin,
-                            const float* xend,
-                            const float c,
-                            std::size_t n,
-                            float* out) noexcept {
-    if (xbegin == nullptr || xend == nullptr ||
-        xend <= xbegin || out == nullptr) {
-        return;
-    }
-    if (n == 0 || c == 1.0f) return ;
-
-    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
-    if (n != m) return ;
-
-    // for small size n < 4
-    if (n < 4) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = xbegin[i] * c;
-        }
-        return ;
-    }
-    // define ptr to xbegin and aligned end
-    const float* ptr = xbegin;
-    const float* aligned_bound = xbegin + (n & ~3ULL);
-
-    // load scalar to register
-    const __m128 scalar = _mm_set1_ps(c);
-
-    // main SIMD processing, primary vectorized loop
-    for (; ptr < aligned_bound; ptr += 4, out += 4) {
-        const __m128 xvec = _mm_loadu_ps(ptr);
-        const __m128 outvec = _mm_mul_ps(xvec, scalar);
-        _mm_storeu_ps(out, outvec);
-    }
-
-    // tail handling
-    const std::size_t offset = n - (n & 3ULL);
-    switch (n & 3ULL) {
-        case 3: out[offset + 2] = xbegin[offset + 2] * c; [[fallthrough]];
-        case 2: out[offset + 1] = xbegin[offset + 1] * c; [[fallthrough]];
-        case 1: out[offset] = xbegin[offset] * c;
-        default: break;
-    }
-}
 
 
 }
