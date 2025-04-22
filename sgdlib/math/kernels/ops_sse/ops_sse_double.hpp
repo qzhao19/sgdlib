@@ -1,5 +1,5 @@
-#ifndef MATH_MATH_KERNELS_OPS_SSE_DOUBLE_HPP_
-#define MATH_MATH_KERNELS_OPS_SSE_DOUBLE_HPP_
+#ifndef MATH_MATH_KERNELS_OPS_SSE_OPS_SSE_DOUBLE_HPP_
+#define MATH_MATH_KERNELS_OPS_SSE_OPS_SSE_DOUBLE_HPP_
 
 #include "common/prereqs.hpp"
 
@@ -601,4 +601,4 @@ inline double vecdot_sse_double(const double* x,
 
 }
 }
-#endif // MATH_MATH_KERNELS_OPS_SSE_FLOAT_HPP_
+#endif // MATH_MATH_KERNELS_OPS_SSE_OPS_SSE_DOUBLE_HPP_
