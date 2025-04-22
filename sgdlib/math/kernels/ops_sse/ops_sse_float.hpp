@@ -1,5 +1,5 @@
-#ifndef MATH_MATH_KERNELS_OPS_SSE_FLOAT_HPP_
-#define MATH_MATH_KERNELS_OPS_SSE_FLOAT_HPP_
+#ifndef MATH_MATH_KERNELS_OPS_SSE_OPS_SSE_FLOAT_HPP_
+#define MATH_MATH_KERNELS_OPS_SSE_OPS_SSE_FLOAT_HPP_
 
 #include "common/prereqs.hpp"
 
@@ -697,4 +697,4 @@ inline float vecdot_sse_float(const float* x,
 
 }
 }
-#endif // MATH_MATH_KERNELS_OPS_SSE_FLOAT_HPP_
+#endif // MATH_MATH_KERNELS_OPS_SSE_OPS_SSE_FLOAT_HPP_
