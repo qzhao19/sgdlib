@@ -15,7 +15,7 @@ using IntegerType = int;
 using FloatType = double;
 using IntegerType = long;
 #else
-#error "sgdlib supports (float; PRECISION_TYPE = 32) or FloatType (FloatType; PRECISION_TYPE=64) precision only."
+#error "sgdlib supports single (PRECISION_TYPE=32) and double (PRECISION_TYPE=64) precision floating-point formats exclusively."
 #endif
 
 // define the type for feature, label, loss parameters and learning rate decay parameters
