@@ -7,10 +7,10 @@ namespace sgdlib {
 
 /**
  * @file lbfgs.hpp
- * 
+ *
  * @class LBFGS
- * 
- * @brief Implements the Limited-memory Broyden–Fletcher–Goldfarb–Shanno (L-BFGS) 
+ *
+ * @brief Implements the Limited-memory Broyden–Fletcher–Goldfarb–Shanno (L-BFGS)
  * optimization algorithm.
  *
  * This class inherits from `BaseOptimizer` and provides functionality for optimizing
@@ -27,48 +27,48 @@ public:
      * base class `BaseOptimizer`.
      *
      * @param w0 Initial weight vector for the model.
-     * @param loss Name of the loss function, of type `std::string`. 
+     * @param loss Name of the loss function, of type `std::string`.
      *             Supported loss functions include "LogLoss", "hinge_loss", etc.
-     * @param search_policy Name of the search policy for selecting search directions during optimization. 
+     * @param search_policy Name of the search policy for selecting search directions during optimization.
      *                      Supported policies include "ARMIJO", "WOLFE", etc.
-     * @param delta The parameter for convergence test, it determines the minimum rate of 
+     * @param delta The parameter for convergence test, it determines the minimum rate of
      *              decrease of theobjective function
-     * @param tol Tolerance for convergence. Optimization stops when the change 
+     * @param tol Tolerance for convergence. Optimization stops when the change
      *            in the objective function value is less than this threshold.
      * @param max_iters Maximum number of iterations for optimization.
      * @param mem_size Memory size，the number of corrections to approximate the inverse hessian matrix.
      * @param past Number of past iterations to consider for estimation.
-     * @param stepsize_search_params Step size search parameters, of type `StepSizeSearchParamType*`. 
+     * @param stepsize_search_params Step size search parameters, of type `StepSizeSearchParamType*`.
      *                               Contains specific parameters for step size search (e.g. dec_factor).
      * @param verbose If true, enables logging of optimization progress (default: true).
-     * 
-     * @note This constructor calls the constructor of the base class `BaseOptimizer` to 
+     *
+     * @note This constructor calls the constructor of the base class `BaseOptimizer` to
      *       complete the initialization of the optimizer.
      * @see BaseOptimizer
      */
-    LBFGS(const std::vector<FeatValType>& w0, 
-          std::string loss, 
+    LBFGS(const std::vector<FeatValType>& w0,
+          std::string loss,
           std::string search_policy,
           FloatType delta,
           FloatType tol,
-          std::size_t max_iters, 
+          std::size_t max_iters,
           std::size_t mem_size,
           std::size_t past,
           StepSizeSearchParamType* stepsize_search_params,
           bool verbose = true): BaseOptimizer(w0,
-            loss, 
+            loss,
             search_policy,
             delta,
-            tol, 
-            max_iters, 
+            tol,
+            max_iters,
             mem_size,
             past,
             stepsize_search_params,
             verbose) {};
-    
+
     ~LBFGS() = default;
 
-    void optimize(const std::vector<FeatValType>& X, 
+    void optimize(const std::vector<FeatValType>& X,
                   const std::vector<LabelValType>& y) override {
 
         std::size_t num_samples = y.size();
@@ -82,17 +82,17 @@ public:
         std::size_t i, j, k, end, bound;
         FloatType rate, beta;
         FeatValType fx = 0.0, ys = 0.0, yy = 0.0;
-        
+
         // init the loss history vector
         std::vector<FeatValType> loss_history;
         loss_history.reserve(num_samples * this->max_iters_);
-        
+
         // intermediate variables: previous x, gradient, previous gradient, directions
         std::vector<FeatValType> xp(num_features);
         std::vector<FeatValType> g(num_features);
         std::vector<FeatValType> gp(num_features);
         std::vector<FeatValType> d(num_features);
-        
+
         // initialize the limited memory variables
         // mem_s: storing changes of parameters in the past
         // mem_y: storing changes of gradient in the past
@@ -123,8 +123,8 @@ public:
 
         // compute intial loss value and gradeint
         for (std::size_t n = 0; n < num_samples; ++n) {
-            y_hat = std::inner_product(&X[n * num_features], 
-                                       &X[(n + 1) * num_features], 
+            y_hat = std::inner_product(&X[n * num_features],
+                                       &X[(n + 1) * num_features],
                                        x.begin(), 0.0);
             fx += this->loss_fn_->evaluate(y_hat, y[n]);
             for (std::size_t m = 0; m < num_features; ++m) {
@@ -133,10 +133,10 @@ public:
         }
         fx /= static_cast<FeatValType>(num_samples);
         std::transform(g.begin(), g.end(), g.begin(),
-                      [num_samples](FeatValType val) { 
-                        return val / static_cast<FeatValType>(num_samples); 
+                      [num_samples](FeatValType val) {
+                        return val / static_cast<FeatValType>(num_samples);
                       });
-        
+
         // store the initial value of the cost function fx
         pfx[0] = fx;
 
@@ -166,7 +166,7 @@ public:
             // store current xp = x and gp = g
             std::copy(x.begin(), x.end(), xp.begin());
             std::copy(g.begin(), g.end(), gp.begin());
-            
+
             // call step size search function
             int search_status = stepsize_search->search(xp, gp, d, x, g, fx, stepsize);
             if (search_status < 0) {
@@ -184,11 +184,11 @@ public:
             // ||g(x)|| / max(1, ||x||) < tol
             xnorm = sgdlib::detail::sqnorm2<FeatValType>(x, true);
             gnorm = sgdlib::detail::sqnorm2<FeatValType>(g, true);
-            
+
             if (this->verbose_) {
-                PRINT_RUNTIME_INFO(1, "iteration = ", k, 
-                                   ", loss = ", fx, 
-                                   ", xnorm value = ", xnorm, 
+                PRINT_RUNTIME_INFO(1, "iteration = ", k,
+                                   ", loss = ", fx,
+                                   ", xnorm value = ", xnorm,
                                    ", gnorm value = ", gnorm);
             }
             if (gnorm / std::max(1.0, xnorm) <= this->tol_) {
@@ -212,7 +212,7 @@ public:
                 PRINT_RUNTIME_INFO(1, "algorithm routine reaches the maximum number of iterations");
                 break;
             }
-            
+
             // Update vectors s and y:
             // s_{k+1} = x_{k+1} - x_{k} = step * d_{k}.
             // y_{k+1} = g_{k+1} - g_{k}.
@@ -230,13 +230,13 @@ public:
                 yy += mem_y[n * this->mem_size_ + end] * mem_y[n * this->mem_size_ + end];
             }
             mem_ys[end] = ys;
-            
+
             // compute negative of gradient: d = -g
             for (std::size_t n = 0; n < num_features; ++n) {
                 d[n] = -g[n];
             }
 
-            // bound: number of currently available historical messages 
+            // bound: number of currently available historical messages
             // k: number of iterations
             // end: indicates the location of the latest history information.
             //      after each iteration, end is updated to the next position
@@ -248,7 +248,7 @@ public:
 
             // loop1: forwards recursion
             for (i = 0; i < bound; ++i) {
-                // if (--j == -1) j = m-1 traverse history forward, 
+                // if (--j == -1) j = m-1 traverse history forward,
                 // starting with the most recent history message
                 j = (j + this->mem_size_ - 1) % this->mem_size_;
                 // alpha_{j} = s^{T}_{j} @ d_{j} * rho_{j}, rho_{j} = 1/mem_ys
@@ -268,7 +268,7 @@ public:
             for (std::size_t n = 0; n < num_features; ++n) {
                 d[n] *= scale_ceoff;
             }
-            
+
             // loop2: backwards recursion
             for (i = 0; i < bound; ++i) {
                 // compute beta_j = rho_{j} * y_{T}_{j} @ d_{J}, rho_{j} = 1/mem_ys
@@ -281,10 +281,10 @@ public:
                 for (std::size_t n = 0; n < num_features; ++n) {
                     d[n] += (mem_alpha[j] - beta) * mem_s[n * this->mem_size_ + j];
                 }
-                // starting the earliest history information to traverse backward 
+                // starting the earliest history information to traverse backward
                 j = (j + 1) % this->mem_size_;
             }
-            
+
             ys = 0.0;
             yy = 0.0;
             stepsize = 1.0;
