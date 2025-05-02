@@ -6,6 +6,31 @@
 namespace sgdlib {
 namespace detail {
 
+inline void vecset_sse_double(double* x, const double c, std::size_t n) noexcept {
+    if (x == nullptr || n == 0) return ;
+    if (n < 2) {
+        x[0] = c;
+        return ;
+    }
+
+    // compute aligned bound
+    const double* ptr = x;
+    const double* algned_bound = x + (n & ~1ULL);
+
+    const __mm128d scalar = _mm_set1_pd(c);
+
+    for (; ptr < algned_bound; ptr += 2) {
+        _mm_storeu_pd(ptr, scalar);
+    }
+
+    if (n & 1ULL) {
+        ptr[0] = c;
+    }
+}
+
+
+
+
 /**
  * @brief Clips each element in the input array `x` to be within the range [min, max]
  *        using SSE intrinsics for doubles.
