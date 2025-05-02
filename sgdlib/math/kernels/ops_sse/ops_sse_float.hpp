@@ -6,6 +6,33 @@
 namespace sgdlib {
 namespace detail {
 
+
+inline void vecset_sse_float(float* x, float c, std::size_t n) noexcept {
+    if (n == 0 || x == nullptr) return ;
+    if (n < 4) {
+        for (std::size_t i = 0; i < n; ++i) {
+            x[i] = c;
+        }
+        return ;
+    }
+
+    const float* ptr = x;
+    const float* aligned_bound = x + (n & ~3ULL);
+
+    const __m128 scalar = _mm_set1_ps(c);
+    for (; ptr < aligned_bound; ptr += 4) {
+        _mm_storeu_ps(ptr, scalar);
+    }
+
+    switch (n & 3ULL) {
+        case 3: ptr[2] = c; [[fallthrough]];
+        case 2: ptr[1] = c; [[fallthrough]];
+        case 1: ptr[0] = c;
+        default: break;
+    }
+}
+
+
 /**
  * Clips (clamps) elements of a float vector to specified [min, max] range using SSE intrinsics.
  * Performs in-place modification: x[i] = min(max(x[i], min), max)
