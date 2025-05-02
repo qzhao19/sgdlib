@@ -7,6 +7,24 @@
 namespace sgdlib {
 namespace detail {
 
+
+template<typename T>
+void vecset(const T c, std::vector<T>& x) {
+    std::fill(x.begin(), x.end(), c);
+}
+
+template<typename T>
+void veccpy(const std::vector<T>& x, std::vector<T>& out) {
+    std::copy(x.begin(), x.end(), out.begin());
+}
+
+template<typename T>
+void vecncpy(const std::vector<T>& x, std::vector<T>& out) {
+    std::transform(x.begin(), x.end(),
+                   out.begin(),
+                   [](const T& val) { return -val; });
+}
+
 /**
  * @brief Clips the values in the input vector to be within the specified range.
  *
@@ -21,7 +39,7 @@ namespace detail {
 template<typename T>
 inline void vecclip_ansi(std::vector<T>& x, T min, T max) noexcept {
     std::transform(x.begin(), x.end(), x.begin(),
-        [min, max](const T val) {
+        [min, max](const T& val) {
             return std::clamp(val, min, max);
         }
     );
