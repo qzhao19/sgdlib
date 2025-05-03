@@ -1,14 +1,42 @@
-#ifndef MATH_MATH_KERNELS_OPS_SSE_OPS_SSE_FLOAT_HPP_
-#define MATH_MATH_KERNELS_OPS_SSE_OPS_SSE_FLOAT_HPP_
+#ifndef MATH_KERNELS_OPS_SSE_OPS_SSE_FLOAT_HPP_
+#define MATH_KERNELS_OPS_SSE_OPS_SSE_FLOAT_HPP_
 
 #include "common/prereqs.hpp"
 
 namespace sgdlib {
 namespace detail {
 
-
-inline void vecset_sse_float(float* x, float c, std::size_t n) noexcept {
+/**
+ * @brief Sets all elements of a float array to a specified value using SSE instructions.
+ *
+ * @param[in,out] x Pointer to the float array to be filled.
+ * @param[in] c The constant value to set all array elements to.
+ * @param[in] n Number of elements in the array.
+ *
+ * @details This function efficiently fills a float array with a constant value using SSE SIMD instructions.
+ * It handles:
+ * - Null pointers and zero-length arrays (no-op)
+ * - Small arrays (<4 elements) with scalar operations
+ * - Unaligned memory addresses (head elements)
+ * - Aligned blocks (4 elements per SSE operation)
+ * - Remaining elements (tail handling)
+ *
+ * @note For best performance:
+ * - Memory should be 16-byte aligned
+ * - Array size should be reasonably large (>16 elements) to amortize setup costs
+ * - Uses SSE intrinsics (_mm_set1_ps, _mm_store_ps)
+ *
+ * @exception None (no-throw guarantee)
+ *
+ * @example
+ * // Example usage:
+ * float data[16];
+ * vecset_sse_float(data, 3.14f, 16); // Sets all 16 elements to 3.14f
+ */
+inline void vecset_sse_float(float* x, const float c, std::size_t n) noexcept {
     if (n == 0 || x == nullptr) return ;
+
+    // handle small size n < 4
     if (n < 4) {
         for (std::size_t i = 0; i < n; ++i) {
             x[i] = c;
@@ -16,15 +44,28 @@ inline void vecset_sse_float(float* x, float c, std::size_t n) noexcept {
         return ;
     }
 
-    const float* ptr = x;
-    const float* aligned_bound = x + (n & ~3ULL);
+    // define a ptr points to x, end of bound
+    float* ptr = x;
+    const float* end = x + n;
 
-    const __m128 scalar = _mm_set1_ps(c);
-    for (; ptr < aligned_bound; ptr += 4) {
-        _mm_storeu_ps(ptr, scalar);
+    // handle unaligned case
+    constexpr std::uintptr_t alignment_mask = 0xF; // 16-byte alignment mask
+    while (reinterpret_cast<std::uintptr_t>(ptr) & alignment_mask) {
+        *ptr++ = c;
+        if (ptr == end) return ;
     }
 
-    switch (n & 3ULL) {
+    // handle aligned case
+    // load scalar c into register and define aligned bound
+    const __m128 scalar = _mm_set1_ps(c);
+    const float* aligned_end = ptr + ((end - ptr) & ~3ULL);
+    for (; ptr < aligned_end; ptr += 4) {
+        _mm_store_ps(ptr, scalar);
+    }
+
+    // handle remaining elements
+    const size_t remains = end - ptr;
+    switch (remains) {
         case 3: ptr[2] = c; [[fallthrough]];
         case 2: ptr[1] = c; [[fallthrough]];
         case 1: ptr[0] = c;
@@ -69,25 +110,37 @@ inline void vecclip_sse_float(float* x, float min, float max, std::size_t n) noe
         return;
     }
 
-    // load const values min/max to SIMD register
-    const __m128 xmin = _mm_set1_ps(min);
-    const __m128 xmax = _mm_set1_ps(max);
+    // define ptr points to x and end of x
+    float* ptr = x;
+    const float* end = x + n;
 
-    // compute aligned bound of array
-    const std::size_t aligned_size = n & ~3ULL;
-    const float* aligned_bound = x + aligned_size;
-
-    // process the array in chunks of 4 elements
-    for (float* ptr = x; ptr < aligned_bound; ptr += 4) {
-        __m128 vec = _mm_loadu_ps(ptr);
-        vec = _mm_min_ps(_mm_max_ps(vec, xmin), xmax);
-        _mm_storeu_ps(ptr, vec);
+    // handle unaligned case
+    const std::intptr_t alignment_mask = 0xF;
+    while (reinterpret_cast<std::intptr_t>(ptr) & alignment_mask) {
+        *ptr = std::clamp(*ptr, min, max);
+        ptr++;
+        if (ptr == end) return ;
     }
 
-    if (aligned_size) {
-        for (std::size_t i = aligned_size; i < n; ++i) {
-            x[i] = std::clamp(x[i], min, max);
-        }
+    // load const values min/max to SIMD register
+    // compute aligned bound of array
+    const __m128 xmin = _mm_set1_ps(min);
+    const __m128 xmax = _mm_set1_ps(max);
+    const float* aligned_end = ptr + ((end - ptr) & ~3ULL);
+
+    // process the array in chunks of 4 elements
+    for (; ptr < aligned_end; ptr += 4) {
+        __m128 vec = _mm_load_ps(ptr);
+        vec = _mm_min_ps(_mm_max_ps(vec, xmin), xmax);
+        _mm_store_ps(ptr, vec);
+    }
+
+    const std::size_t remains = end - ptr;
+    switch (remains) {
+        case 3: ptr[2] = std::clamp(ptr[2], min, max); [[fallthrough]];
+        case 2: ptr[1] = std::clamp(ptr[1], min, max); [[fallthrough]];
+        case 1: ptr[0] = std::clamp(ptr[0], min, max);
+        default: break;
     }
 };
 
@@ -132,20 +185,28 @@ inline bool hasinf_sse_float(const float* x, std::size_t n) noexcept {
         return false;
     }
 
-    // keep ptr to x
-    const float* const xbegin = x;
+    // define ptr to x
+    const float* ptr = x;
+    const float* end = x + n;
+
+    // handle unaligned case
+    const std::intptr_t alignment_mask = 0xF;
+    while (reinterpret_cast<std::intptr_t>(ptr) & alignment_mask) {
+        if (std::isinf(*ptr)) return true;
+        ptr++;
+        if (ptr == end) return false;
+    }
 
     // load const val to register
     const __m128 pos_inf = _mm_set1_ps(std::numeric_limits<float>::infinity());
     const __m128 neg_inf = _mm_set1_ps(-std::numeric_limits<float>::infinity());
 
-    // compute aligned bound = xsize - xsize % 4
-    const float* ptr = x;
-    const float* aligned_bound = x + (n & ~3ULL);
+    // compute aligned bound
+    const float* aligned_end = ptr + ((end - ptr) & ~3ULL);
 
     // processed the array in chunks of 4 elems
-    for (; ptr < aligned_bound; ptr += 4) {
-        const __m128 vec = _mm_loadu_ps(ptr);
+    for (; ptr < aligned_end; ptr += 4) {
+        const __m128 vec = _mm_load_ps(ptr);
         const __m128 cmp = _mm_or_ps(_mm_cmpeq_ps(vec, pos_inf),
                                      _mm_cmpeq_ps(vec, neg_inf));
 
@@ -155,10 +216,13 @@ inline bool hasinf_sse_float(const float* x, std::size_t n) noexcept {
     }
 
     // process the rest of elems
-    return (n & 3ULL) ? std::isinf(x[n - 1])
-        || (n & 2ULL ? std::isinf(x[n - 2]) : false)
-        || (n & 1ULL ? std::isinf(x[n - 3]) : false) :
-        false;
+    const std::size_t remains = end - ptr;
+    for (std::size_t i = 0; i < remains; ++i) {
+        if (std::isinf(ptr[i])) {
+            return true;
+        }
+    }
+    return false;
 };
 
 /**
@@ -203,7 +267,7 @@ inline float vecnorm2_sse_float(const float* x, std::size_t n, bool squared) noe
         return squared ? sum : std::sqrt(sum);
     }
 
-    // compute aligned bound = xsize - xsize % 4
+    // compute aligned bound = xsize + xsize % 4
     const float* ptr = x;
     const float* aligned_bound = x + (n & ~3ULL);
 
@@ -724,4 +788,4 @@ inline float vecdot_sse_float(const float* x,
 
 }
 }
-#endif // MATH_MATH_KERNELS_OPS_SSE_OPS_SSE_FLOAT_HPP_
+#endif // MATH_KERNELS_OPS_SSE_OPS_SSE_FLOAT_HPP_
