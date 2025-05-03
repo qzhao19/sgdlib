@@ -1,5 +1,5 @@
-#ifndef MATH_MATH_KERNELS_OPS_SSE_HPP_
-#define MATH_MATH_KERNELS_OPS_SSE_HPP_
+#ifndef MATH_KERNELS_OPS_SSE_HPP_
+#define MATH_KERNELS_OPS_SSE_HPP_
 
 #include "ops_sse/ops_sse_double.hpp"
 #include "ops_sse/ops_sse_float.hpp"
@@ -8,7 +8,18 @@ namespace sgdlib {
 namespace detail {
 
 template <typename T>
-void vecclip_sse(T min, T max, T* x, std::size_t n) {
+void vecset_sse(T* x, const T c, std::size_t n) {
+    if constexpr (std::is_same_v<T, float>) {
+        vecset_sse_float(x, c, n);
+    }
+    else if constexpr (std::is_same_v<T, double>) {
+        vecset_sse_double(x, c, n);
+    }
+}
+
+
+template <typename T>
+void vecclip_sse(T* x, T min, T max, std::size_t n) {
     if constexpr (std::is_same_v<T, float>) {
         vecclip_sse_float(x, min, max, n);
     }
@@ -121,4 +132,4 @@ T vecdot_sse(const T* x, const T* y, std::size_t n, std::size_t m) {
 } // namespace detail
 } // namespace sgdlib
 
-#endif // MATH_MATH_KERNELS_OPS_SSE_HPP_
+#endif // MATH_KERNELS_OPS_SSE_HPP_
