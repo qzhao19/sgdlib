@@ -13,6 +13,13 @@ protected:
 
     void SetUp() override {
         engine_.seed(42);
+        aligned_mem_vec = static_cast<T*>(_mm_malloc(1024 * sizeof(T), 16));
+        unaligned_mem_vec = static_cast<T*>(malloc(1024 * sizeof(T) + 15)) + 1;
+    }
+
+    void TearDown() override {
+        _mm_free(aligned_mem_vec);
+        free(unaligned_mem_vec - 1);
     }
 
     std::vector<T> generate_test_data(std::size_t size,
@@ -31,6 +38,8 @@ protected:
         return arr;
     }
     std::mt19937 engine_;
+    T* aligned_mem_vec = nullptr;
+    T* unaligned_mem_vec = nullptr;
 };
 
 using TestValueTypes = ::testing::Types<float, double>;
@@ -41,12 +50,9 @@ TYPED_TEST_SUITE(MathOpsSSETest, TestValueTypes);
 TYPED_TEST(MathOpsSSETest, VecSetSSETest) {
     using T = typename TestFixture::Type;
 
-    T* aligned_mem_vec = static_cast<T*>(_mm_malloc(1024 * sizeof(T), 16));
-    T* unaligned_mem_vec = static_cast<T*>(malloc(1024 * sizeof(T) + 15)) + 1;
-
     // empty pointer and n = 0
     sgdlib::detail::vecset_sse<T>(nullptr, 1.0, 10);
-    sgdlib::detail::vecset_sse<T>(aligned_mem_vec, 1.0, 10);
+    sgdlib::detail::vecset_sse<T>(this->aligned_mem_vec, 1.0, 10);
 
     // small size n < 4
     std::vector<T> data11(3);
@@ -70,21 +76,21 @@ TYPED_TEST(MathOpsSSETest, VecSetSSETest) {
 
     // unaligned case n = 17
     const std::size_t size3 = 17;
-    std::fill_n(unaligned_mem_vec, size3, 0.0);
+    std::fill_n(this->unaligned_mem_vec, size3, 0.0);
 
-    sgdlib::detail::vecset_sse<T>(unaligned_mem_vec, 1.5, size3);
+    sgdlib::detail::vecset_sse<T>(this->unaligned_mem_vec, 1.5, size3);
     for (std::size_t i = 0; i < size3; ++i) {
-        EXPECT_FLOAT_EQ(unaligned_mem_vec[i], 1.5) << "Failed at i=" << i;
+        EXPECT_FLOAT_EQ(this->unaligned_mem_vec[i], 1.5) << "Failed at i=" << i;
     }
 
     // big memory block
     const std::size_t size4 = 1024;
     const T c4 = 42.0;
-    std::fill_n(aligned_mem_vec, size4, c4);
+    std::fill_n(this->aligned_mem_vec, size4, c4);
 
-    sgdlib::detail::vecset_sse<T>(aligned_mem_vec, c4, size4);
+    sgdlib::detail::vecset_sse<T>(this->aligned_mem_vec, c4, size4);
     for (std::size_t i = 0; i < size4; i += 1 + i % 7) {
-        EXPECT_FLOAT_EQ(aligned_mem_vec[i], c4) << "Failed at i=" << i;
+        EXPECT_FLOAT_EQ(this->aligned_mem_vec[i], c4) << "Failed at i=" << i;
     }
 
     // remaing elements case
@@ -95,22 +101,15 @@ TYPED_TEST(MathOpsSSETest, VecSetSSETest) {
     for (std::size_t i = 0; i < size5; ++i) {
         EXPECT_FLOAT_EQ(data5[i], c4) << "Failed at i=" << i;
     }
-
-    // release pointer
-    _mm_free(aligned_mem_vec);
-    free(unaligned_mem_vec - 1);
 }
 
 // ****************************vecclip*******************************//
 TYPED_TEST(MathOpsSSETest, VecClipSSETest) {
     using T = typename TestFixture::Type;
 
-    T* aligned_mem_vec = static_cast<T*>(_mm_malloc(1024 * sizeof(T), 16));
-    T* unaligned_mem_vec = static_cast<T*>(malloc(1024 * sizeof(T) + 15)) + 1;
-
     // empty vec
     sgdlib::detail::vecclip_sse<T>(nullptr, 0.0, 2.0, 10);
-    sgdlib::detail::vecclip_sse<T>(aligned_mem_vec, 0.0, 2.0, 0);
+    sgdlib::detail::vecclip_sse<T>(this->aligned_mem_vec, 0.0, 2.0, 0);
 
     // Test n < 4 cases
     std::vector<T> data1 = {1.5};
@@ -134,10 +133,10 @@ TYPED_TEST(MathOpsSSETest, VecClipSSETest) {
 
     // Test n > 4 with remainder
     constexpr std::size_t n = 17; // Prime number for testing
-    std::fill_n(unaligned_mem_vec, n, 2.0);
-    sgdlib::detail::vecclip_sse<T>(unaligned_mem_vec, 0.0, 1.0, n);
+    std::fill_n(this->unaligned_mem_vec, n, 2.0);
+    sgdlib::detail::vecclip_sse<T>(this->unaligned_mem_vec, 0.0, 1.0, n);
     for (std::size_t i = 0; i < n; ++i) {
-        EXPECT_DOUBLE_EQ(unaligned_mem_vec[i], 1.0);
+        EXPECT_DOUBLE_EQ(this->unaligned_mem_vec[i], 1.0);
     }
 
     // prime number size
@@ -157,17 +156,17 @@ TYPED_TEST(MathOpsSSETest, VecClipSSETest) {
     // big size n = 1024
     const std::size_t size4 = 1024;
     std::vector<T> aligned_mem_vec_expected4(size4);
-    std::fill_n(aligned_mem_vec, size4, 0.0);
+    std::fill_n(this->aligned_mem_vec, size4, 0.0);
     for (std::size_t i = 0; i < size4; ++i) {
-        aligned_mem_vec[i] = static_cast<T>(i) - 50.0;
+        this->aligned_mem_vec[i] = static_cast<T>(i) - 50.0;
         aligned_mem_vec_expected4[i] = static_cast<T>(i) - 50.0;
     }
 
     sgdlib::detail::vecclip_ansi<T>(aligned_mem_vec_expected4, -10.0, 10.0);
-    sgdlib::detail::vecclip_sse<T>(aligned_mem_vec, -10.0, 10.0, size4);
+    sgdlib::detail::vecclip_sse<T>(this->aligned_mem_vec, -10.0, 10.0, size4);
 
     for (std::size_t i = 0; i < size4; ++i) {
-        EXPECT_FLOAT_EQ(aligned_mem_vec[i], aligned_mem_vec_expected4[i]) << "Mismatch at index " << i;
+        EXPECT_FLOAT_EQ(this->aligned_mem_vec[i], aligned_mem_vec_expected4[i]) << "Mismatch at index " << i;
     }
 
     // Test NaN/inf (behavior depends on requirements)
@@ -181,10 +180,6 @@ TYPED_TEST(MathOpsSSETest, VecClipSSETest) {
             EXPECT_FLOAT_EQ(specials[i], spec_expected[i]);
         }
     }
-
-    // release pointer
-    _mm_free(aligned_mem_vec);
-    free(unaligned_mem_vec - 1);
 }
 
 // *****************************hasinf*******************************//
@@ -218,6 +213,20 @@ TYPED_TEST(MathOpsSSETest, VecHasInfSSETest) {
     data4[125] = std::numeric_limits<T>::infinity();
     EXPECT_TRUE(sgdlib::detail::hasinf_sse<T>(data4.data(), size4));
 
+    // aligned memory array
+    std::fill_n(this->aligned_mem_vec, size4, 0.0);
+    EXPECT_FALSE(sgdlib::detail::hasinf_sse<T>(this->aligned_mem_vec, size4));
+
+    this->aligned_mem_vec[125] = std::numeric_limits<T>::infinity();
+    EXPECT_TRUE(sgdlib::detail::hasinf_sse<T>(this->aligned_mem_vec, size4));
+
+    // unaligned memory array
+    std::fill_n(this->unaligned_mem_vec, size4, 0.0);
+    EXPECT_FALSE(sgdlib::detail::hasinf_sse<T>(this->unaligned_mem_vec, size4));
+
+    this->unaligned_mem_vec[125] = std::numeric_limits<T>::infinity();
+    EXPECT_TRUE(sgdlib::detail::hasinf_sse<T>(this->unaligned_mem_vec, size4));
+
     // large size array
     constexpr std::size_t size5 = 1'000'000;
     // without inf
@@ -235,6 +244,7 @@ TYPED_TEST(MathOpsSSETest, VecHasInfSSETest) {
         -std::numeric_limits<T>::max()
     };
     EXPECT_FALSE(sgdlib::detail::hasinf_sse<T>(data6.data(), data6.size()));
+
 }
 
 // ****************************vecnorm2******************************//
@@ -276,6 +286,47 @@ TYPED_TEST(MathOpsSSETest, VecNorm2SSETest) {
     T expected52 = sgdlib::detail::vecnorm2_ansi<T>(x5, false);
     EXPECT_FLOAT_EQ(expected51, sgdlib::detail::vecnorm2_sse<T>(x5.data(), x5.size(), true));
     EXPECT_FLOAT_EQ(expected52, sgdlib::detail::vecnorm2_sse<T>(x5.data(), x5.size(), false));
+
+    // aligned memory array
+    std::size_t size6 = 1024;
+    std::fill_n(this->aligned_mem_vec, size6, 1.0);
+
+    std::vector<T> x6(size6, 1.0);
+    T expected61 = sgdlib::detail::vecnorm2_ansi<T>(x6, true);
+    T expected62 = sgdlib::detail::vecnorm2_ansi<T>(x6, false);
+
+    EXPECT_FLOAT_EQ(expected61, sgdlib::detail::vecnorm2_sse<T>(this->aligned_mem_vec, size6, true));
+    EXPECT_FLOAT_EQ(expected62, sgdlib::detail::vecnorm2_sse<T>(this->aligned_mem_vec, size6, false));
+
+    // unaligned memory array
+    std::size_t size7 = 1021;
+    std::fill_n(this->unaligned_mem_vec, size7, 1.0);
+
+    std::vector<T> x7(size7, 1.0);
+    T expected71 = sgdlib::detail::vecnorm2_ansi<T>(x7, true);
+    T expected72 = sgdlib::detail::vecnorm2_ansi<T>(x7, false);
+
+    EXPECT_FLOAT_EQ(expected71, sgdlib::detail::vecnorm2_sse<T>(this->unaligned_mem_vec, size7, true));
+    EXPECT_FLOAT_EQ(expected72, sgdlib::detail::vecnorm2_sse<T>(this->unaligned_mem_vec, size7, false));
+
+    // performance test with huge size n = 1 << 20
+    std::size_t huge_size = 1 << 20;
+    std::vector<T> x_huge(huge_size);
+    x_huge = this->generate_test_data(huge_size, false);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    T out1 = sgdlib::detail::vecnorm2_sse<T>(x_huge.data(), huge_size, true);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed1 = end - start;
+    std::cout << "vecnorm2 SIMD execution time: " << elapsed1.count() << " seconds\n";
+
+    start = std::chrono::high_resolution_clock::now();
+    T out2 = sgdlib::detail::vecnorm2_ansi<T>(x_huge, true);
+    end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed2 = end - start;
+    std::cout << "vecnorm2 ANSI execution time: " << elapsed2.count() << " seconds\n";
+
+    EXPECT_FLOAT_EQ(out1, out2);
 
 }
 
@@ -330,6 +381,44 @@ TYPED_TEST(MathOpsSSETest, VecNorm1SSETest) {
 
     T l1norm = sgdlib::detail::vecnorm1_sse(x5.data(), x5.size());
     EXPECT_TRUE(std::isnan(l1norm));
+
+    // aligned memory array
+    std::size_t size6 = 1024;
+    std::fill_n(this->aligned_mem_vec, size6, 1.5);
+
+    std::vector<T> x6(size6, 1.5);
+    T expected6 = sgdlib::detail::vecnorm1_ansi<T>(x6);
+
+    EXPECT_FLOAT_EQ(expected6, sgdlib::detail::vecnorm1_sse<T>(this->aligned_mem_vec, size6));
+
+    // unaligned memory array
+    std::size_t size7 = 1021;
+    std::fill_n(this->unaligned_mem_vec, size7, 1.0);
+
+    std::vector<T> x7(size7, 1.0);
+    T expected7 = sgdlib::detail::vecnorm1_ansi<T>(x7);
+
+    EXPECT_FLOAT_EQ(expected7, sgdlib::detail::vecnorm1_sse<T>(this->unaligned_mem_vec, size7));
+
+    // performance test with huge size n = 1 << 20
+    std::size_t huge_size = 1 << 20;
+    std::vector<T> x_huge(huge_size);
+    x_huge = this->generate_test_data(huge_size, false);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    T out1 = sgdlib::detail::vecnorm1_sse<T>(x_huge.data(), huge_size);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed1 = end - start;
+    std::cout << "vecnorm1 SIMD execution time: " << elapsed1.count() << " seconds\n";
+
+    start = std::chrono::high_resolution_clock::now();
+    T out2 = sgdlib::detail::vecnorm1_ansi<T>(x_huge);
+    end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed2 = end - start;
+    std::cout << "vecnorm1 ANSI execution time: " << elapsed2.count() << " seconds\n";
+
+    EXPECT_FLOAT_EQ(out1, out2);
+
 }
 
 // ****************************vecscale 1****************************//
@@ -436,9 +525,31 @@ TYPED_TEST(MathOpsSSETest, VecScaleSSETest) {
 
     EXPECT_TRUE(std::isinf(special_out[1]));
     EXPECT_TRUE(std::isinf(special_out[2]));
-
     EXPECT_TRUE(std::isnan(special_out[3]));
 
+    // aligned memory case
+    std::size_t size6 = 1024;
+    std::fill_n(this->aligned_mem_vec, size6, 1.5);
+    std::vector<T> aligned_mem_vec_copy(size6, 1.5);
+    std::vector<T> aligned_mem_vec_out(size6), aligned_mem_vec_copy_out(size6);
+
+    sgdlib::detail::vecscale_sse<T>(this->aligned_mem_vec, scale_factor2, size6, aligned_mem_vec_out.data());
+    sgdlib::detail::vecscale_ansi<T>(aligned_mem_vec_copy, scale_factor2, aligned_mem_vec_copy_out);
+    for (size_t i = 0; i < size6; ++i) {
+        EXPECT_FLOAT_EQ(aligned_mem_vec_out[i], aligned_mem_vec_copy_out[i]);
+    }
+
+    // unaligned memory case
+    size6 = 1021;
+    std::fill_n(this->unaligned_mem_vec, size6, 1.5);
+    std::vector<T> unaligned_mem_vec_copy(size6, 1.5);
+    std::vector<T> unaligned_mem_vec_out(size6), unaligned_mem_vec_copy_out(size6);
+
+    sgdlib::detail::vecscale_sse<T>(this->unaligned_mem_vec, scale_factor2, size6, unaligned_mem_vec_out.data());
+    sgdlib::detail::vecscale_ansi<T>(unaligned_mem_vec_copy, scale_factor2, unaligned_mem_vec_copy_out);
+    for (size_t i = 0; i < size6; ++i) {
+        EXPECT_FLOAT_EQ(unaligned_mem_vec_out[i], unaligned_mem_vec_copy_out[i]);
+    }
 }
 
 // ****************************vecscale 2****************************//
