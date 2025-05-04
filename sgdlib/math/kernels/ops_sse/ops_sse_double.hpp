@@ -1,11 +1,11 @@
 #ifndef MATH_KERNELS_OPS_SSE_OPS_SSE_DOUBLE_HPP_
 #define MATH_KERNELS_OPS_SSE_OPS_SSE_DOUBLE_HPP_
 
+#include "common/consts.hpp"
 #include "common/prereqs.hpp"
 
 namespace sgdlib {
 namespace detail {
-
 
 /**
  * @brief Sets all elements of a double array to a specified value using SSE instructions.
@@ -18,7 +18,7 @@ namespace detail {
  * It handles:
  * - Null pointers and zero-length arrays (no-op)
  * - Small arrays (<4 elements) with scalar operations
- * - Unaligned memory addresses (head elements)
+ * - Handles both aligned and unaligned memory automatically
  * - Aligned blocks (4 elements per SSE operation)
  * - Remaining elements (tail handling)
  *
@@ -44,44 +44,62 @@ inline void vecset_sse_double(double* x, const double c, std::size_t n) noexcept
     }
 
     // define a ptr points to x, end of bound
-    double* ptr = x;
+    double* xptr = x;
     const double* end = x + n;
 
     // handle unaligned case
-    constexpr std::uintptr_t alignment_mask = 0xF;
-    while (reinterpret_cast<std::uintptr_t>(ptr) & alignment_mask) {
-        *ptr++ = c;
-        if (ptr == end) return;
+    while (reinterpret_cast<std::uuintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
+        *xptr = c;
+        xptr++;
+        if (xptr == end) return;
     }
 
     // handle aligned case
     // load scalar c into register and define aligned bound
     const __m128d scalar = _mm_set1_pd(c);
-    const double* algned_end = ptr + ((end - ptr) & ~1ULL);
-    for (; ptr < algned_end; ptr += 2) {
-        _mm_store_pd(ptr, scalar);
+    const double* algned_end = xptr + ((end - xptr) & ~1ULL);
+    for (; xptr < algned_end; xptr += 2) {
+        _mm_store_pd(xptr, scalar);
     }
 
     // handle remaining elements
-    const std::size_t remains = ptr - end;
-    if (remains > 0) {
-        ptr[0] = c;
+    if (end > xptr) {
+        xptr[0] = c;
     }
 }
 
 
 /**
- * @brief Clips each element in the input array `x` to be within the range [min, max]
- *        using SSE intrinsics for doubles.
+ * @brief Clips (clamps) an array of double-precision values to a specified range using SSE intrinsics.
  *
- * This function first processes the array in chunks of 2 double elements using SSE
- * intrinsics for performance. Any remaining elements are processed individually
- * using a ternary operator to clamp them.
+ * This function efficiently processes an array of doubles, ensuring all values fall within the [min, max] range.
+ * It handles special cases including NaN values (preserving them), unaligned memory, and various edge conditions.
  *
- * @param min The minimum value to clip to.
- * @param max The maximum value to clip to.
- * @param x A pointer to the input array of double-precision floating-point numbers.
- * @param n The number of elements in the array `x`.
+ * @param[in,out] x Pointer to the array of double-precision values to be clipped.
+ *                  Must be 16-byte aligned for optimal performance.
+ * @param[in] min The minimum bound of the clipping range (inclusive).
+ * @param[in] max The maximum bound of the clipping range (inclusive).
+ * @param[in] n Number of elements in the array.
+ *
+ * @note Key features:
+ * - Preserves NaN values in the input array
+ * - Handles both aligned and unaligned memory automatically
+ * - Uses SSE2 intrinsics for vectorized processing
+ * - Processes 2 elements per iteration when aligned
+ * - No-throw guarantee
+ *
+ * @performance For best performance:
+ * - Memory should be 16-byte aligned
+ * - Array size should be reasonably large (>8 elements) to amortize setup costs
+ * - Uses _mm_set1_pd, _mm_load_pd, _mm_store_pd intrinsics
+ *
+ * @exception None (no-throw guarantee)
+ *
+ * @example
+ * // Clip array values to [0.0, 1.0] range
+ * double data[4] = {-1.0, 0.5, 2.0, NAN};
+ * vecclip_sse_double(data, 0.0, 1.0, 4);
+ * // data now contains [0.0, 0.5, 1.0, NAN]
  */
 inline void vecclip_sse_double(double* x, double min, double max, std::size_t n) noexcept {
     if (n == 0 || x == nullptr) return ;
@@ -98,23 +116,22 @@ inline void vecclip_sse_double(double* x, double min, double max, std::size_t n)
     }
 
     // define ptr points to x and end of x
-    double* ptr = x;
+    double* xptr = x;
     const double* end = x + n;
 
     // handle unaligned case, 16-byte alignment
-    const std::intptr_t alignment_mask = 0xF;
-    while (reinterpret_cast<std::intptr_t>(ptr) & alignment_mask) {
-        *ptr = std::clamp(*ptr, min, max);
-        ptr++;
-        if (ptr == end) return ;
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
+        *xptr = std::clamp(*xptr, min, max);
+        xptr++;
+        if (xptr == end) return ;
     }
 
     // compute aligned bound
-    const double* aligned_end = ptr + ((end - ptr) & ~1ULL);
+    const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
 
     // Process the array in chunks of 2 elements using SSE intrinsics
-    for (; ptr < aligned_end; ptr += 2) {
-        __m128d vec = _mm_load_pd(ptr);
+    for (; xptr < aligned_end; xptr += 2) {
+        __m128d vec = _mm_load_pd(xptr);
 
         // clamp the vector to the range [min, max]
         __m128d clipped = _mm_min_pd(_mm_max_pd(vec, xmin), xmax);
@@ -126,26 +143,48 @@ inline void vecclip_sse_double(double* x, double min, double max, std::size_t n)
         __m128d nan_mask = _mm_cmpunord_pd(vec, vec);
         vec = _mm_or_pd(_mm_and_pd(nan_mask, vec),
                         _mm_andnot_pd(nan_mask, clipped));
-        _mm_store_pd(ptr, vec);
+        _mm_store_pd(xptr, vec);
     }
 
     // Process any remaining elements
-    if (end > ptr) {
-        ptr[0] = std::clamp(ptr[0], min, max);
+    if (end > xptr) {
+        xptr[0] = std::clamp(xptr[0], min, max);
     }
 };
 
 /**
- * @brief Checks if any element in the input array `x` is infinite (either +∞ or -∞)
- *        using SSE intrinsics for double-precision floats.
+ * @brief Checks if a double-precision array contains any infinite values using SSE intrinsics.
  *
- * This function processes 2 elements at a time using SSE intrinsics, with early exit
- * when infinity is detected. Handles remaining elements with scalar operations.
+ * @param[in] x Pointer to the array of double-precision values to check.
+ *              Memory does not need to be aligned, but 16-byte alignment improves performance.
+ * @param[in] n Number of elements in the array.
  *
- * @param x Pointer to the array of double-precision floating-point numbers
- * @param n Number of elements in the array
- * @return true If any element is ±∞
- * @return false If all elements are finite or array is empty
+ * @return true if any element is ±infinity, false otherwise or for empty/null input.
+ *
+ * @details This function efficiently scans an array for infinite values using SSE2 instructions.
+ * Key features:
+ * - Handles both positive and negative infinity
+ * - Preserves NaN values (does not treat them as infinite)
+ * - Automatic handling of unaligned memory
+ * - Processes elements in chunks of 2 doubles (SSE register size)
+ * - Special optimized paths for small arrays (n < 2)
+ * - No-throw guarantee
+ *
+ * @performance For optimal performance:
+ * - Memory should be 16-byte aligned
+ * - Large arrays (n > 8) benefit most from vectorization
+ * - Uses _mm_set1_pd, _mm_cmpeq_pd, _mm_or_pd intrinsics
+ *
+ * @exception None (no-throw guarantee)
+ *
+ * @example
+ * // Check array with finite values
+ * double data1[4] = {1.0, 2.0, 3.0, 4.0};
+ * bool has_inf1 = hasinf_sse_double(data1, 4); // returns false
+ *
+ * // Check array with infinity
+ * double data2[4] = {1.0, INFINITY, 3.0, NAN};
+ * bool has_inf2 = hasinf_sse_double(data2, 4); // returns true
  */
 inline bool hasinf_sse_double(const double* x, std::size_t n) noexcept {
     if (n == 0 || x == nullptr) return false;
@@ -156,15 +195,14 @@ inline bool hasinf_sse_double(const double* x, std::size_t n) noexcept {
     }
 
     // define ptr points to x and end of x
-    const double* ptr = x;
+    const double* xptr = x;
     const double* end = x + n;
 
     // handle unaligned case, 16-byte alignment
-    const std::intptr_t alignment_mask = 0xF;
-    while (reinterpret_cast<std::intptr_t>(ptr) & alignment_mask) {
-        if (std::isinf(*ptr)) return true;
-        ptr++;
-        if (ptr == end) return false;
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
+        if (std::isinf(*xptr)) return true;
+        xptr++;
+        if (xptr == end) return false;
     }
 
     // load x positif inf + x negative inf to SIMD register
@@ -172,11 +210,11 @@ inline bool hasinf_sse_double(const double* x, std::size_t n) noexcept {
     const __m128d neg_inf = _mm_set1_pd(-std::numeric_limits<double>::infinity());
 
     // compute aligned bound
-    const double* aligned_end = ptr + ((end - ptr) & ~1ULL);
+    const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
 
     // loop the array in chunks of 2 elements
-    for (; ptr < aligned_end; ptr += 2) {
-        const __m128d vec = _mm_load_pd(ptr);
+    for (; xptr < aligned_end; xptr += 2) {
+        const __m128d vec = _mm_load_pd(xptr);
         const __m128d cmp = _mm_or_pd(_mm_cmpeq_pd(vec, pos_inf),
                                       _mm_cmpeq_pd(vec, neg_inf));
         if (_mm_movemask_pd(cmp) != 0) {
@@ -185,25 +223,42 @@ inline bool hasinf_sse_double(const double* x, std::size_t n) noexcept {
     }
 
     // process remaining elements
-    return (end > ptr) ? std::isinf(ptr[0]) : false;
+    return (end > xptr) ? std::isinf(xptr[0]) : false;
 };
 
 /**
- * @brief Computes the L2 norm of the input array `x` using SSE intrinsics for
- *        accelerated double-precision floating-point calculations.
+ * @brief Computes the squared L2 norm (Euclidean norm) of a double-precision vector using SSE intrinsics.
  *
- * This function utilizes SSE intrinsics to process two double-precision
- * floating-point elements at a time to enhance performance. For arrays with
- * a small number of elements (less than or equal to two) or remaining elements
- * after SIMD processing, it performs scalar computations. It can return either
- * the squared L2 norm or its square root based on the `squared` parameter.
+ * @param[in] x Pointer to the array of double-precision values. Must be 16-byte aligned for optimal performance.
+ * @param[in] n Number of elements in the array.
+ * @param[in] squared If true, returns the squared norm (faster); if false, returns the actual L2 norm.
  *
- * @param x A pointer to the input array of double-precision floating-point numbers.
- * @param n The number of elements in the array `x`.
- * @param squared If `true`, returns the squared L2 norm; if `false`,
- *                returns the square root of the L2 norm.
- * @return double The computed L2 norm (either squared or its square root
- *         depending on the `squared` parameter).
+ * @return The computed L2 norm (or squared L2 norm if requested).
+ *
+ * @details This function efficiently calculates the Euclidean norm of a vector using SSE SIMD instructions.
+ * Features:
+ * - Handles both aligned and unaligned memory automatically
+ * - Processes elements in chunks of 2 doubles (SSE register size)
+ * - Optional squared output avoids final square root for faster computation
+ * - Special handling for small vectors (n < 2)
+ * - No-throw guarantee
+ *
+ * @note For best performance:
+ * - Memory should be 16-byte aligned
+ * - Large vectors (n > 8) will benefit most from vectorization
+ * - Uses _mm_load_pd, _mm_mul_pd, _mm_hadd_pd intrinsics
+ *
+ * @exception None (no-throw guarantee)
+ *
+ * @example
+ * // Compute regular L2 norm
+ * double data[4] = {1.0, 2.0, 3.0, 4.0};
+ * double norm = vecnorm2_sse_double(data, 4, false);
+ * // norm = √(1² + 2² + 3² + 4²) = 5.477...
+ *
+ * // Compute squared norm (faster)
+ * double norm_sq = vecnorm2_sse_double(data, 4, true);
+ * // norm_sq = 1² + 2² + 3² + 4² = 30.0
  */
 inline double vecnorm2_sse_double(const double* x,
                                   std::size_t n,
@@ -217,26 +272,36 @@ inline double vecnorm2_sse_double(const double* x,
     }
 
     // compute aligned boundary
-    const double* ptr = x;
-    const double* aligned_bound = x + (n & ~1ULL);
+    const double* xptr = x;
+    const double* end = x + n;
+
+    // handle unaligned memeroy case
+    double total = 0.0;
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
+        total += (*xptr) * (*xptr);
+        xptr++;
+        if (xptr == end) return squared ? total : std::sqrt(total);
+    }
+
+    // handle aligned case
+    const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
 
     // init sum to 0
     __m128d sum = _mm_setzero_pd();
-    for (; ptr < aligned_bound; ptr += 2) {
+    for (; xptr < aligned_end; xptr += 2) {
         // load 2 elements from x to SIMD register
-        const __m128d vec = _mm_loadu_pd(ptr);
+        const __m128d vec = _mm_load_pd(xptr);
         // compute sum = sum + vec * vec
         sum = _mm_add_pd(sum, _mm_mul_pd(vec, vec));
     }
 
-    double total;
     // perform a horizontal addition of the two channels' values in the SSE register
     __m128d sumh = _mm_hadd_pd(sum, sum);
-    _mm_store_sd(&total, sumh);
+    total += _mm_cvtsd_f64(sumh);
 
     // process remaining elements
-    if (n & 1ULL) {
-        total += x[n - 1] * x[n - 1];
+    if (end > xptr) {
+        total += xptr[0] * xptr[0];
     }
     return squared ? total : std::sqrt(total);
 };
@@ -275,29 +340,40 @@ inline double vecnorm1_sse_double(const double* x,
         return sum;
     }
 
-    // compute aligned bound = xsize - xsize % 2
-    const double* ptr = x;
-    const double* aligned_bound = x + (n & ~1ULL);
+    // define ptr points to x and end of x
+    const double* xptr = x;
+    const double* end = x + n;
+
+    // handle case of memory unaligned
+    double total = 0.0;
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
+        total += std::abs(*xptr);
+        xptr++;
+        if (xptr == end) return total;
+    }
+
+    // compute aligned bound
+    const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
 
     // mask for the absolute value of the a double
     const __m128d abs_mask = _mm_castsi128_pd(_mm_set1_epi64x(0x7FFFFFFFFFFFFFFF));
 
     // init sum to 0
     __m128d sum = _mm_setzero_pd();
-    for (; ptr < aligned_bound; ptr += 2) {
+    for (; xptr < aligned_end; xptr += 2) {
         // load 2 elements from x to SIMD register
-        __m128d vec = _mm_loadu_pd(ptr);
+        __m128d vec = _mm_load_pd(xptr);
         sum = _mm_add_pd(sum, _mm_and_pd(vec, abs_mask));
     }
 
-    double total;
     // perform a horizontal addition of the two channels' values in the SSE register
     __m128d sumh = _mm_hadd_pd(sum, sum);
-    _mm_store_sd(&total, sumh);
+    // _mm_store_sd(&total, sumh);
+    total += _mm_cvtsd_f64(sumh);
 
     // handle remaining elements
-    if (n & 1ULL) {
-        total += std::abs(x[n - 1]);
+    if (end > xptr) {
+        total += std::abs(xptr[0]);
     }
 
     return total;
@@ -339,29 +415,42 @@ inline void vecscale_sse_double(const double* x,
     if (x == nullptr || out == nullptr) return ;
     if (n == 0 || c == 1.0f) return ;
 
-    // for small size n <= 2
+    // for small size n < 2
     if (n < 2) {
         out[0] = x[0] * c;
         return ;
     }
 
+     // define ptr points to x and end of x
+     double* outptr = out;
+     const double* xptr = x;
+     const double* end = x + n;
+
+     // handle case of memory unaligned
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT ||
+           reinterpret_cast<std::uintptr_t>(outptr) & SSE_MEMOPS_ALIGNMENT) {
+        *outptr = *xptr * c;
+        xptr++;
+        outptr++;
+        if (xptr == end) return ;
+    }
+
     // define ptr points to x and aligned end
-    const double* ptr = x;
-    const double* aligned_bound = x + (n & ~1ULL);
+    const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
 
     // load constant into register
     const __m128d scalar = _mm_set1_pd(c);
 
     // main SIMD loop
-    for (; ptr < aligned_bound; ptr += 2, out += 2) {
-        const __m128d xvec = _mm_loadu_pd(ptr);
-        const __m128d outx = _mm_mul_pd(xvec, scalar);
-        _mm_storeu_pd(out, outx);
+    for (; xptr < aligned_end; xptr += 2, outptr += 2) {
+        const __m128d xvec = _mm_load_pd(xptr);
+        // const __m128d outx = _mm_mul_pd(xvec, scalar);
+        _mm_store_pd(outptr, _mm_mul_pd(xvec, scalar));
     }
 
     // handle remaining elements
-    if (n & 1ULL) {
-        out[0] = ptr[0] * c;
+    if (end > xptr) {
+        outptr[0] = xptr[0] * c;
     }
 };
 
