@@ -1,6 +1,7 @@
 #ifndef MATH_KERNELS_OPS_SSE_OPS_SSE_FLOAT_HPP_
 #define MATH_KERNELS_OPS_SSE_OPS_SSE_FLOAT_HPP_
 
+#include "common/consts.hpp"
 #include "common/prereqs.hpp"
 
 namespace sgdlib {
@@ -17,7 +18,7 @@ namespace detail {
  * It handles:
  * - Null pointers and zero-length arrays (no-op)
  * - Small arrays (<4 elements) with scalar operations
- * - Unaligned memory addresses (head elements)
+ * - Handles both aligned and unaligned memory automatically
  * - Aligned blocks (4 elements per SSE operation)
  * - Remaining elements (tail handling)
  *
@@ -45,30 +46,30 @@ inline void vecset_sse_float(float* x, const float c, std::size_t n) noexcept {
     }
 
     // define a ptr points to x, end of bound
-    float* ptr = x;
+    float* xptr = x;
     const float* end = x + n;
 
-    // handle unaligned case
-    constexpr std::uintptr_t alignment_mask = 0xF; // 16-byte alignment mask
-    while (reinterpret_cast<std::uintptr_t>(ptr) & alignment_mask) {
-        *ptr++ = c;
-        if (ptr == end) return ;
+    // handle unaligned case, 16-byte alignment mask
+    while (reinterpret_cast<std::uuintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
+        *xptr = c;
+        xptr++;
+        if (xptr == end) return ;
     }
 
     // handle aligned case
     // load scalar c into register and define aligned bound
     const __m128 scalar = _mm_set1_ps(c);
-    const float* aligned_end = ptr + ((end - ptr) & ~3ULL);
-    for (; ptr < aligned_end; ptr += 4) {
-        _mm_store_ps(ptr, scalar);
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
+    for (; xptr < aligned_end; xptr += 4) {
+        _mm_store_ps(xptr, scalar);
     }
 
     // handle remaining elements
-    const size_t remains = end - ptr;
+    const size_t remains = end - xptr;
     switch (remains) {
-        case 3: ptr[2] = c; [[fallthrough]];
-        case 2: ptr[1] = c; [[fallthrough]];
-        case 1: ptr[0] = c;
+        case 3: xptr[2] = c; [[fallthrough]];
+        case 2: xptr[1] = c; [[fallthrough]];
+        case 1: xptr[0] = c;
         default: break;
     }
 }
@@ -89,7 +90,7 @@ inline void vecset_sse_float(float* x, const float c, std::size_t n) noexcept {
  * - For small vectors (n < 4), falls back to scalar operation
  * - Behavior is undefined if min > max
  * - More efficient than std::transform with std::clamp for large vectors
- * - No explicit alignment requirements but performance improves with 16-byte aligned data
+ * - Handles both aligned and unaligned memory automatically
  *
  * @example
  *   float data[] = {-1.0f, 0.5f, 2.0f, 3.0f};
@@ -111,35 +112,34 @@ inline void vecclip_sse_float(float* x, float min, float max, std::size_t n) noe
     }
 
     // define ptr points to x and end of x
-    float* ptr = x;
+    float* xptr = x;
     const float* end = x + n;
 
     // handle unaligned case
-    const std::intptr_t alignment_mask = 0xF;
-    while (reinterpret_cast<std::intptr_t>(ptr) & alignment_mask) {
-        *ptr = std::clamp(*ptr, min, max);
-        ptr++;
-        if (ptr == end) return ;
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
+        *xptr = std::clamp(*xptr, min, max);
+        xptr++;
+        if (xptr == end) return ;
     }
 
     // load const values min/max to SIMD register
     // compute aligned bound of array
     const __m128 xmin = _mm_set1_ps(min);
     const __m128 xmax = _mm_set1_ps(max);
-    const float* aligned_end = ptr + ((end - ptr) & ~3ULL);
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
 
     // process the array in chunks of 4 elements
-    for (; ptr < aligned_end; ptr += 4) {
-        __m128 vec = _mm_load_ps(ptr);
+    for (; xptr < aligned_end; xptr += 4) {
+        __m128 vec = _mm_load_ps(xptr);
         vec = _mm_min_ps(_mm_max_ps(vec, xmin), xmax);
-        _mm_store_ps(ptr, vec);
+        _mm_store_ps(xptr, vec);
     }
 
-    const std::size_t remains = end - ptr;
+    const std::size_t remains = end - xptr;
     switch (remains) {
-        case 3: ptr[2] = std::clamp(ptr[2], min, max); [[fallthrough]];
-        case 2: ptr[1] = std::clamp(ptr[1], min, max); [[fallthrough]];
-        case 1: ptr[0] = std::clamp(ptr[0], min, max);
+        case 3: xptr[2] = std::clamp(xptr[2], min, max); [[fallthrough]];
+        case 2: xptr[1] = std::clamp(xptr[1], min, max); [[fallthrough]];
+        case 1: xptr[0] = std::clamp(xptr[0], min, max);
         default: break;
     }
 };
@@ -161,6 +161,7 @@ inline void vecclip_sse_float(float* x, float min, float max, std::size_t n) noe
  * - For small vectors (n < 4), falls back to scalar checking
  * - Detects both positive and negative infinity
  * - More efficient than std::any_of with std::isinf for large vectors
+ * - Handles both aligned and unaligned memory automatically
  *
  * @example
  *   float data[] = {1.0f, 2.0f, INFINITY, 4.0f};
@@ -186,15 +187,14 @@ inline bool hasinf_sse_float(const float* x, std::size_t n) noexcept {
     }
 
     // define ptr to x
-    const float* ptr = x;
+    const float* xptr = x;
     const float* end = x + n;
 
     // handle unaligned case
-    const std::intptr_t alignment_mask = 0xF;
-    while (reinterpret_cast<std::intptr_t>(ptr) & alignment_mask) {
-        if (std::isinf(*ptr)) return true;
-        ptr++;
-        if (ptr == end) return false;
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
+        if (std::isinf(*xptr)) return true;
+        xptr++;
+        if (xptr == end) return false;
     }
 
     // load const val to register
@@ -202,11 +202,11 @@ inline bool hasinf_sse_float(const float* x, std::size_t n) noexcept {
     const __m128 neg_inf = _mm_set1_ps(-std::numeric_limits<float>::infinity());
 
     // compute aligned bound
-    const float* aligned_end = ptr + ((end - ptr) & ~3ULL);
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
 
     // processed the array in chunks of 4 elems
-    for (; ptr < aligned_end; ptr += 4) {
-        const __m128 vec = _mm_load_ps(ptr);
+    for (; xptr < aligned_end; xptr += 4) {
+        const __m128 vec = _mm_load_ps(xptr);
         const __m128 cmp = _mm_or_ps(_mm_cmpeq_ps(vec, pos_inf),
                                      _mm_cmpeq_ps(vec, neg_inf));
 
@@ -216,9 +216,9 @@ inline bool hasinf_sse_float(const float* x, std::size_t n) noexcept {
     }
 
     // process the rest of elems
-    const std::size_t remains = end - ptr;
+    const std::size_t remains = end - xptr;
     for (std::size_t i = 0; i < remains; ++i) {
-        if (std::isinf(ptr[i])) {
+        if (std::isinf(xptr[i])) {
             return true;
         }
     }
@@ -241,7 +241,7 @@ inline bool hasinf_sse_float(const float* x, std::size_t n) noexcept {
  * - Processes 4 elements per cycle in the main computation loop
  * - For small vectors (n < 4), falls back to scalar computation
  * - The squared option provides faster computation when the exact norm isn't needed
- * - No explicit alignment requirements but performance improves with aligned data
+ * - Handles both aligned and unaligned memory automatically *
  *
  * @example
  *   // Compute regular L2 norm
@@ -258,34 +258,45 @@ inline float vecnorm2_sse_float(const float* x, std::size_t n, bool squared) noe
     if (n == 0 || x == nullptr) return 0.0f;
     if (n < 4) {
         float sum = 0.0f;
-        switch (n) {
-            case 3: sum += x[2] * x[2]; [[fallthrough]];
-            case 2: sum += x[1] * x[1]; [[fallthrough]];
-            case 1: sum += x[0] * x[0];
-            default: break;
+        for (std::size_t i = 0; i < n; ++i) {
+            sum += x[i] * x[i];
         }
         return squared ? sum : std::sqrt(sum);
     }
 
-    // compute aligned bound = xsize + xsize % 4
-    const float* ptr = x;
-    const float* aligned_bound = x + (n & ~3ULL);
+    // define ptr points to x and end of x
+    const float* xptr = x;
+    const float* end = x + n;
 
+    // handle memory unaligned case
+    float total = 0.0f;
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
+        total += (*xptr) * (*xptr);
+        xptr++;
+        if (xptr == end) return squared ? total : std::sqrt(total);
+    }
+
+    // compute aligned bound
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
+
+    // main loop: memory aligned
     __m128 sum = _mm_setzero_ps();
-    for (; ptr < aligned_bound; ptr += 4) {
-        const __m128 vec = _mm_loadu_ps(ptr);
+    for (; xptr < aligned_end; xptr += 4) {
+        const __m128 vec = _mm_load_ps(xptr);
         sum = _mm_add_ps(sum, _mm_mul_ps(vec, vec));
     }
 
     const __m128 shuf = _mm_movehdup_ps(sum);  // [a,b,c,d] -> [b,b,d,d]
     const __m128 sums = _mm_add_ps(sum, shuf); // [a+b, b+b, c+d, d+d]
     const __m128 sumv = _mm_add_ss(sums, _mm_movehl_ps(sums, sums)); // add [a+b, c+d] -> [a+b+c+d]
-    float total = _mm_cvtss_f32(sumv);
+    total += _mm_cvtss_f32(sumv);
 
-    switch (n & 3ULL) {
-        case 3: total += x[n - 3] * x[n - 3]; [[fallthrough]];
-        case 2: total += x[n - 2] * x[n - 2]; [[fallthrough]];
-        case 1: total += x[n - 1] * x[n - 1];
+    // handle remaining elements
+    const std::size_t remains = end - xptr;
+    switch (remains) {
+        case 3: total += xptr[2] * xptr[2]; [[fallthrough]];
+        case 2: total += xptr[1] * xptr[1]; [[fallthrough]];
+        case 1: total += xptr[0] * xptr[0];
         default: break;
     }
 
@@ -293,43 +304,74 @@ inline float vecnorm2_sse_float(const float* x, std::size_t n, bool squared) noe
 }
 
 /**
- * Computes the L1 norm (sum of absolute values) of a float array using SSE intrinsics.
+ * @brief Computes the L1 norm (Manhattan norm) of a float array using SSE intrinsics.
  *
- * @param x     Pointer to the input float array (must not be nullptr unless n=0)
- * @param n     Number of elements in the array
- * @return      The L1 norm as a float value
+ * The L1 norm is calculated as the sum of absolute values of all elements in the array.
+ * This implementation uses SSE instructions to optimize the computation.
  *
- * @note This function uses SSE4.1 intrinsics for vectorized computation:
- *       - Processes 4 elements per iteration when n >= 4
- *       - Handles remaining elements (1-3) separately
- *       - Properly manages NaN values (preserves them in the sum)
- *       - Zero overhead when n=0 or x=nullptr
+ * @param[in] x Pointer to the input array of single-precision floats.
+ *              Memory does not need to be aligned, but 16-byte alignment improves performance.
+ * @param[in] n Number of elements in the array.
  *
- * @compiler Requires SSE4.2 support (-msse4.2 flag)
- * @exception noexcept guaranteed
- * @complexity O(n) with 4x speedup for large arrays
+ * @return The computed L1 norm as a single-precision float.
+ *         Returns 0.0f for null pointers or empty arrays (n == 0).
  *
- * Example:
- *   float data[8] = {...};
- *   float norm = vecnorm1_sse_float(data, 8); // sum(|data[i]|)
+ * @details Features:
+ * - Efficiently handles both aligned and unaligned memory
+ * - Processes elements in chunks of 4 floats using SSE instructions
+ * - Special optimized path for small arrays (n < 4)
+ * - Preserves IEEE floating-point semantics
+ * - No-throw guarantee (no exceptions thrown)
+ *
+ * @performance For optimal performance:
+ * - Memory should be 16-byte aligned
+ * - Large arrays (n > 16) benefit most from vectorization
+ * - Uses SSE intrinsics: _mm_load_ps, _mm_and_ps, _mm_add_ps
+ * - Implements efficient horizontal summation
+ *
+ * @algorithm The computation follows these steps:
+ * 1. Early exit for null/empty input
+ * 2. Scalar processing for small arrays (n < 4)
+ * 3. Unaligned head processing (if needed)
+ * 4. SSE-optimized absolute value and summation for aligned blocks
+ * 5. Horizontal reduction of SIMD registers
+ * 6. Tail element processing
+ *
+ * @example
+ * // Compute L1 norm of an array
+ * float data[8] = {1.0f, -2.0f, 3.0f, -4.0f, 5.0f, -6.0f, 7.0f, -8.0f};
+ * float norm = vecnorm1_sse_float(data, 8);  // norm = 1+2+3+4+5+6+7+8 = 36.0f
+ *
+ * @note For developers:
+ * - Uses bitmask 0x7FFFFFFF for absolute value calculation
+ * - Horizontal summation uses shuffle/add operations
+ * - Handles remaining elements (1-3) after SIMD processing
  */
 inline float vecnorm1_sse_float(const float* x, std::size_t n) noexcept {
     if (n == 0 || x == nullptr) return 0.0f;
     // handle small size n < 4
     if (n < 4) {
         float sum = 0.0f;
-        switch (n) {
-            case 3: sum += std::abs(x[2]); [[fallthrough]];
-            case 2: sum += std::abs(x[1]); [[fallthrough]];
-            case 1: sum += std::abs(x[0]);
-            default: break;
+        for (std::size_t i = 0; i < n; ++i) {
+            sum += std::abs(x[i]);
         }
         return sum;
     }
 
+    // define ptr point to x and end of x
+    const float* xptr = x;
+    const float* end = x + n;
+
+    float total = 0.0f;
+    // handle the case of memory unaligned
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
+        total += std::abs(*xptr);
+        xptr++;
+        if (xptr == end) return total;
+    }
+
     // compute aligned bound = xsize - xsize % 4
-    const float* ptr = x;
-    const float* aligned_bound = x + (n & ~3ULL);
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
 
     // _mm_set1_epi32: set all elements to 0x7FFFFFFF,
     // contains 4 32bit int value, each value is 0x7FFFFFFF
@@ -337,22 +379,23 @@ inline float vecnorm1_sse_float(const float* x, std::size_t n) noexcept {
     const __m128 abs_mask = _mm_castsi128_ps(_mm_set1_epi32(0x7FFFFFFF));
 
     __m128 sum = _mm_setzero_ps();
-    for (; ptr < aligned_bound; ptr += 4) {
-        const __m128 vec = _mm_loadu_ps(ptr);
+    for (; xptr < aligned_end; xptr += 4) {
+        const __m128 vec = _mm_load_ps(xptr);
         // _mm_and_ps: bitwise '&' operation between mask and vec
         sum = _mm_add_ps(sum, _mm_and_ps(vec, abs_mask));
     }
 
-    // sum = [a,b,c,d] -> [a,b,c,d] -> [a+b, b+c, c+d, d+0] -> [a+b+c+d, c+d, d+0, 0]
+    // sum = [a,b,c,d] -> [b,b,d,d] -> [a+b, b+c, c+d, d+0] -> [a+b+c+d, c+d, d+0, 0]
     const __m128 shuf = _mm_movehdup_ps(sum);  // [a,b,c,d] -> [b,b,d,d]
     const __m128 sums = _mm_add_ps(sum, shuf); // [a+b, b+b, c+d, d+d]
     const __m128 sumv = _mm_add_ss(sums, _mm_movehl_ps(sums, sums)); // add [a+b, c+d] -> [a+b+c+d]
-    float total = _mm_cvtss_f32(sumv);
+    total += _mm_cvtss_f32(sumv);
 
-    switch (n & 3ULL) {
-        case 3: total += std::abs(x[n - 3]); [[fallthrough]];
-        case 2: total += std::abs(x[n - 2]); [[fallthrough]];
-        case 1: total += std::abs(x[n - 1]);
+    std::size_t remains = end - xptr;
+    switch (remains) {
+        case 3: total += std::abs(xptr[2]); [[fallthrough]];
+        case 2: total += std::abs(xptr[1]); [[fallthrough]];
+        case 1: total += std::abs(xptr[0]);
         default: break;
     }
     return total;
@@ -399,26 +442,39 @@ inline void vecscale_sse_float(const float* x,
         return;
     }
 
-    // compute aligned bound na dptr points to x
-    const float* ptr = x;
-    const float* aligned_bound = x + (n & ~3ULL);
+    // define ptr points to x and end of x
+    // avoid modify origin output ptr out
+    float* outptr = out;
+    const float* xptr = x;
+    const float* end = x + n;
+
+    // handle unaligned memory case for both x and out
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT ||
+           reinterpret_cast<std::uintptr_t>(outptr) & SSE_MEMOPS_ALIGNMENT) {
+        *outptr = *xptr * c;
+        xptr++;
+        outptr++;
+        if (xptr == end) return ;
+    }
+
+    // compute aligned bound
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
 
     // load constant c into register
     const __m128 scalar = _mm_set1_ps(c);
 
-    // maon SIMD loop
-    for (; ptr < aligned_bound; ptr += 4, out += 4) {
-        const __m128 xvec = _mm_loadu_ps(ptr);
-        // const __m128 outvec= _mm_mul_ps(xvec, scalar);
-        _mm_storeu_ps(out, _mm_mul_ps(xvec, scalar));
+    // main SIMD loop
+    for (; xptr < aligned_end; xptr += 4, outptr += 4) {
+        const __m128 xvec = _mm_load_ps(xptr);
+        _mm_store_ps(outptr, _mm_mul_ps(xvec, scalar));
     }
 
     // handle remaining elements
-    // const float* tail_ptr = x + (n & ~3ULL);
-    switch (n & 3ULL) {
-        case 3: out[2] = ptr[2] * c; [[fallthrough]];
-        case 2: out[1] = ptr[1] * c; [[fallthrough]];
-        case 1: out[0] = ptr[0] * c;
+    const std::size_t remains = end - xptr;
+    switch (remains) {
+        case 3: outptr[2] = xptr[2] * c; [[fallthrough]];
+        case 2: outptr[1] = xptr[1] * c; [[fallthrough]];
+        case 1: outptr[0] = xptr[0] * c;
         default: break;
     }
 };
@@ -525,22 +581,38 @@ inline void vecadd_sse_float(const float* x,
     }
 
     // define ptr points to x
+    float* outptr = out;
     const float* xptr = x;
     const float* yptr = y;
-    const float* aligned_bound = x + (n & ~3ULL);
+    const float* end = x + n;
+
+    // handle unaligned memory case for both x, y and out
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT ||
+           reinterpret_cast<std::uintptr_t>(yptr) & SSE_MEMOPS_ALIGNMENT ||
+           reinterpret_cast<std::uintptr_t>(outptr) & SSE_MEMOPS_ALIGNMENT) {
+        *outptr = (*xptr) + (*yptr);
+        xptr++;
+        yptr++;
+        outptr++;
+        if (xptr == end || yptr == end) return ;
+    }
+
+    // compute aligned bound
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
 
     // main SIMD loop
-    for (; xptr < aligned_bound; xptr += 4, yptr += 4, out += 4) {
-        const __m128 xvec = _mm_loadu_ps(xptr);
-        const __m128 yvec = _mm_loadu_ps(yptr);
-        _mm_storeu_ps(out, _mm_add_ps(xvec, yvec));
+    for (; xptr < aligned_end; xptr += 4, yptr += 4, outptr += 4) {
+        const __m128 xvec = _mm_load_ps(xptr);
+        const __m128 yvec = _mm_load_ps(yptr);
+        _mm_store_ps(outptr, _mm_add_ps(xvec, yvec));
     }
 
     // handle remaining elements
-    switch (n & 3ULL) {
-        case 3: out[2] = xptr[2] + yptr[2]; [[fallthrough]];
-        case 2: out[1] = xptr[1] + yptr[1]; [[fallthrough]];
-        case 1: out[0] = xptr[0] + yptr[0];
+    const std::size_t remains = end - xptr;
+    switch (remains) {
+        case 3: outptr[2] = xptr[2] + yptr[2]; [[fallthrough]];
+        case 2: outptr[1] = xptr[1] + yptr[1]; [[fallthrough]];
+        case 1: outptr[0] = xptr[0] + yptr[0];
         default: break;
     }
 };
