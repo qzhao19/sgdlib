@@ -50,7 +50,7 @@ inline void vecset_sse_float(float* x, const float c, std::size_t n) noexcept {
     const float* end = x + n;
 
     // handle unaligned case, 16-byte alignment mask
-    while (reinterpret_cast<std::uuintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
         *xptr = c;
         xptr++;
         if (xptr == end) return ;
@@ -73,7 +73,6 @@ inline void vecset_sse_float(float* x, const float c, std::size_t n) noexcept {
         default: break;
     }
 }
-
 
 /**
  * Clips (clamps) elements of a float vector to specified [min, max] range using SSE intrinsics.
@@ -415,7 +414,7 @@ inline float vecnorm1_sse_float(const float* x, std::size_t n) noexcept {
  *       - Uses SSE SIMD to process 4 elements per cycle
  *       - Handles unaligned memory accesses safely
  *       - Special cases:
- *           - Returns immediately if x == nullptr c == 1.0f
+ *       - Returns immediately if x == nullptr c == 1.0f
  *       - Processes remaining 1-3 elements after SIMD loop
  *
  * @requirements SSE4.2 instruction set support (-msse4.2)
@@ -548,6 +547,7 @@ inline void vecscale_sse_float(const float* xbegin,
  * - Uses SSE instructions (__m128) when n >= 4
  * - Falls back to scalar operations for small arrays (n < 4)
  * - Handles remaining elements (n % 4) after SIMD processing
+ * - Handles unaligned memory accesses safely
  *
  * @example
  * - float vec1[] = {1.0f, 2.0f, 3.0f, 4.0f};
@@ -558,9 +558,6 @@ inline void vecscale_sse_float(const float* xbegin,
  *
  * @note The function is marked as `noexcept` to indicate that it does not throw exceptions.
  *
- * @warning All pointers must point to valid memory if n > 0
- * @warning Behavior is undefined if input/output arrays overlap
- * @warning The m parameter is currently not used (m != m check is a no-op)
  */
 inline void vecadd_sse_float(const float* x,
                              const float* y,
@@ -638,6 +635,7 @@ inline void vecadd_sse_float(const float* x,
  * - No-throw guarantee (noexcept qualified)
  * - Supports unaligned memory accesses
  * - Current implementation ignores parameter m (reserved for future extension)
+ * - Handles unaligned memory accesses safely
  *
  * @warning Undefined behavior if:
  * - Any pointer is null when n > 0
