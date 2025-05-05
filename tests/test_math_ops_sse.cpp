@@ -15,11 +15,16 @@ protected:
         engine_.seed(42);
         aligned_mem_vec = static_cast<T*>(_mm_malloc(1024 * sizeof(T), 16));
         unaligned_mem_vec = static_cast<T*>(malloc(1024 * sizeof(T) + 15)) + 1;
+
+        aligned_mem_vec2 = static_cast<T*>(_mm_malloc(1024 * sizeof(T), 16));
+        unaligned_mem_vec2 = static_cast<T*>(malloc(1024 * sizeof(T) + 15)) + 1;
     }
 
     void TearDown() override {
         _mm_free(aligned_mem_vec);
         free(unaligned_mem_vec - 1);
+        _mm_free(aligned_mem_vec2);
+        free(unaligned_mem_vec2 - 1);
     }
 
     std::vector<T> generate_test_data(std::size_t size,
@@ -39,7 +44,9 @@ protected:
     }
     std::mt19937 engine_;
     T* aligned_mem_vec = nullptr;
+    T* aligned_mem_vec2 = nullptr;
     T* unaligned_mem_vec = nullptr;
+    T* unaligned_mem_vec2 = nullptr;
 };
 
 using TestValueTypes = ::testing::Types<float, double>;
@@ -550,7 +557,31 @@ TYPED_TEST(MathOpsSSETest, VecScaleSSETest) {
     for (size_t i = 0; i < size6; ++i) {
         EXPECT_FLOAT_EQ(unaligned_mem_vec_out[i], unaligned_mem_vec_copy_out[i]);
     }
+
+    // performance test with huge size n = 1 << 20
+    const std::size_t huge_size = 1 << 20;
+    std::vector<T> x_huge(huge_size);
+    std::vector<T> out_huge1(huge_size);
+    std::vector<T> out_huge2(huge_size);
+    x_huge = this->generate_test_data(huge_size, false);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    sgdlib::detail::vecscale_sse<T>(x_huge.data(), scale_factor2, huge_size, out_huge1.data());
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed1 = end - start;
+    std::cout << "vecscale SIMD execution time: " << elapsed1.count() << " seconds\n";
+
+    start = std::chrono::high_resolution_clock::now();
+    sgdlib::detail::vecscale_ansi<T>(x_huge, scale_factor2, out_huge2);
+    end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed2 = end - start;
+    std::cout << "vecscale ANSI execution time: " << elapsed2.count() << " seconds\n";
+
+    for (std::size_t i = 0; i < huge_size; ++i) {
+        EXPECT_FLOAT_EQ(out_huge1[i], out_huge2[i]);
+    }
 }
+
 
 // ****************************vecscale 2****************************//
 
@@ -634,6 +665,35 @@ TYPED_TEST(MathOpsSSETest, VecAddWithoutConstCSSETest) {
     for (std::size_t i = 0; i < huge_size; ++i) {
         EXPECT_FLOAT_EQ(out_huge1[i], out_huge2[i]);
     }
+
+    // aligned memory case
+    std::size_t size6 = 1024;
+    std::fill_n(this->aligned_mem_vec, size6, 1.5);
+    std::fill_n(this->aligned_mem_vec2, size6, 1.5);
+    std::vector<T> aligned_mem_vec_copy(size6, 1.5);
+    std::vector<T> aligned_mem_vec_copy2(size6, 1.5);
+    std::vector<T> aligned_mem_vec_out(size6), aligned_mem_vec_copy_out(size6);
+
+    sgdlib::detail::vecadd_sse<T>(this->aligned_mem_vec, this->aligned_mem_vec2, size6, size6, aligned_mem_vec_out.data());
+    sgdlib::detail::vecadd_ansi<T>(aligned_mem_vec_copy, aligned_mem_vec_copy2, aligned_mem_vec_copy_out);
+    for (size_t i = 0; i < size6; ++i) {
+        EXPECT_FLOAT_EQ(aligned_mem_vec_out[i], aligned_mem_vec_copy_out[i]);
+    }
+
+    // unaligned memory case
+    size6 = 1021;
+    std::fill_n(this->unaligned_mem_vec, size6, 1.5);
+    std::fill_n(this->unaligned_mem_vec2, size6, 1.5);
+    std::vector<T> unaligned_mem_vec_copy(size6, 1.5);
+    std::vector<T> unaligned_mem_vec_copy2(size6, 1.5);
+    std::vector<T> unaligned_mem_vec_out(size6), unaligned_mem_vec_copy_out(size6);
+
+    sgdlib::detail::vecadd_sse<T>(this->unaligned_mem_vec, this->unaligned_mem_vec2, size6, size6, unaligned_mem_vec_out.data());
+    sgdlib::detail::vecadd_ansi<T>(unaligned_mem_vec_copy, unaligned_mem_vec_copy2, unaligned_mem_vec_copy_out);
+    for (size_t i = 0; i < size6; ++i) {
+        EXPECT_FLOAT_EQ(unaligned_mem_vec_out[i], unaligned_mem_vec_copy_out[i]);
+    }
+
 }
 
 
