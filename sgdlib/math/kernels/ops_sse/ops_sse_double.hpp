@@ -48,7 +48,7 @@ inline void vecset_sse_double(double* x, const double c, std::size_t n) noexcept
     const double* end = x + n;
 
     // handle unaligned case
-    while (reinterpret_cast<std::uuintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
         *xptr = c;
         xptr++;
         if (xptr == end) return;
@@ -549,18 +549,33 @@ inline void vecadd_sse_double(const double* x,
     }
 
     // define ptr points to x and aligned end
+    double* outptr = out;
     const double* xptr = x;
     const double* yptr = y;
-    const double* aligned_bound = x + (n & ~1ULL);
+    const double* end = x + n;
 
-    for (; xptr < aligned_bound; xptr += 2, yptr += 2, out += 2) {
-        const __m128d xvec = _mm_loadu_pd(xptr);
-        const __m128d yvec = _mm_loadu_pd(yptr);
-        _mm_storeu_pd(out, _mm_add_pd(xvec, yvec));
+    // handle memory unaligned case
+    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT ||
+           reinterpret_cast<std::uintptr_t>(yptr) & SSE_MEMOPS_ALIGNMENT ||
+           reinterpret_cast<std::uintptr_t>(outptr) & SSE_MEMOPS_ALIGNMENT) {
+        *outptr = *xptr + *yptr;
+        xptr++;
+        yptr++;
+        outptr++;
+        if (xptr == end || yptr == end) return ;
     }
 
-    if (n & 1ULL) {
-        out[0] = xptr[0] + yptr[0];
+    // define aligned bound
+    const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
+
+    for (; xptr < aligned_end; xptr += 2, yptr += 2, outptr += 2) {
+        const __m128d xvec = _mm_load_pd(xptr);
+        const __m128d yvec = _mm_load_pd(yptr);
+        _mm_store_pd(outptr, _mm_add_pd(xvec, yvec));
+    }
+
+    if (end > xptr) {
+        outptr[0] = xptr[0] + yptr[0];
     }
 };
 
