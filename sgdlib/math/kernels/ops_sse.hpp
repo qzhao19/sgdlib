@@ -17,6 +17,25 @@ void vecset_sse(T* x, const T c, std::size_t n) {
     }
 }
 
+template <typename T>
+void veccpy_sse(const T* x, T* out, std::size_t n) {
+    if constexpr (std::is_same_v<T, float>) {
+        veccpy_sse_float(x, out, n);
+    }
+    else if constexpr (std::is_same_v<T, double>) {
+        veccpy_sse_double(x, out, n);
+    }
+}
+
+template <typename T>
+void vecncpy_sse(const T* x, T* out, std::size_t n) {
+    if constexpr (std::is_same_v<T, float>) {
+        vecncpy_sse_float(x, out, n);
+    }
+    else if constexpr (std::is_same_v<T, double>) {
+        vecncpy_sse_double(x, out, n);
+    }
+}
 
 template <typename T>
 void vecclip_sse(T* x, T min, T max, std::size_t n) {
