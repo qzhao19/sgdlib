@@ -1,7 +1,6 @@
 #ifndef MATH_KERNELS_OPS_SSE_OPS_SSE_FLOAT_HPP_
 #define MATH_KERNELS_OPS_SSE_OPS_SSE_FLOAT_HPP_
 
-#include "common/consts.hpp"
 #include "common/prereqs.hpp"
 
 namespace sgdlib {
@@ -18,7 +17,7 @@ namespace detail {
  * It handles:
  * - Null pointers and zero-length arrays (no-op)
  * - Small arrays (<4 elements) with scalar operations
- * - Handles both aligned and unaligned memory automatically
+ * - Handles only aligned memory automatically
  * - Aligned blocks (4 elements per SSE operation)
  * - Remaining elements (tail handling)
  *
@@ -49,13 +48,6 @@ inline void vecset_sse_float(float* x, const float c, std::size_t n) noexcept {
     float* xptr = x;
     const float* end = x + n;
 
-    // handle unaligned case, 16-byte alignment mask
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
-        *xptr = c;
-        xptr++;
-        if (xptr == end) return ;
-    }
-
     // handle aligned case
     // load scalar c into register and define aligned bound
     const __m128 scalar = _mm_set1_ps(c);
@@ -72,7 +64,81 @@ inline void vecset_sse_float(float* x, const float c, std::size_t n) noexcept {
         case 1: xptr[0] = c;
         default: break;
     }
-}
+};
+
+void veccpy_sse_float(const float* x, float* out, std::size_t n) noexcept {
+    if (n == 0) return ;
+    if (x == nullptr) return ;
+    if (out == nullptr) return ;
+    // handle small size n < 4
+    if (n < 4) {
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] = x[i];
+        }
+        return ;
+    }
+
+    // define xptr, outptr and a ptr to end of x
+    float* outptr = out;
+    const float* xptr = x;
+    const float* end = x + n;
+
+    // define aligned bound
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
+
+    // main loop to process simd
+    for (; xptr < aligned_end; xptr += 4, outptr += 4) {
+        const __m128 xvec = _mm_load_ps(xptr);
+        _mm_store_ps(outptr, xvec);
+    }
+
+    // handle remaining elements
+    const std::size_t remains = end - xptr;
+    switch (remains){
+        case 3: outptr[2] = xptr[2]; [[fallthrough]];
+        case 2: outptr[1] = xptr[1]; [[fallthrough]];
+        case 1: outptr[0] = xptr[0];
+        default: break;
+    }
+};
+
+void vecncpy_sse_float(const float* x, float* out, std::size_t n) noexcept {
+    if (n == 0) return ;
+    if (x == nullptr) return ;
+    if (out == nullptr) return ;
+    // handle small size n < 4
+    if (n < 4) {
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] = x[i];
+        }
+        return ;
+    }
+
+    // define xptr, outptr and a ptr to end of x
+    float* outptr = out;
+    const float* xptr = x;
+    const float* end = x + n;
+
+    // define aligned bound
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
+    const __m128 sign_flip = _mm_set1_ps(-0.0f);
+
+    // main loop to process simd
+    for (; xptr < aligned_end; xptr += 4, outptr += 4) {
+        const __m128 xvec = _mm_load_ps(xptr);
+        const __m128 result = _mm_xor_ps(xvec, sign_flip);
+        _mm_store_ps(outptr, result);
+    }
+
+    // handle remaining elements
+    const std::size_t remains = end - xptr;
+    switch (remains){
+        case 3: outptr[2] = -xptr[2]; [[fallthrough]];
+        case 2: outptr[1] = -xptr[1]; [[fallthrough]];
+        case 1: outptr[0] = -xptr[0];
+        default: break;
+    }
+};
 
 /**
  * Clips (clamps) elements of a float vector to specified [min, max] range using SSE intrinsics.
@@ -89,7 +155,7 @@ inline void vecset_sse_float(float* x, const float c, std::size_t n) noexcept {
  * - For small vectors (n < 4), falls back to scalar operation
  * - Behavior is undefined if min > max
  * - More efficient than std::transform with std::clamp for large vectors
- * - Handles both aligned and unaligned memory automatically
+ * - Handles only aligned memory automatically
  *
  * @example
  *   float data[] = {-1.0f, 0.5f, 2.0f, 3.0f};
@@ -113,13 +179,6 @@ inline void vecclip_sse_float(float* x, float min, float max, std::size_t n) noe
     // define ptr points to x and end of x
     float* xptr = x;
     const float* end = x + n;
-
-    // handle unaligned case
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
-        *xptr = std::clamp(*xptr, min, max);
-        xptr++;
-        if (xptr == end) return ;
-    }
 
     // load const values min/max to SIMD register
     // compute aligned bound of array
@@ -189,13 +248,6 @@ inline bool hasinf_sse_float(const float* x, std::size_t n) noexcept {
     const float* xptr = x;
     const float* end = x + n;
 
-    // handle unaligned case
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
-        if (std::isinf(*xptr)) return true;
-        xptr++;
-        if (xptr == end) return false;
-    }
-
     // load const val to register
     const __m128 pos_inf = _mm_set1_ps(std::numeric_limits<float>::infinity());
     const __m128 neg_inf = _mm_set1_ps(-std::numeric_limits<float>::infinity());
@@ -240,7 +292,7 @@ inline bool hasinf_sse_float(const float* x, std::size_t n) noexcept {
  * - Processes 4 elements per cycle in the main computation loop
  * - For small vectors (n < 4), falls back to scalar computation
  * - The squared option provides faster computation when the exact norm isn't needed
- * - Handles both aligned and unaligned memory automatically *
+ * - Handles only aligned memory case automatically
  *
  * @example
  *   // Compute regular L2 norm
@@ -266,14 +318,7 @@ inline float vecnorm2_sse_float(const float* x, std::size_t n, bool squared) noe
     // define ptr points to x and end of x
     const float* xptr = x;
     const float* end = x + n;
-
-    // handle memory unaligned case
     float total = 0.0f;
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
-        total += (*xptr) * (*xptr);
-        xptr++;
-        if (xptr == end) return squared ? total : std::sqrt(total);
-    }
 
     // compute aligned bound
     const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
@@ -316,25 +361,12 @@ inline float vecnorm2_sse_float(const float* x, std::size_t n, bool squared) noe
  *         Returns 0.0f for null pointers or empty arrays (n == 0).
  *
  * @details Features:
- * - Efficiently handles both aligned and unaligned memory
+ * - Efficiently handles only aligned memory
  * - Processes elements in chunks of 4 floats using SSE instructions
  * - Special optimized path for small arrays (n < 4)
  * - Preserves IEEE floating-point semantics
  * - No-throw guarantee (no exceptions thrown)
- *
- * @performance For optimal performance:
- * - Memory should be 16-byte aligned
  * - Large arrays (n > 16) benefit most from vectorization
- * - Uses SSE intrinsics: _mm_load_ps, _mm_and_ps, _mm_add_ps
- * - Implements efficient horizontal summation
- *
- * @algorithm The computation follows these steps:
- * 1. Early exit for null/empty input
- * 2. Scalar processing for small arrays (n < 4)
- * 3. Unaligned head processing (if needed)
- * 4. SSE-optimized absolute value and summation for aligned blocks
- * 5. Horizontal reduction of SIMD registers
- * 6. Tail element processing
  *
  * @example
  * // Compute L1 norm of an array
@@ -360,14 +392,7 @@ inline float vecnorm1_sse_float(const float* x, std::size_t n) noexcept {
     // define ptr point to x and end of x
     const float* xptr = x;
     const float* end = x + n;
-
     float total = 0.0f;
-    // handle the case of memory unaligned
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
-        total += std::abs(*xptr);
-        xptr++;
-        if (xptr == end) return total;
-    }
 
     // compute aligned bound = xsize - xsize % 4
     const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
@@ -411,19 +436,24 @@ inline float vecnorm1_sse_float(const float* x, std::size_t n) noexcept {
  * @param[out]    out Output vector (same size with x)
  *
  * @details Optimized implementation details:
- *       - Uses SSE SIMD to process 4 elements per cycle
- *       - Handles unaligned memory accesses safely
- *       - Special cases:
- *       - Returns immediately if x == nullptr c == 1.0f
- *       - Processes remaining 1-3 elements after SIMD loop
+ *  - Uses SSE SIMD to process 4 elements per cycle
+ *  - Handles only aligned memory accesses safely
+ *  - Special cases:
+ *  - Returns immediately if x == nullptr c == 1.0f
+ *  - Processes remaining 1-3 elements after SIMD loop
  *
- * @requirements SSE4.2 instruction set support (-msse4.2)
  * @exception noexcept guaranteed
  * @complexity O(n) with ~4x speedup vs scalar
  *
  * @example:
  *   float data[100];
  *   vecscale_sse_float(data, 100, 2.5f); // data *= 2.5
+ *
+ * @warning
+ *   - This function handle both aligned and unaligned memory,
+ *     but we should ensure that input x and output 'out' have
+ *     the same of offset of aligned memory, if they are not aligned,
+ *     the function will not work correctly.
  */
 inline void vecscale_sse_float(const float* x,
                                const float c,
@@ -446,15 +476,6 @@ inline void vecscale_sse_float(const float* x,
     float* outptr = out;
     const float* xptr = x;
     const float* end = x + n;
-
-    // handle unaligned memory case for both x and out
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT ||
-           reinterpret_cast<std::uintptr_t>(outptr) & SSE_MEMOPS_ALIGNMENT) {
-        *outptr = *xptr * c;
-        xptr++;
-        outptr++;
-        if (xptr == end) return ;
-    }
 
     // compute aligned bound
     const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
@@ -497,7 +518,6 @@ inline void vecscale_sse_float(const float* x,
  * - Handles remaining elements (n % 4) after SIMD processing
  * - No-throw guarantee (noexcept qualified)
  * - Memory-safe: validates pointers before access
- * - Supports unaligned memory accesses
  *
  * @warning Undefined behavior if:
  * - xbegin > xend (invalid range)
@@ -532,7 +552,7 @@ inline void vecscale_sse_float(const float* xbegin,
  * @brief Performs SIMD-accelerated element-wise addition of two float arrays.
  *
  * Computes out[i] = x[i] + y[i] for each element using SSE instructions when possible.
- * This function is optimized for float arrays and handles both aligned and unaligned memory.
+ * This function is optimized for float arrays and handles aligned memory.
  *
  * @param[in] x        Pointer to first input array (must not be nullptr unless n=0)
  * @param[in] y        Pointer to second input array (must not be nullptr unless n=0)
@@ -547,7 +567,7 @@ inline void vecscale_sse_float(const float* xbegin,
  * - Uses SSE instructions (__m128) when n >= 4
  * - Falls back to scalar operations for small arrays (n < 4)
  * - Handles remaining elements (n % 4) after SIMD processing
- * - Handles unaligned memory accesses safely
+ * - Handles only aligned memory accesses safely
  *
  * @example
  * - float vec1[] = {1.0f, 2.0f, 3.0f, 4.0f};
@@ -558,6 +578,11 @@ inline void vecscale_sse_float(const float* xbegin,
  *
  * @note The function is marked as `noexcept` to indicate that it does not throw exceptions.
  *
+ * @warning
+ *   - This function handle both aligned and unaligned memory,
+ *     but we should ensure that input x, y and output 'out' have
+ *     the same of offset of aligned memory, if they are not aligned,
+ *     the function will not work correctly.
  */
 inline void vecadd_sse_float(const float* x,
                              const float* y,
@@ -582,17 +607,6 @@ inline void vecadd_sse_float(const float* x,
     const float* xptr = x;
     const float* yptr = y;
     const float* end = x + n;
-
-    // handle unaligned memory case for both x, y and out
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT ||
-           reinterpret_cast<std::uintptr_t>(yptr) & SSE_MEMOPS_ALIGNMENT ||
-           reinterpret_cast<std::uintptr_t>(outptr) & SSE_MEMOPS_ALIGNMENT) {
-        *outptr = (*xptr) + (*yptr);
-        xptr++;
-        yptr++;
-        outptr++;
-        if (xptr == end || yptr == end) return ;
-    }
 
     // compute aligned bound
     const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
@@ -635,15 +649,13 @@ inline void vecadd_sse_float(const float* x,
  * - No-throw guarantee (noexcept qualified)
  * - Supports unaligned memory accesses
  * - Current implementation ignores parameter m (reserved for future extension)
- * - Handles unaligned memory accesses safely
+ * - Handles only aligned memory accesses safely
  *
  * @warning Undefined behavior if:
  * - Any pointer is null when n > 0
  * - Array sizes don't match (x, y, and out must all have at least n elements)
  * - Input and output ranges overlap
  * - n doesn't match actual array sizes
- *
- * @performance Expected to be 3-4x faster than scalar implementation for large arrays
  *
  * @example Basic Usage:
  * std::vector<float> x(1000, 2.0f);
@@ -670,26 +682,31 @@ inline void vecadd_sse_float(const float* x,
     }
 
     // define xptr and yptr point to x and y
+    float* outptr = out;
     const float* xptr = x;
     const float* yptr = y;
-    const float* aligned_bound = x + (n & ~3ULL);
+    const float* end = x + n;
+
+    // define aligned bound of input x
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
 
     // load constant c into register
     const __m128 scalar = _mm_set1_ps(c);
 
     // start SIMD loop
-    for (; xptr < aligned_bound; xptr += 4, yptr += 4, out += 4) {
-        const __m128 xvec = _mm_loadu_ps(xptr);
-        const __m128 yvec = _mm_loadu_ps(yptr);
+    for (; xptr < aligned_end; xptr += 4, yptr += 4, outptr += 4) {
+        const __m128 xvec = _mm_load_ps(xptr);
+        const __m128 yvec = _mm_load_ps(yptr);
         // _mm_storeu_ps(out, _mm_mul_ps(_mm_add_ps(xvec, scalar), yvec));
-        _mm_storeu_ps(out, _mm_add_ps(_mm_mul_ps(xvec, scalar), yvec));
+        _mm_store_ps(outptr, _mm_add_ps(_mm_mul_ps(xvec, scalar), yvec));
     }
 
     // handle remaining elements
-    switch (n & 3ULL) {
-        case 3: out[2] = xptr[2] * c + yptr[2]; [[fallthrough]];
-        case 2: out[1] = xptr[1] * c + yptr[1]; [[fallthrough]];
-        case 1: out[0] = xptr[0] * c + yptr[0];
+    const std::size_t remains = end - xptr;
+    switch (remains) {
+        case 3: outptr[2] = xptr[2] * c + yptr[2]; [[fallthrough]];
+        case 2: outptr[1] = xptr[1] * c + yptr[1]; [[fallthrough]];
+        case 1: outptr[0] = xptr[0] * c + yptr[0];
         default: break;
     }
 };
@@ -714,6 +731,7 @@ inline void vecadd_sse_float(const float* x,
  * - No-throw guarantee (noexcept qualified)
  * - Supports unaligned memory accesses
  * - Current implementation ignores parameter m
+ * - Handles only aligned memory accesses safely
  *
  * @warning Undefined behavior if:
  * - Input pointers are null when n > 0
@@ -781,7 +799,6 @@ inline void vecdiff_sse_float(const float* x,
  *         - Either x or y is nullptr
  *         - Vector lengths n and m don't match
  *         - n == 0
- *
  * @note
  * - Uses SSE4.2 instruction set (requires CPU support)
  * - Processes 4 elements per cycle in the main computation loop
@@ -789,6 +806,7 @@ inline void vecdiff_sse_float(const float* x,
  * - For small vectors (n < 4), back to scalar computation
  * - No explicit alignment requirements but performance improves with aligned data
  * - Provides approximately 4x speedup over scalar implementation for large vectors
+ * - Handles only aligned memory accesses safely
  *
  * @example
  *   float x[] = {1.0f, 2.0f, 3.0f, 4.0f};
@@ -845,9 +863,9 @@ inline float vecdot_sse_float(const float* x,
     float total = _mm_cvtss_f32(sumh);
 
     switch (n & 3ULL) {
-        case 3: total += x[n - 3] * y[n - 3]; [[fallthrough]];
-        case 2: total += x[n - 2] * y[n - 2]; [[fallthrough]];
-        case 1: total += x[n - 1] * y[n - 1];
+        case 3: total += xptr[2] * yptr[2]; [[fallthrough]];
+        case 2: total += xptr[1] * yptr[1]; [[fallthrough]];
+        case 1: total += xptr[0] * yptr[0];
         default: break;
     }
     return total;
