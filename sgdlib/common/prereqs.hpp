@@ -110,10 +110,16 @@ namespace detail {
 
 #if defined(USE_SSE)
     #include <smmintrin.h> // SSE4.2
+    constexpr std::uintptr_t MEMORY_ALIGNMENT_MASK = 0xF;
+    constexpr std::size_t DEFAULT_MEMORY_ALIGNMENT = 16;
 #elif defined(USE_AVX)
     #include <immintrin.h> // AVX2
+    constexpr std::uintptr_t MEMORY_ALIGNMENT_MASK = 0x1F;
+    constexpr std::size_t DEFAULT_MEMORY_ALIGNMENT = 32;
 #else
     #pragma message("Running in scalar mode (define USE_SSE or USE_AVX for SIMD acceleration)")
+    constexpr std::size_t DEFAULT_MEMORY_ALIGNMENT = alignof(std::max_align_t);
+    constexpr std::uintptr_t MEMORY_ALIGNMENT_MASK = DEFAULT_MEMORY_ALIGNMENT - 1;
 #endif
 
 #define GLOG_USE_GLOG_EXPORT
