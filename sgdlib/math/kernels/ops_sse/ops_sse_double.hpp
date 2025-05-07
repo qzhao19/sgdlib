@@ -1,7 +1,6 @@
 #ifndef MATH_KERNELS_OPS_SSE_OPS_SSE_DOUBLE_HPP_
 #define MATH_KERNELS_OPS_SSE_OPS_SSE_DOUBLE_HPP_
 
-#include "common/consts.hpp"
 #include "common/prereqs.hpp"
 
 namespace sgdlib {
@@ -47,13 +46,6 @@ inline void vecset_sse_double(double* x, const double c, std::size_t n) noexcept
     double* xptr = x;
     const double* end = x + n;
 
-    // handle unaligned case
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
-        *xptr = c;
-        xptr++;
-        if (xptr == end) return;
-    }
-
     // handle aligned case
     // load scalar c into register and define aligned bound
     const __m128d scalar = _mm_set1_pd(c);
@@ -66,7 +58,72 @@ inline void vecset_sse_double(double* x, const double c, std::size_t n) noexcept
     if (end > xptr) {
         xptr[0] = c;
     }
-}
+};
+
+
+void veccpy_sse_double(const double* x, double* out, std::size_t n) noexcept {
+    if (n == 0) return ;
+    if (x == nullptr) return ;
+    if (out == nullptr) return ;
+    // handle small size n < 4
+    if (n < 2) {
+        out[0] = x[0];
+        return ;
+    }
+
+    // define xptr, outptr and a ptr to end of x
+    double* outptr = out;
+    const double* xptr = x;
+    const double* end = x + n;
+
+    // define aligned bound
+    const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
+
+    // main loop to process simd
+    for (; xptr < aligned_end; xptr += 2, outptr += 2) {
+        const __m128d xvec = _mm_load_pd(xptr);
+        _mm_store_pd(outptr, xvec);
+    }
+
+    // handle remaining elements
+    const std::size_t remains = end - xptr;
+    if (end > xptr){
+        outptr[0] = xptr[0];
+    }
+};
+
+void vecncpy_sse_double(const double* x, double* out, std::size_t n) noexcept {
+    if (n == 0) return ;
+    if (x == nullptr) return ;
+    if (out == nullptr) return ;
+    // handle small size n < 2
+    if (n < 2) {
+        out[0] = x[0];
+        return ;
+    }
+
+    // define xptr, outptr and a ptr to end of x
+    double* outptr = out;
+    const double* xptr = x;
+    const double* end = x + n;
+
+    // define aligned bound
+    const double* aligned_end = xptr + ((end - xptr) & ~3ULL);
+    const __m128d sign_flip = _mm_set1_pd(-0.0);
+
+    // main loop to process simd
+    for (; xptr < aligned_end; xptr += 2, outptr += 2) {
+        const __m128d xvec = _mm_load_pd(xptr);
+        const __m128d result = _mm_xor_pd(xvec, sign_flip);
+        _mm_store_pd(outptr, result);
+    }
+
+    // handle remaining elements
+    if (end > xptr){
+        outptr[0] = -xptr[0];
+    }
+};
+
 
 
 /**
@@ -83,7 +140,7 @@ inline void vecset_sse_double(double* x, const double c, std::size_t n) noexcept
  *
  * @note Key features:
  * - Preserves NaN values in the input array
- * - Handles both aligned and unaligned memory automatically
+ * - Handles only the aligned memory automatically
  * - Uses SSE2 intrinsics for vectorized processing
  * - Processes 2 elements per iteration when aligned
  * - No-throw guarantee
@@ -118,13 +175,6 @@ inline void vecclip_sse_double(double* x, double min, double max, std::size_t n)
     // define ptr points to x and end of x
     double* xptr = x;
     const double* end = x + n;
-
-    // handle unaligned case, 16-byte alignment
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
-        *xptr = std::clamp(*xptr, min, max);
-        xptr++;
-        if (xptr == end) return ;
-    }
 
     // compute aligned bound
     const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
@@ -165,7 +215,7 @@ inline void vecclip_sse_double(double* x, double min, double max, std::size_t n)
  * Key features:
  * - Handles both positive and negative infinity
  * - Preserves NaN values (does not treat them as infinite)
- * - Automatic handling of unaligned memory
+ * - Handles only the aligned memory automatically
  * - Processes elements in chunks of 2 doubles (SSE register size)
  * - Special optimized paths for small arrays (n < 2)
  * - No-throw guarantee
@@ -197,13 +247,6 @@ inline bool hasinf_sse_double(const double* x, std::size_t n) noexcept {
     // define ptr points to x and end of x
     const double* xptr = x;
     const double* end = x + n;
-
-    // handle unaligned case, 16-byte alignment
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
-        if (std::isinf(*xptr)) return true;
-        xptr++;
-        if (xptr == end) return false;
-    }
 
     // load x positif inf + x negative inf to SIMD register
     const __m128d pos_inf = _mm_set1_pd(std::numeric_limits<double>::infinity());
@@ -237,7 +280,7 @@ inline bool hasinf_sse_double(const double* x, std::size_t n) noexcept {
  *
  * @details This function efficiently calculates the Euclidean norm of a vector using SSE SIMD instructions.
  * Features:
- * - Handles both aligned and unaligned memory automatically
+ * - Handles only the aligned memory automatically
  * - Processes elements in chunks of 2 doubles (SSE register size)
  * - Optional squared output avoids final square root for faster computation
  * - Special handling for small vectors (n < 2)
@@ -247,8 +290,6 @@ inline bool hasinf_sse_double(const double* x, std::size_t n) noexcept {
  * - Memory should be 16-byte aligned
  * - Large vectors (n > 8) will benefit most from vectorization
  * - Uses _mm_load_pd, _mm_mul_pd, _mm_hadd_pd intrinsics
- *
- * @exception None (no-throw guarantee)
  *
  * @example
  * // Compute regular L2 norm
@@ -274,14 +315,7 @@ inline double vecnorm2_sse_double(const double* x,
     // compute aligned boundary
     const double* xptr = x;
     const double* end = x + n;
-
-    // handle unaligned memeroy case
     double total = 0.0;
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
-        total += (*xptr) * (*xptr);
-        xptr++;
-        if (xptr == end) return squared ? total : std::sqrt(total);
-    }
 
     // handle aligned case
     const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
@@ -343,14 +377,7 @@ inline double vecnorm1_sse_double(const double* x,
     // define ptr points to x and end of x
     const double* xptr = x;
     const double* end = x + n;
-
-    // handle case of memory unaligned
     double total = 0.0;
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT) {
-        total += std::abs(*xptr);
-        xptr++;
-        if (xptr == end) return total;
-    }
 
     // compute aligned bound
     const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
@@ -366,7 +393,8 @@ inline double vecnorm1_sse_double(const double* x,
         sum = _mm_add_pd(sum, _mm_and_pd(vec, abs_mask));
     }
 
-    // perform a horizontal addition of the two channels' values in the SSE register
+    // perform a horizontal addition of the two
+    // channels' values in the SSE register
     __m128d sumh = _mm_hadd_pd(sum, sum);
     // _mm_store_sd(&total, sumh);
     total += _mm_cvtsd_f64(sumh);
@@ -399,10 +427,11 @@ inline double vecnorm1_sse_double(const double* x,
  *
  * @requirements:
  *   - SSE4.2 instruction set (-msse4.2 compiler flag)
- *   - 16-byte alignment recommended for optimal performance
+ *   - 16-byte alignment only
  *
- * @exception noexcept guaranteed
- * @complexity O(n) with ~2x speedup vs scalar implementation
+ * @note:
+ *   - Memory must be 16-byte aligned for optimal performance
+ *   - No-throw guarantee (noexcept)
  *
  * @example:
  *   double data[1000];
@@ -425,15 +454,6 @@ inline void vecscale_sse_double(const double* x,
      double* outptr = out;
      const double* xptr = x;
      const double* end = x + n;
-
-     // handle case of memory unaligned
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT ||
-           reinterpret_cast<std::uintptr_t>(outptr) & SSE_MEMOPS_ALIGNMENT) {
-        *outptr = *xptr * c;
-        xptr++;
-        outptr++;
-        if (xptr == end) return ;
-    }
 
     // define ptr points to x and aligned end
     const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
@@ -518,14 +538,8 @@ inline void vecscale_sse_double(const double* xbegin,
  * - Falls back to scalar processing for small arrays (n < 2)
  * - Handles remaining elements (n % 2) after vector processing
  * - No-throw guarantee (noexcept qualified)
- * - Supports unaligned memory accesses
+ * - Supports only aligned memory accesses
  * - Parameter m is currently unused but maintained for interface consistency
- *
- * @warning Undefined behavior if:
- * - Input pointers are null when n > 0
- * - Array sizes are smaller than n
- * - Input and output ranges overlap
- * - n doesn't match actual array dimensions
  *
  * @example Typical Usage:
  * std::vector<double> a(1000, 1.0);
@@ -554,27 +568,17 @@ inline void vecadd_sse_double(const double* x,
     const double* yptr = y;
     const double* end = x + n;
 
-    // handle memory unaligned case
-    while (reinterpret_cast<std::uintptr_t>(xptr) & SSE_MEMOPS_ALIGNMENT ||
-           reinterpret_cast<std::uintptr_t>(yptr) & SSE_MEMOPS_ALIGNMENT ||
-           reinterpret_cast<std::uintptr_t>(outptr) & SSE_MEMOPS_ALIGNMENT) {
-        *outptr = *xptr + *yptr;
-        xptr++;
-        yptr++;
-        outptr++;
-        if (xptr == end || yptr == end) return ;
-    }
-
     // define aligned bound
     const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
 
+    // main SIMD loop
     for (; xptr < aligned_end; xptr += 2, yptr += 2, outptr += 2) {
         const __m128d xvec = _mm_load_pd(xptr);
         const __m128d yvec = _mm_load_pd(yptr);
         _mm_store_pd(outptr, _mm_add_pd(xvec, yvec));
     }
 
-    if (end > xptr) {
+    if (end > xptr || end > yptr) {
         outptr[0] = xptr[0] + yptr[0];
     }
 };
@@ -598,7 +602,7 @@ inline void vecadd_sse_double(const double* x,
  * - Falls back to scalar processing for small arrays (n < 2)
  * - Handles remaining elements (n % 2) after vector processing
  * - No-throw guarantee (noexcept qualified)
- * - Supports unaligned memory accesses
+ * - Handles only aligned memory accesses safely
  * - Current implementation ignores parameter m
  *
  * @warning Undefined behavior if:
@@ -629,22 +633,26 @@ inline void vecadd_sse_double(const double* x,
         return ;
     }
 
+    // define ptr points to x and aligned end
+    double* outptr = out;
+    const double* xptr = x;
+    const double* yptr = y;
+    const double* end = x + n;
+
+    // define aligned bound
+    const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
+
     // load constant c into register
     const __m128d scalar = _mm_set1_pd(c);
 
-    // define ptr points to x and aligned end
-    const double* xptr = x;
-    const double* yptr = y;
-    const double* aligned_bound = x + (n & ~1ULL);
-
-    for (; xptr < aligned_bound; xptr += 2, yptr += 2, out += 2) {
-        const __m128d xvec = _mm_loadu_pd(xptr);
-        const __m128d yvec = _mm_loadu_pd(yptr);
-        _mm_storeu_pd(out, _mm_add_pd(_mm_mul_pd(xvec, scalar), yvec));
+    for (; xptr < aligned_end; xptr += 2, yptr += 2, outptr += 2) {
+        const __m128d xvec = _mm_load_pd(xptr);
+        const __m128d yvec = _mm_load_pd(yptr);
+        _mm_store_pd(outptr, _mm_add_pd(_mm_mul_pd(xvec, scalar), yvec));
     }
 
-    if (n & 1ULL) {
-        out[0] = xptr[0] * c + yptr[0];
+    if (end > xptr || end > yptr) {
+        outptr[0] = xptr[0] * c + yptr[0];
     }
 }
 
@@ -666,7 +674,7 @@ inline void vecadd_sse_double(const double* x,
  * - Automatically falls back to scalar operations for small arrays (n < 2)
  * - Handles remaining elements (n % 2) after vector processing
  * - No-throw guarantee (noexcept qualified)
- * - Supports unaligned memory accesses
+ * - Handles only aligned memory accesses safely
  * - Current implementation ignores parameter m
  *
  * @warning Undefined behavior if:
@@ -698,18 +706,20 @@ inline void vecdiff_sse_double(const double* x,
     }
 
     // define ptr points to x and aligned end
+    double* outptr = out;
     const double* xptr = x;
     const double* yptr = y;
-    const double* aligned_bound = x + (n & ~1ULL);
+    const double* end = x + n;
+    const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
 
-    for (; xptr < aligned_bound; xptr += 2, yptr += 2, out += 2) {
+    for (; xptr < aligned_end; xptr += 2, yptr += 2, outptr += 2) {
         const __m128d xvec = _mm_loadu_pd(xptr);
         const __m128d yvec = _mm_loadu_pd(yptr);
-        _mm_storeu_pd(out, _mm_sub_pd(xvec, yvec));
+        _mm_storeu_pd(outptr, _mm_sub_pd(xvec, yvec));
     }
 
-    if (n & 1ULL) {
-        out[0] = xptr[0] - yptr[0];
+    if (end > xptr) {
+        outptr[0] = xptr[0] - yptr[0];
     }
 };
 
@@ -730,7 +740,7 @@ inline void vecdiff_sse_double(const double* x,
  * - Maintains partial sums in SSE registers for better precision
  * - Automatically falls back to scalar operations for small vectors (n < 2)
  * - No-throw guarantee (noexcept qualified)
- * - Supports unaligned memory accesses
+ * - Handles only aligned memory accesses safely
  * - Current implementation ignores parameter m
  *
  * @warning Undefined behavior if:
@@ -761,12 +771,13 @@ inline double vecdot_sse_double(const double* x,
 
     const double* xptr = x;
     const double* yptr = y;
-    const double* aligned_bound = x + (n & ~1ULL);
+    const double* end = x + n;
+    const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
 
     // load sum of vec to register
     __m128d sum = _mm_setzero_pd();
 
-    for (; xptr < aligned_bound; xptr += 2, yptr += 2) {
+    for (; xptr < aligned_end; xptr += 2, yptr += 2) {
         const __m128d xvec = _mm_loadu_pd(xptr);
         const __m128d yvec = _mm_loadu_pd(yptr);
         sum = _mm_add_pd(sum, _mm_mul_pd(xvec, yvec));
@@ -779,14 +790,11 @@ inline double vecdot_sse_double(const double* x,
     __m128d tmp = _mm_add_pd(sum, sumh);
     _mm_store_sd(&total, tmp);
 
-    if (n & 1ULL) {
-        total += x[n - 1] * y[n - 1];
+    if (end > xptr) {
+        total += xptr[0] * yptr[0];
     }
     return total;
 };
-
-
-
 
 
 }
