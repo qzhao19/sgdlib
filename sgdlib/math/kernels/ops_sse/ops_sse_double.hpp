@@ -98,7 +98,7 @@ void vecncpy_sse_double(const double* x, double* out, std::size_t n) noexcept {
     if (out == nullptr) return ;
     // handle small size n < 2
     if (n < 2) {
-        out[0] = x[0];
+        out[0] = -x[0];
         return ;
     }
 
@@ -108,7 +108,7 @@ void vecncpy_sse_double(const double* x, double* out, std::size_t n) noexcept {
     const double* end = x + n;
 
     // define aligned bound
-    const double* aligned_end = xptr + ((end - xptr) & ~3ULL);
+    const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
     const __m128d sign_flip = _mm_set1_pd(-0.0);
 
     // main loop to process simd
