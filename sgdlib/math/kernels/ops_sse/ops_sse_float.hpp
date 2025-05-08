@@ -109,7 +109,7 @@ void vecncpy_sse_float(const float* x, float* out, std::size_t n) noexcept {
     // handle small size n < 4
     if (n < 4) {
         for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i];
+            out[i] = -x[i];
         }
         return ;
     }
