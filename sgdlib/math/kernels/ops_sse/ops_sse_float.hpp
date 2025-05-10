@@ -66,6 +66,9 @@ inline void vecset_sse_float(float* x, const float c, std::size_t n) noexcept {
     }
 };
 
+/**
+ *
+ */
 void veccpy_sse_float(const float* x, float* out, std::size_t n) noexcept {
     if (n == 0) return ;
     if (x == nullptr) return ;
@@ -331,9 +334,9 @@ inline float vecnorm2_sse_float(const float* x, std::size_t n, bool squared) noe
     }
 
     const __m128 shuf = _mm_movehdup_ps(sum);  // [a,b,c,d] -> [b,b,d,d]
-    const __m128 sums = _mm_add_ps(sum, shuf); // [a+b, b+b, c+d, d+d]
-    const __m128 sumv = _mm_add_ss(sums, _mm_movehl_ps(sums, sums)); // add [a+b, c+d] -> [a+b+c+d]
-    total += _mm_cvtss_f32(sumv);
+    const __m128 sumh = _mm_add_ps(sum, shuf); // [a+b, b+b, c+d, d+d]
+    const __m128 sums = _mm_add_ss(sumh, _mm_movehl_ps(sumh, sumh)); // add [a+b, c+d] -> [a+b+c+d]
+    total += _mm_cvtss_f32(sums);
 
     // handle remaining elements
     const std::size_t remains = end - xptr;
@@ -415,7 +418,7 @@ inline float vecnorm1_sse_float(const float* x, std::size_t n) noexcept {
     const __m128 sumv = _mm_add_ss(sums, _mm_movehl_ps(sums, sums)); // add [a+b, c+d] -> [a+b+c+d]
     total += _mm_cvtss_f32(sumv);
 
-    std::size_t remains = end - xptr;
+    const std::size_t remains = end - xptr;
     switch (remains) {
         case 3: total += std::abs(xptr[2]); [[fallthrough]];
         case 2: total += std::abs(xptr[1]); [[fallthrough]];
@@ -461,7 +464,7 @@ inline void vecscale_sse_float(const float* x,
                                float* out) noexcept {
     // conditionn check
     if (x == nullptr || out == nullptr) return;
-    if (n == 0 || c == 1.0) return ;
+    if (n == 0 || c == 1.0f) return ;
 
     // for small size array
     if (n < 4) {
@@ -765,22 +768,27 @@ inline void vecdiff_sse_float(const float* x,
     }
 
     // define xptr and yptr point to x and y
+    float* outptr = out;
     const float* xptr = x;
     const float* yptr = y;
-    const float* aligned_bound = x + (n & ~3ULL);
+    const float* end = x + n;
+
+    // define aligned bound of input x
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
 
     // start SIMD loop
-    for (; xptr < aligned_bound; xptr += 4, yptr += 4, out += 4) {
-        const __m128 xvec = _mm_loadu_ps(xptr);
-        const __m128 yvec = _mm_loadu_ps(yptr);
-        _mm_storeu_ps(out, _mm_sub_ps(xvec, yvec));
+    for (; xptr < aligned_end; xptr += 4, yptr += 4, outptr += 4) {
+        const __m128 xvec = _mm_load_ps(xptr);
+        const __m128 yvec = _mm_load_ps(yptr);
+        _mm_store_ps(outptr, _mm_sub_ps(xvec, yvec));
     }
 
     // handle remaining elements
-    switch (n & 3ULL) {
-        case 3: out[2] = xptr[2] - yptr[2]; [[fallthrough]];
-        case 2: out[1] = xptr[1] - yptr[1]; [[fallthrough]];
-        case 1: out[0] = xptr[0] - yptr[0];
+    const std::size_t remains = end - xptr;
+    switch (remains) {
+        case 3: outptr[2] = xptr[2] - yptr[2]; [[fallthrough]];
+        case 2: outptr[1] = xptr[1] - yptr[1]; [[fallthrough]];
+        case 1: outptr[0] = xptr[0] - yptr[0];
         default: break;
     }
 };
@@ -870,9 +878,6 @@ inline float vecdot_sse_float(const float* x,
     }
     return total;
 };
-
-
-
 
 }
 }
