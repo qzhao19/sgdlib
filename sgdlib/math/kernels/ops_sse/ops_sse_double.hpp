@@ -60,7 +60,9 @@ inline void vecset_sse_double(double* x, const double c, std::size_t n) noexcept
     }
 };
 
-
+/**
+ *
+ */
 void veccpy_sse_double(const double* x, double* out, std::size_t n) noexcept {
     if (n == 0) return ;
     if (x == nullptr) return ;
@@ -92,6 +94,9 @@ void veccpy_sse_double(const double* x, double* out, std::size_t n) noexcept {
     }
 };
 
+/**
+ *
+ */
 void vecncpy_sse_double(const double* x, double* out, std::size_t n) noexcept {
     if (n == 0) return ;
     if (x == nullptr) return ;
@@ -330,7 +335,7 @@ inline double vecnorm2_sse_double(const double* x,
     }
 
     // perform a horizontal addition of the two channels' values in the SSE register
-    __m128d sumh = _mm_hadd_pd(sum, sum);
+    const __m128d sumh = _mm_hadd_pd(sum, sum);
     total += _mm_cvtsd_f64(sumh);
 
     // process remaining elements
@@ -442,7 +447,7 @@ inline void vecscale_sse_double(const double* x,
                                 std::size_t n,
                                 double* out) noexcept {
     if (x == nullptr || out == nullptr) return ;
-    if (n == 0 || c == 1.0f) return ;
+    if (n == 0 || c == 1.0) return ;
 
     // for small size n < 2
     if (n < 2) {
@@ -578,7 +583,8 @@ inline void vecadd_sse_double(const double* x,
         _mm_store_pd(outptr, _mm_add_pd(xvec, yvec));
     }
 
-    if (end > xptr || end > yptr) {
+    // handle remaining elements
+    if (end > xptr) {
         outptr[0] = xptr[0] + yptr[0];
     }
 };
@@ -651,10 +657,10 @@ inline void vecadd_sse_double(const double* x,
         _mm_store_pd(outptr, _mm_add_pd(_mm_mul_pd(xvec, scalar), yvec));
     }
 
-    if (end > xptr || end > yptr) {
+    if (end > xptr) {
         outptr[0] = xptr[0] * c + yptr[0];
     }
-}
+};
 
 /**
  * @brief Performs SIMD-accelerated element-wise subtraction of two double-precision
@@ -712,10 +718,11 @@ inline void vecdiff_sse_double(const double* x,
     const double* end = x + n;
     const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
 
+    // main SIMD loop
     for (; xptr < aligned_end; xptr += 2, yptr += 2, outptr += 2) {
-        const __m128d xvec = _mm_loadu_pd(xptr);
-        const __m128d yvec = _mm_loadu_pd(yptr);
-        _mm_storeu_pd(outptr, _mm_sub_pd(xvec, yvec));
+        const __m128d xvec = _mm_load_pd(xptr);
+        const __m128d yvec = _mm_load_pd(yptr);
+        _mm_store_pd(outptr, _mm_sub_pd(xvec, yvec));
     }
 
     if (end > xptr) {
