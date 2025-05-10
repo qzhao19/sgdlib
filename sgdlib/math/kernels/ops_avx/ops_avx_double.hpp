@@ -217,6 +217,315 @@ inline bool hasinf_avx_double(const double* x, std::size_t n) noexcept {
     return false;
 };
 
+/**
+ *
+ */
+inline double vecnorm2_avx_double(const double* x,
+                                  std::size_t n,
+                                  bool squared) noexcept {
+    if (n == 0 || x == nullptr) return 0.0;
+    // For small arrays with less than or equal to two elements
+    if (n < 4) {
+        double sum = 0.0;
+        for (std::size_t i = 0; i < n; ++i) {
+            sum += x[i] * x[i];
+        }
+        return squared ? sum : std::sqrt(sum);
+    }
+
+    // compute aligned boundary
+    const double* xptr = x;
+    const double* end = x + n;
+    double total = 0.0;
+
+    // handle aligned case
+    const double* aligned_end = xptr + ((end - xptr) & ~3ULL);
+
+    // init sum to 0
+    __m256d sum = _mm256_setzero_pd();
+    for (; xptr < aligned_end; xptr += 4) {
+        // load 4 elements from x to SIMD register
+        const __m256d vec = _mm256_load_pd(xptr);
+        // compute sum = sum + vec * vec
+        sum = _mm256_add_pd(sum, _mm256_mul_pd(vec, vec));
+    }
+
+    // perform a horizontal addition
+    // [a,b,c,d] -> [c,d,a,b]
+    // [a+c,b+d,c+a,d+d]
+    // [(a+c)+(b+d),*,*,*]
+    const __m256d perm = _mm256_permute2f128_pd(sum, sum, 0x01);
+    const __m256d sums = _mm256_add_pd(sum, perm);
+    const __m256d sumh = _mm256_hadd_pd(sums, sums);
+    total += _mm256_cvtsd_f64(sumh);
+
+    // process remaining elements
+    const std::size_t remains = end - xptr;
+    switch (remains) {
+        case 3: total += xptr[2] * xptr[2]; [[fallthrough]];
+        case 2: total += xptr[1] * xptr[1]; [[fallthrough]];
+        case 1: total += xptr[0] * xptr[0];
+        default: break;
+    }
+    return squared ? total : std::sqrt(total);
+};
+
+/**
+ *
+ */
+inline double vecnorm1_avx_double(const double* x,
+                                  std::size_t n) noexcept {
+    if (n == 0 || x == nullptr) return 0.0;
+    // For small arrays with less than or equal to two elements
+    if (n < 4) {
+        double sum = 0.0;
+        for (std::size_t i = 0; i < n; ++i) {
+            sum += std::abs(x[i]);
+        }
+        return sum;
+    }
+
+    // define ptr points to x and end of x
+    const double* xptr = x;
+    const double* end = x + n;
+    double total = 0.0;
+
+    // compute aligned bound
+    const double* aligned_end = xptr + ((end - xptr) & ~3ULL);
+
+    // mask for the absolute value of the a double
+    const __m256d abs_mask = _mm256_castsi256_pd(
+        _mm256_set1_epi64x(0x7FFFFFFFFFFFFFFF));
+
+    // init sum to 0
+    __m256d sum = _mm256_setzero_pd();
+    for (; xptr < aligned_end; xptr += 4) {
+        __m256d vec = _mm256_load_pd(xptr);
+        sum = _mm256_add_pd(sum, _mm256_and_pd(vec, abs_mask));
+    }
+
+    // perform a horizontal addition of the 4
+    // channels' values in the AVX register
+    const __m256d perm = _mm256_permute2f128_pd(sum, sum, 0x01);
+    const __m256d sums = _mm256_add_pd(sum, perm);
+    const __m256d sumh = _mm256_hadd_pd(sums, sums);
+    total += _mm256_cvtsd_f64(sumh);
+
+    // handle remaining elements
+    const std::size_t remains = end - xptr;
+    switch (remains) {
+        case 3: total += std::abs(xptr[2]); [[fallthrough]];
+        case 2: total += std::abs(xptr[1]); [[fallthrough]];
+        case 1: total += std::abs(xptr[0]);
+        default: break;
+    }
+    return total;
+};
+
+/**
+ *
+ */
+inline void vecscale_avx_double(const double* x,
+                                const double c,
+                                std::size_t n,
+                                double* out) noexcept {
+    if (x == nullptr || out == nullptr) return ;
+    if (n == 0 || c == 1.0) return ;
+
+    // for small size n < 4
+    if (n < 4) {
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] = x[i] * c;
+        }
+        return ;
+    }
+
+     // define ptr points to x and end of x
+     double* outptr = out;
+     const double* xptr = x;
+     const double* end = x + n;
+
+    // define ptr points to x and aligned end
+    const double* aligned_end = xptr + ((end - xptr) & ~3ULL);
+
+    // load constant into register
+    const __m256d scalar = _mm256_set1_pd(c);
+
+    // main SIMD loop
+    for (; xptr < aligned_end; xptr += 4, outptr += 4) {
+        const __m256d xvec = _mm256_load_pd(xptr);
+        // const __m128d outx = _mm_mul_pd(xvec, scalar);
+        _mm256_store_pd(outptr, _mm256_mul_pd(xvec, scalar));
+    }
+
+    // handle remaining elements
+    const std::size_t remains = end - xptr;
+    switch (remains) {
+        case 3: outptr[2] = xptr[2] * c; [[fallthrough]];
+        case 2: outptr[1] = xptr[1] * c; [[fallthrough]];
+        case 1: outptr[0] = xptr[0] * c;
+        default: break;
+    }
+};
+
+/**
+ *
+ */
+inline void vecscale_avx_double(const double* xbegin,
+                                const double* xend,
+                                const double c,
+                                std::size_t n,
+                                double* out) noexcept {
+    if (xbegin == nullptr || xend == nullptr || out == nullptr) return;
+    if (n == 0 || c == 1.0) return ;
+    if (xend <= xbegin) return ;
+    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
+    if (n != m) return ;
+
+    // call vecscale_sse_double function
+    vecscale_avx_double(xbegin, c, n, out);
+};
+
+/**
+ *
+ */
+inline void vecadd_avx_double(const double* x,
+                              const double* y,
+                              const std::size_t n,
+                              const std::size_t m,
+                              double* out) noexcept {
+    if (x == nullptr || y == nullptr) return ;
+    if (out == nullptr) return ;
+    if (n == 0 || m == 0) return ;
+    if (m != n) return ;
+
+    if (n < 4) {
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] = x[i] + y[i];
+        }
+        return ;
+    }
+
+    // define ptr points to x and aligned end
+    double* outptr = out;
+    const double* xptr = x;
+    const double* yptr = y;
+    const double* end = x + n;
+
+    // define aligned bound
+    const double* aligned_end = xptr + ((end - xptr) & ~3ULL);
+
+    // main SIMD loop
+    for (; xptr < aligned_end; xptr += 4, yptr += 4, outptr += 4) {
+        const __m256d xvec = _mm256_load_pd(xptr);
+        const __m256d yvec = _mm256_load_pd(yptr);
+        _mm256_store_pd(outptr, _mm256_add_pd(xvec, yvec));
+    }
+
+    // handle remaining elements
+    const std::size_t remains = end - xptr;
+    switch (remains) {
+        case 3: outptr[2] = xptr[2] + yptr[2]; [[fallthrough]];
+        case 2: outptr[1] = xptr[1] + yptr[1]; [[fallthrough]];
+        case 1: outptr[0] = xptr[0] + yptr[0];
+        default: break;
+    }
+};
+
+/**
+ *
+ */
+inline void vecadd_avx_double(const double* x,
+                              const double* y,
+                              const double c,
+                              const std::size_t n,
+                              const std::size_t m,
+                              double* out) noexcept {
+    if (x == nullptr || y == nullptr) return ;
+    if (out == nullptr) return ;
+    if (n == 0 || m == 0) return ;
+    if (m != n) return ;
+
+    if (n < 4) {
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] = c * x[i] + y[i];
+        }
+        return ;
+    }
+
+    // define ptr points to x and aligned end
+    double* outptr = out;
+    const double* xptr = x;
+    const double* yptr = y;
+    const double* end = x + n;
+
+    // define aligned bound
+    const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
+
+    // load constant c into register
+    const __m256d scalar = _mm256_set1_pd(c);
+
+    for (; xptr < aligned_end; xptr += 4, yptr += 4, outptr += 4) {
+        const __m256d xvec = _mm256_load_pd(xptr);
+        const __m256d yvec = _mm256_load_pd(yptr);
+        _mm256_store_pd(outptr, _mm256_add_pd(_mm256_mul_pd(xvec, scalar), yvec));
+    }
+
+    // handle remaining elements
+    const std::size_t remains = end - xptr;
+    switch (remains) {
+        case 3: outptr[2] = c * xptr[2] + yptr[2]; [[fallthrough]];
+        case 2: outptr[1] = c * xptr[1] + yptr[1]; [[fallthrough]];
+        case 1: outptr[0] = c * xptr[0] + yptr[0];
+        default: break;
+    }
+};
+
+/**
+ *
+ */
+inline void vecdiff_avx_double(const double* x,
+                               const double* y,
+                               const std::size_t n,
+                               const std::size_t m,
+                               double* out) noexcept {
+    if (x == nullptr || y == nullptr) return ;
+    if (out == nullptr) return ;
+    if (n == 0 || m == 0) return ;
+    if (m != n) return ;
+
+    if (n < 4) {
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] = x[i] - y[i];
+        }
+        return ;
+    }
+
+    // define ptr points to x and aligned end
+    double* outptr = out;
+    const double* xptr = x;
+    const double* yptr = y;
+    const double* end = x + n;
+    const double* aligned_end = xptr + ((end - xptr) & ~3ULL);
+
+    // main SIMD loop
+    for (; xptr < aligned_end; xptr += 4, yptr += 4, outptr += 4) {
+        const __m256d xvec = _mm256_load_pd(xptr);
+        const __m256d yvec = _mm256_load_pd(yptr);
+        _mm256_store_pd(outptr, _mm256_sub_pd(xvec, yvec));
+    }
+
+    // handle remaining elements
+    const std::size_t remains = end - xptr;
+    switch (remains) {
+        case 3: outptr[2] = xptr[2] - yptr[2]; [[fallthrough]];
+        case 2: outptr[1] = xptr[1] - yptr[1]; [[fallthrough]];
+        case 1: outptr[0] = xptr[0] - yptr[0];
+        default: break;
+    }
+};
+
+
 
 
 
