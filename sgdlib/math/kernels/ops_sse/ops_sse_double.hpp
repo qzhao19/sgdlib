@@ -785,23 +785,62 @@ inline double vecdot_sse_double(const double* x,
     __m128d sum = _mm_setzero_pd();
 
     for (; xptr < aligned_end; xptr += 2, yptr += 2) {
-        const __m128d xvec = _mm_loadu_pd(xptr);
-        const __m128d yvec = _mm_loadu_pd(yptr);
+        const __m128d xvec = _mm_load_pd(xptr);
+        const __m128d yvec = _mm_load_pd(yptr);
         sum = _mm_add_pd(sum, _mm_mul_pd(xvec, yvec));
     }
 
-    double total;
-    // Extract high element of sum register
-    // add low and high
-    __m128d sumh = _mm_unpackhi_pd(sum, sum);
-    __m128d tmp = _mm_add_pd(sum, sumh);
-    _mm_store_sd(&total, tmp);
+    // perform a horizontal addition
+    const __m128d sumh = _mm_hadd_pd(sum, sum);
+    double total = _mm_cvtsd_f64(sumh);
 
     if (end > xptr) {
         total += xptr[0] * yptr[0];
     }
     return total;
 };
+
+/**
+ *
+ */
+inline void vecmul_sse_double(const double* x,
+                              const double* y,
+                              std::size_t n,
+                              std::size_t m,
+                              double* out) noexcept {
+    if (x == nullptr || y == nullptr) return ;
+    if (out == nullptr) return ;
+    if (n == 0 || m == 0) return ;
+    if (m!= n) return ;
+
+    if (n < 2) {
+        out[0] = x[0] * y[0];
+        return ;
+    }
+    // define ptr points to x and aligned end
+    double* outptr = out;
+    const double* xptr = x;
+    const double* yptr = y;
+    const double* end = x + n;
+    const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
+
+    // main SIMD loop
+    for (; xptr < aligned_end; xptr += 2, yptr += 2, outptr += 2) {
+        const __m128d xvec = _mm_load_pd(xptr);
+        const __m128d yvec = _mm_load_pd(yptr);
+        _mm_store_pd(outptr, _mm_mul_pd(xvec, yvec));
+    }
+
+    // handle remaining elements
+    if (end > xptr) {
+        outptr[0] = xptr[0] * yptr[0];
+    }
+};
+
+
+
+
+
 
 
 }
