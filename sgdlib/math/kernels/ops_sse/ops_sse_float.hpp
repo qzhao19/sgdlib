@@ -840,16 +840,19 @@ inline float vecdot_sse_float(const float* x,
         return sum;
     }
 
-    // get aligned array bound
+    // define xptr and yptr point to x and y
     const float* xptr = x;
     const float* yptr = y;
-    const float* aligned_bound = x + (n & ~3ULL);
+    const float* end = x + n;
+
+    // define aligned bound of input x
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
 
     // load sum of vec to register
     __m128 sum = _mm_setzero_ps();
 
     // loop array x and y in chunks of 4 elems
-    for (; xptr < aligned_bound; xptr += 4, yptr += 4) {
+    for (; xptr < aligned_end; xptr += 4, yptr += 4) {
         const __m128 xvec = _mm_loadu_ps(xptr);
         const __m128 yvec = _mm_loadu_ps(yptr);
         sum = _mm_add_ps(sum, _mm_mul_ps(xvec, yvec));
@@ -870,7 +873,8 @@ inline float vecdot_sse_float(const float* x,
     const __m128 sumh = _mm_add_ps(tmp, _mm_shuffle_ps(tmp, tmp, 0x55));
     float total = _mm_cvtss_f32(sumh);
 
-    switch (n & 3ULL) {
+    const std::size_t remains = end - xptr;
+    switch (remains) {
         case 3: total += xptr[2] * yptr[2]; [[fallthrough]];
         case 2: total += xptr[1] * yptr[1]; [[fallthrough]];
         case 1: total += xptr[0] * yptr[0];
@@ -878,6 +882,54 @@ inline float vecdot_sse_float(const float* x,
     }
     return total;
 };
+
+/**
+ *
+ */
+inline void vecmul_sse_float(const float* x,
+                             const float* y,
+                             std::size_t n,
+                             std::size_t m,
+                             float* out) noexcept {
+    if (x == nullptr || y == nullptr) return ;
+    if (out == nullptr) return ;
+    if (n == 0 || m == 0) return ;
+    if (m!= n) return ;
+
+    // handle small size case n < 4
+    if (n < 4 && m < 4) {
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] += x[i] * y[i];
+        }
+        return ;
+    }
+
+    // define xptr and yptr point to x and y
+    float* outptr = out;
+    const float* xptr = x;
+    const float* yptr = y;
+    const float* end = x + n;
+
+    // define aligned bound of input x
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
+
+    for (; xptr < aligned_end; xptr += 4, yptr += 4, outptr += 4) {
+        const __m128 xvec = _mm_load_ps(xptr);
+        const __m128 yvec = _mm_load_ps(yptr);
+        _mm_store_ps(outptr, _mm_mul_ps(xvec, yvec));
+    }
+
+    // handle remaining elements
+    const std::size_t remains = end - xptr;
+    switch (remains) {
+        case 3: outptr[2] += xptr[2] * yptr[2]; [[fallthrough]];
+        case 2: outptr[1] += xptr[1] * yptr[1]; [[fallthrough]];
+        case 1: outptr[0] += xptr[0] * yptr[0];
+        default: break;
+    }
+};
+
+
 
 }
 }
