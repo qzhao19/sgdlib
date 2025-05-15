@@ -26,18 +26,17 @@ inline void vecset_sse_double(double* x, const double c, std::size_t n) noexcept
     const __m128d scalar = _mm_set1_pd(c);
 
     // loop unrolling
-    const std::size_t unroll_size = 4;
-    const std::size_t num_unrolls = n / unroll_size;
+    const std::size_t num_unrollings = n / UNROLLING_SIZE;
 
     // main loop to handle 4 elements
-    for (std::size_t i = 0; i < num_unrolls; ++i) {
+    for (std::size_t i = 0; i < num_unrollings; ++i) {
         _mm_storeu_pd(xptr, scalar);
         _mm_storeu_pd(xptr + 2, scalar);
-        xptr += unroll_size;
+        xptr += UNROLLING_SIZE;
     }
 
-    // handle remaining elements by 2
-    const std::size_t remainder =  n & (unroll_size - 1);
+    // handle remaining elements by 4
+    const std::size_t remainder =  end - xptr;
     switch (remainder) {
         case 3: xptr[2] = c; [[fallthrough]];
         case 2: xptr[1] = c; [[fallthrough]];
@@ -46,11 +45,10 @@ inline void vecset_sse_double(double* x, const double c, std::size_t n) noexcept
     }
 };
 
-
 /**
  * @brief Copies an array of double-precision floating-point numbers using SSE4.2 instructions.
  */
-void veccpy_sse_double(const double* x, double* out, std::size_t n) noexcept {
+void veccpy_sse_double(const double* x, std::size_t n, double* out) noexcept {
     if (n == 0) return ;
     if (x == nullptr) return ;
     if (out == nullptr) return ;
@@ -68,20 +66,19 @@ void veccpy_sse_double(const double* x, double* out, std::size_t n) noexcept {
     const double* end = x + n;
 
     // loop unrolling
-    const std::size_t unroll_size = 4;
-    const std::size_t num_unrolls = n / unroll_size;
+    const std::size_t num_unrollings = n / UNROLLING_SIZE;
 
     // define aligned bound
     const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
 
     // main loop to process simd
-    for (std::size_t i = 0; i < num_unrolls; ++i) {
+    for (std::size_t i = 0; i < num_unrollings; ++i) {
         const __m128d xvec1 = _mm_loadu_pd(xptr);
         const __m128d xvec2 = _mm_loadu_pd(xptr + 2);
         _mm_storeu_pd(outptr, xvec1);
         _mm_storeu_pd(outptr + 2, xvec2);
-        xptr += unroll_size;
-        outptr += unroll_size;
+        xptr += UNROLLING_SIZE;
+        outptr += UNROLLING_SIZE;
     }
 
     // handle remaining elements
@@ -97,7 +94,7 @@ void veccpy_sse_double(const double* x, double* out, std::size_t n) noexcept {
 /**
  * @brief Negates and copies elements of a double array using SSE intrinsics.
  */
-void vecncpy_sse_double(const double* x, double* out, std::size_t n) noexcept {
+void vecncpy_sse_double(const double* x, std::size_t n, double* out) noexcept {
     if (n == 0) return ;
     if (x == nullptr) return ;
     if (out == nullptr) return ;
@@ -115,24 +112,25 @@ void vecncpy_sse_double(const double* x, double* out, std::size_t n) noexcept {
     const double* end = x + n;
 
     // loop unrolling
-    const std::size_t unroll_size = 4;
-    const std::size_t num_unrolls = n / unroll_size;
+    const std::size_t num_unrollings = n / UNROLLING_SIZE;
 
-    // define sign_flip
-    const __m128d sign_flip = _mm_set1_pd(-0.0);
+    // define sign_flip mask with 64bit
+    const __m128d sign_flip = _mm_castsi128_pd(
+        _mm_set1_epi64x(0x8000000000000000)
+    );
 
     // main loop to process simd
-    for (std::size_t i = 0; i < num_unrolls; ++i) {
-        const __m128d xvec1 = _mm_loadu_pd(xptr);
-        const __m128d xvec2 = _mm_loadu_pd(xptr + 2);
-        const __m128d dst1 = _mm_xor_pd(xvec1, sign_flip);
-        const __m128d dst2 = _mm_xor_pd(xvec2, sign_flip);
+    for (std::size_t i = 0; i < num_unrollings; ++i) {
+        __m128d xvec1 = _mm_loadu_pd(xptr);
+        __m128d xvec2 = _mm_loadu_pd(xptr + 2);
+        xvec1 = _mm_xor_pd(xvec1, sign_flip);
+        xvec2 = _mm_xor_pd(xvec2, sign_flip);
         // put back to out pointer
-        _mm_storeu_pd(outptr, dst1);
-        _mm_storeu_pd(outptr + 2, dst2);
+        _mm_storeu_pd(outptr, xvec1);
+        _mm_storeu_pd(outptr + 2, xvec2);
         // increments
-        xptr += unroll_size;
-        outptr += unroll_size;
+        xptr += UNROLLING_SIZE;
+        outptr += UNROLLING_SIZE;
     }
 
     // handle remaining elements
@@ -170,15 +168,14 @@ inline void vecclip_sse_double(double* x, double min, double max, std::size_t n)
     const double* end = x + n;
 
     // loop unrolling
-    const std::size_t unroll_size = 4;
-    const std::size_t num_unrolls = n / unroll_size;
+    const std::size_t num_unrollings = n / UNROLLING_SIZE;
 
      // Create an SSE register with all elements set to the min/max value
     const __m128d xmin = _mm_set1_pd(min);
     const __m128d xmax = _mm_set1_pd(max);
 
     // Process the array in chunks of 2 elements using SSE intrinsics
-    for (std::size_t i = 0; i < num_unrolls; ++i) {
+    for (std::size_t i = 0; i < num_unrollings; ++i) {
         __m128d vec1 = _mm_loadu_pd(xptr);
         __m128d vec2 = _mm_loadu_pd(xptr + 2);
 
@@ -199,7 +196,7 @@ inline void vecclip_sse_double(double* x, double min, double max, std::size_t n)
         _mm_storeu_pd(xptr, vec1);
         _mm_storeu_pd(xptr + 2, vec2);
 
-        xptr += unroll_size;
+        xptr += UNROLLING_SIZE;
     }
 
     // Process any remaining elements
@@ -236,8 +233,7 @@ inline bool hasinf_sse_double(const double* x, std::size_t n) noexcept {
     const double* end = x + n;
 
     // loop unrolling
-    const std::size_t unroll_size = 4;
-    const std::size_t num_unrolls = n / unroll_size;
+    const std::size_t num_unrollings = n / UNROLLING_SIZE;
 
     // load x positif inf + x negative inf to SIMD register
     const __m128d pos_inf = _mm_set1_pd(std::numeric_limits<double>::infinity());
@@ -247,7 +243,7 @@ inline bool hasinf_sse_double(const double* x, std::size_t n) noexcept {
     // const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
 
     // loop the array in chunks of 2 elements
-    for (std::size_t i = 0; i < num_unrolls; ++i) {
+    for (std::size_t i = 0; i < num_unrollings; ++i) {
         const __m128d vec1 = _mm_loadu_pd(xptr);
         const __m128d vec2 = _mm_loadu_pd(xptr + 2);
         const __m128d cmp1 = _mm_or_pd(_mm_cmpeq_pd(vec1, pos_inf),
@@ -291,15 +287,14 @@ inline double vecnorm2_sse_double(const double* x,
     double total = 0.0;
 
     // loop unrolling
-    const std::size_t unroll_size = 4;
-    const std::size_t num_unrolls = n / unroll_size;
+    const std::size_t num_unrollings = n / UNROLLING_SIZE;
 
     // init sum1 and sum2 to 0
     __m128d sum1 = _mm_setzero_pd();
     __m128d sum2 = _mm_setzero_pd();
 
     // main loop
-    for (std::size_t i = 0; i < num_unrolls; ++i) {
+    for (std::size_t i = 0; i < num_unrollings; ++i) {
         // load 4 elements from x to 2 register
         const __m128d vec1 = _mm_loadu_pd(xptr);
         const __m128d vec2 = _mm_loadu_pd(xptr + 2);
@@ -307,13 +302,16 @@ inline double vecnorm2_sse_double(const double* x,
         sum1 = _mm_add_pd(sum1, _mm_mul_pd(vec1, vec1));
         sum2 = _mm_add_pd(sum2, _mm_mul_pd(vec2, vec2));
 
-        xptr += unroll_size;
+        xptr += UNROLLING_SIZE;
     }
 
     // perform a horizontal addition
-    const __m128d sumh1 = _mm_hadd_pd(sum1, sum1);
-    const __m128d sumh2 = _mm_hadd_pd(sum2, sum2);
-    const __m128d sumh = _mm_add_pd(sumh1, sumh2);
+    // method 1:
+    // const __m128d sumh1 = _mm_hadd_pd(sum1, sum1);
+    // const __m128d sumh2 = _mm_hadd_pd(sum2, sum2);
+    // const __m128d sumh = _mm_add_pd(sumh1, sumh2);
+    const __m128d sums = _mm_add_pd(sum1, sum2);
+    const __m128d sumh = _mm_add_pd(sums, _mm_shuffle_pd(sums, sums, 0x01));
     total += _mm_cvtsd_f64(sumh);
 
     // handle remaining elements
@@ -349,8 +347,7 @@ inline double vecnorm1_sse_double(const double* x,
     double total = 0.0;
 
      // loop unrolling
-    const std::size_t unroll_size = 4;
-    const std::size_t num_unrolls = n / unroll_size;
+    const std::size_t num_unrollings = n / UNROLLING_SIZE;
 
     // mask for the absolute value of the a double
     const __m128d abs_mask = _mm_castsi128_pd(_mm_set1_epi64x(0x7FFFFFFFFFFFFFFF));
@@ -358,21 +355,23 @@ inline double vecnorm1_sse_double(const double* x,
     // init sum1 and sum2 to 0
     __m128d sum1 = _mm_setzero_pd();
     __m128d sum2 = _mm_setzero_pd();
-    for (std::size_t i = 0; i < num_unrolls; ++i) {
+    for (std::size_t i = 0; i < num_unrollings; ++i) {
         // load 4 elements from x to 2 register
         const __m128d vec1 = _mm_loadu_pd(xptr);
         const __m128d vec2 = _mm_loadu_pd(xptr + 2);
         sum1 = _mm_add_pd(sum1, _mm_and_pd(vec1, abs_mask));
         sum2 = _mm_add_pd(sum2, _mm_and_pd(vec2, abs_mask));
 
-        xptr += unroll_size;
+        xptr += UNROLLING_SIZE;
     }
 
     // perform a horizontal addition
     // the add 2 results of h-addition
-    const __m128d sumh1 = _mm_hadd_pd(sum1, sum1);
-    const __m128d sumh2 = _mm_hadd_pd(sum2, sum2);
-    const __m128d sumh = _mm_add_pd(sumh1, sumh2);
+    // const __m128d sumh1 = _mm_hadd_pd(sum1, sum1);
+    // const __m128d sumh2 = _mm_hadd_pd(sum2, sum2);
+    // const __m128d sumh = _mm_add_pd(sumh1, sumh2);
+    const __m128d sums = _mm_add_pd(sum1, sum2);
+    const __m128d sumh = _mm_add_pd(sums, _mm_shuffle_pd(sums, sums, 0x01));
     total += _mm_cvtsd_f64(sumh);
 
     // handle remaining elements
@@ -410,12 +409,11 @@ inline void vecscale_sse_double(const double* x,
     const double* end = x + n;
 
     // loop unrolling
-    const std::size_t unroll_size = 4;
-    const std::size_t num_unrolls = n / unroll_size;
+    const std::size_t num_unrollings = n / UNROLLING_SIZE;
 
     // load constant into register
     const __m128d scalar = _mm_set1_pd(c);
-    for (std::size_t i = 0; i < num_unrolls; ++i) {
+    for (std::size_t i = 0; i < num_unrollings; ++i) {
         // load xptr and xptr + 2
         const __m128d xvec1 = _mm_loadu_pd(xptr);
         const __m128d xvec2 = _mm_loadu_pd(xptr + 2);
@@ -425,9 +423,9 @@ inline void vecscale_sse_double(const double* x,
         // put results back to out pointer
         _mm_storeu_pd(outptr, x_mul_c1);
         _mm_storeu_pd(outptr + 2, x_mul_c2);
-        // increment by unroll_size
-        xptr += unroll_size;
-        outptr += unroll_size;
+        // increment by UNROLLING_SIZE
+        xptr += UNROLLING_SIZE;
+        outptr += UNROLLING_SIZE;
     }
 
     // handle remaining elements
@@ -492,20 +490,19 @@ inline void vecadd_sse_double(const double* x,
     const double* end = x + n;
 
     // loop unrolling
-    const std::size_t unroll_size = 4;
-    const std::size_t num_unrolls = n / unroll_size;
+    const std::size_t num_unrollings = n / UNROLLING_SIZE;
 
     // main loop
-    for (std::size_t i = 0; i < num_unrolls; ++i) {
+    for (std::size_t i = 0; i < num_unrollings; ++i) {
         const __m128d xvec1 = _mm_loadu_pd(xptr);
         const __m128d xvec2 = _mm_loadu_pd(xptr + 2);
         const __m128d yvec1 = _mm_loadu_pd(yptr);
         const __m128d yvec2 = _mm_loadu_pd(yptr + 2);
         _mm_storeu_pd(outptr, _mm_add_pd(xvec1, yvec1));
         _mm_storeu_pd(outptr + 2, _mm_add_pd(xvec2, yvec2));
-        xptr += unroll_size;
-        yptr += unroll_size;
-        outptr += unroll_size;
+        xptr += UNROLLING_SIZE;
+        yptr += UNROLLING_SIZE;
+        outptr += UNROLLING_SIZE;
     }
 
     // handle remaining elements
@@ -547,15 +544,14 @@ inline void vecadd_sse_double(const double* x,
     const double* end = x + n;
 
     // loop unrolling
-    const std::size_t unroll_size = 4;
-    const std::size_t num_unrolls = n / unroll_size;
+    const std::size_t num_unrollings = n / UNROLLING_SIZE;
 
     // define aligned bound
     // const double* aligned_end = xptr + ((end - xptr) & ~1ULL);
 
     // load constant c into register
     const __m128d scalar = _mm_set1_pd(c);
-    for (std::size_t i = 0; i < num_unrolls; ++i) {
+    for (std::size_t i = 0; i < num_unrollings; ++i) {
         // load xvec and yvec to 2 register
         const __m128d xvec1 = _mm_loadu_pd(xptr);
         const __m128d xvec2 = _mm_loadu_pd(xptr + 2);
@@ -568,9 +564,9 @@ inline void vecadd_sse_double(const double* x,
         _mm_storeu_pd(outptr, _mm_add_pd(x_mul_c1, yvec1));
         _mm_storeu_pd(outptr + 2, _mm_add_pd(x_mul_c2, yvec2));
         // increment
-        xptr += unroll_size;
-        yptr += unroll_size;
-        outptr += unroll_size;
+        xptr += UNROLLING_SIZE;
+        yptr += UNROLLING_SIZE;
+        outptr += UNROLLING_SIZE;
     }
 
     const std::size_t remainder = end - xptr;
@@ -611,11 +607,10 @@ inline void vecdiff_sse_double(const double* x,
     const double* end = x + n;
 
     // loop unrolling
-    const std::size_t unroll_size = 4;
-    const std::size_t num_unrolls = n / unroll_size;
+    const std::size_t num_unrollings = n / UNROLLING_SIZE;
 
     // main SIMD loop
-    for (std::size_t i = 0; i < num_unrolls; ++i) {
+    for (std::size_t i = 0; i < num_unrollings; ++i) {
         // load x, y to register
         const __m128d xvec1 = _mm_loadu_pd(xptr);
         const __m128d xvec2 = _mm_loadu_pd(xptr + 2);
@@ -625,9 +620,9 @@ inline void vecdiff_sse_double(const double* x,
         _mm_storeu_pd(outptr, _mm_sub_pd(xvec1, yvec1));
         _mm_storeu_pd(outptr + 2, _mm_sub_pd(xvec2, yvec2));
         // increment
-        xptr += unroll_size;
-        yptr += unroll_size;
-        outptr += unroll_size;
+        xptr += UNROLLING_SIZE;
+        yptr += UNROLLING_SIZE;
+        outptr += UNROLLING_SIZE;
     }
 
     // handle remaining elements
@@ -666,34 +661,33 @@ inline double vecdot_sse_double(const double* x,
     const double* end = x + n;
 
     // loop unrolling
-    const std::size_t unroll_size = 4;
-    const std::size_t num_unrolls = n / unroll_size;
+    const std::size_t num_unrollings = n / UNROLLING_SIZE;
 
     // load sum of vec to register
     __m128d sum1 = _mm_setzero_pd();
     __m128d sum2 = _mm_setzero_pd();
-    for (std::size_t i = 0; i < num_unrolls; ++i) {
+    for (std::size_t i = 0; i < num_unrollings; ++i) {
         // load x, y to register
         const __m128d xvec1 = _mm_loadu_pd(xptr);
         const __m128d xvec2 = _mm_loadu_pd(xptr + 2);
         const __m128d yvec1 = _mm_loadu_pd(yptr);
         const __m128d yvec2 = _mm_loadu_pd(yptr + 2);
-        //
+        // x * y
         const __m128d x_mul_y1 = _mm_mul_pd(xvec1, yvec1);
         const __m128d x_mul_y2 = _mm_mul_pd(xvec2, yvec2);
         // sum += x * y
-        const __m128d sum1 = _mm_add_pd(sum1, x_mul_y1);
-        const __m128d sum2 = _mm_add_pd(sum2, x_mul_y2);
+        sum1 = _mm_add_pd(sum1, x_mul_y1);
+        sum2 = _mm_add_pd(sum2, x_mul_y2);
         // increment
-        xptr += unroll_size;
-        yptr += unroll_size;
+        xptr += UNROLLING_SIZE;
+        yptr += UNROLLING_SIZE;
     }
 
     // perform a horizontal addition
-    const __m128d sumh1 = _mm_hadd_pd(sum1, sum1);
-    const __m128d sumh2 = _mm_hadd_pd(sum2, sum2);
-    const __m128d sums = _mm_add_pd(sumh1, sumh2);
-    double total = _mm_cvtsd_f64(sums);
+    // Do not use: const __m128d sumh = _mm_hadd_pd(sums, sums);
+    const __m128d sums = _mm_add_pd(sum1, sum2);
+    const __m128d sumh = _mm_add_pd(sums, _mm_shuffle_pd(sums, sums, 0x01));
+    double total = _mm_cvtsd_f64(sumh);
 
     const std::size_t remainder = end - xptr;
     switch (remainder) {
@@ -734,11 +728,10 @@ inline void vecmul_sse_double(const double* x,
     const double* end = x + n;
 
     // loop unrolling
-    const std::size_t unroll_size = 4;
-    const std::size_t num_unrolls = n / unroll_size;
+    const std::size_t num_unrollings = n / UNROLLING_SIZE;
 
     // main loop
-    for (std::size_t i = 0; i < num_unrolls; ++i) {
+    for (std::size_t i = 0; i < num_unrollings; ++i) {
         const __m128d xvec1 = _mm_loadu_pd(xptr);
         const __m128d xvec2 = _mm_loadu_pd(xptr + 2);
         const __m128d yvec1 = _mm_loadu_pd(yptr);
@@ -747,9 +740,9 @@ inline void vecmul_sse_double(const double* x,
         _mm_storeu_pd(outptr, _mm_mul_pd(xvec1, yvec1));
         _mm_storeu_pd(outptr + 2, _mm_mul_pd(xvec2, yvec2));
         // increment
-        xptr += unroll_size;
-        yptr += unroll_size;
-        outptr += unroll_size;
+        xptr += UNROLLING_SIZE;
+        yptr += UNROLLING_SIZE;
+        outptr += UNROLLING_SIZE;
     }
 
     // handle remaining elements
@@ -761,12 +754,6 @@ inline void vecmul_sse_double(const double* x,
         default: break;
     }
 };
-
-
-
-
-
-
 
 }
 }
