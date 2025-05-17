@@ -7,9 +7,6 @@
 namespace sgdlib {
 namespace detail {
 
-/**
- *
- */
 template <typename T>
 void vecset_sse(T* x, const T c, std::size_t n) {
     if constexpr (std::is_same_v<T, float>) {
@@ -20,9 +17,6 @@ void vecset_sse(T* x, const T c, std::size_t n) {
     }
 }
 
-/**
- *
- */
 template <typename T>
 void veccpy_sse(const T* x, std::size_t n, T* out) {
     if constexpr (std::is_same_v<T, float>) {
@@ -33,9 +27,6 @@ void veccpy_sse(const T* x, std::size_t n, T* out) {
     }
 }
 
-/**
- *
- */
 template <typename T>
 void vecncpy_sse(const T* x, std::size_t n, T* out) {
     if constexpr (std::is_same_v<T, float>) {
@@ -46,9 +37,6 @@ void vecncpy_sse(const T* x, std::size_t n, T* out) {
     }
 }
 
-/**
- *
- */
 template <typename T>
 void vecclip_sse(T* x, T min, T max, std::size_t n) {
     if constexpr (std::is_same_v<T, float>) {
@@ -59,10 +47,6 @@ void vecclip_sse(T* x, T min, T max, std::size_t n) {
     }
 };
 
-
-/**
- *
-*/
 template <typename T>
 bool hasinf_sse(const T* x, std::size_t n) {
     bool retval;
@@ -75,9 +59,6 @@ bool hasinf_sse(const T* x, std::size_t n) {
     return retval;
 };
 
-/**
- *
- */
 template <typename T>
 T vecnorm2_sse(const T* x, std::size_t n, bool squared) {
     T retval;
@@ -90,9 +71,6 @@ T vecnorm2_sse(const T* x, std::size_t n, bool squared) {
     return retval;
 };
 
-/**
- *
- */
 template <typename T>
 T vecnorm1_sse(const T* x, std::size_t n) {
     T retval;
@@ -105,9 +83,6 @@ T vecnorm1_sse(const T* x, std::size_t n) {
     return retval;
 };
 
-/**
- *
- */
 template <typename T>
 void vecscale_sse(const T* x, const T c, std::size_t n, T* out) {
     if constexpr (std::is_same_v<T, float>) {
@@ -118,9 +93,6 @@ void vecscale_sse(const T* x, const T c, std::size_t n, T* out) {
     }
 };
 
-/**
- *
- */
 template <typename T>
 void vecscale_sse(const T* xbegin, const T* xend, const T c, std::size_t n, T* out) {
     if constexpr (std::is_same_v<T, float>) {
@@ -131,9 +103,6 @@ void vecscale_sse(const T* xbegin, const T* xend, const T c, std::size_t n, T* o
     }
 };
 
-/**
- *
- */
 template <typename T>
 void vecadd_sse(const T* x, const T* y, std::size_t n, std::size_t m, T* out) {
     if constexpr (std::is_same_v<T, float>) {
@@ -185,7 +154,6 @@ void vecmul_sse(const T* x, const T* y, std::size_t n, std::size_t m, T* out) {
         vecmul_sse_double(x, y, n, m, out);
     }
 };
-
 
 } // namespace detail
 } // namespace sgdlib
