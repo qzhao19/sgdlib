@@ -1,7 +1,7 @@
 #ifndef DATA_DATASET_MANAGER_HPP_
 #define DATA_DATASET_MANAGER_HPP_
 
-#include "common/consts.hpp"
+#include "common/constants.hpp"
 #include "common/prereqs.hpp"
 #include "common/predefs.hpp"
 #include "common/logging.hpp"
