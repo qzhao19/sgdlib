@@ -1,5 +1,5 @@
-#ifndef MATH_MATH_KERNELS_OPS_ANSI_HPP_
-#define MATH_MATH_KERNELS_OPS_ANSI_HPP_
+#ifndef MATH_KERNELS_OPS_ANSI_HPP_
+#define MATH_KERNELS_OPS_ANSI_HPP_
 
 #include "common/logging.hpp"
 #include "common/prereqs.hpp"
@@ -7,19 +7,48 @@
 namespace sgdlib {
 namespace detail {
 
-
+/**
+ * @brief Sets all elements of the vector to the specified constant value.
+ *
+ * @tparam T The type of elements in the vector.
+ *
+ * @param[in, out] x The vector to be modified.
+ * @param[in] c The constant value to set.
+ *
+ * @note This function modifies the input vector in place.
+ *       The function is marked as inline, which is suitable for small functions
+ *       to reduce the overhead of function calls.
+ */
 template<typename T>
-void vecset(const T c, std::vector<T>& x) {
+void vecset_ansi(std::vector<T>& x, const T c) {
     std::fill(x.begin(), x.end(), c);
 }
 
+/**
+ * @brief Copies the elements from the input vector to the output vector.
+ *
+ * @tparam T The type of elements in the vector.
+ *
+ * @param[in] x The input vector to be copied.
+ * @param[in, out] out The output vector to store the copied elements.
+ *
+ */
 template<typename T>
-void veccpy(const std::vector<T>& x, std::vector<T>& out) {
+void veccpy_ansi(const std::vector<T>& x, std::vector<T>& out) {
     std::copy(x.begin(), x.end(), out.begin());
 }
 
+/**
+ * @brief Copies the negative elements from the input vector to the output vector.
+ *
+ * @tparam T The type of elements in the vector.
+ *
+ * @param[in] x The input vector to be copied.
+ * @param[in, out] out The output vector to store the copied elements.
+ *
+ */
 template<typename T>
-void vecncpy(const std::vector<T>& x, std::vector<T>& out) {
+void vecncpy_ansi(const std::vector<T>& x, std::vector<T>& out) {
     std::transform(x.begin(), x.end(),
                    out.begin(),
                    [](const T& val) { return -val; });
@@ -158,9 +187,9 @@ inline void vecscale_ansi(const T* xbegin,
  * @param[out] out The output vector where the result of the element-wise addition will be stored.
  *
  * @example
- * std::vector<int> vec1 = {1, 2, 3};
- * std::vector<int> vec2 = {4, 5, 6};
- * std::vector<int> result(3);
+ * sgdlib::vector<int> vec1 = {1, 2, 3};
+ * sgdlib::vector<int> vec2 = {4, 5, 6};
+ * sgdlib::vector<int> result(3);
  * vecadd_ansi(vec1, vec2, result);
  * // result will be {5, 7, 9}
  */
@@ -189,10 +218,10 @@ inline void vecadd_ansi(const std::vector<T>& x,
  * @param out The output vector where the result of the element-wise scaled addition will be stored.
  *
  * @example
- * std::vector<int> vec1 = {1, 2, 3};
- * std::vector<int> vec2 = {4, 5, 6};
+ * sgdlib::vector<int> vec1 = {1, 2, 3};
+ * sgdlib::vector<int> vec2 = {4, 5, 6};
  * int scale_factor = 2;
- * std::vector<int> result(3);
+ * sgdlib::vector<int> result(3);
  * vecadd_ansi(vec1, vec2, scale_factor, result);
  * // result will be {6, 9, 12} because (1*2 + 4)=6, (2*2 + 5)=9, (3*2 + 6)=12
  *
@@ -221,9 +250,9 @@ inline void vecadd_ansi(const std::vector<T>& x,
  * @param out The output vector where the result of the element-wise difference will be stored.
  *
  * @example
- * std::vector<int> vec1 = {1, 2, 3};
- * std::vector<int> vec2 = {4, 5, 6};
- * std::vector<int> result(3);
+ * sgdlib::vector<int> vec1 = {1, 2, 3};
+ * sgdlib::vector<int> vec2 = {4, 5, 6};
+ * sgdlib::vector<int> result(3);
  * vecdiff_ansi(vec1, vec2, result);
  * // result will be {-3, -3, -3}
  */
@@ -276,9 +305,9 @@ inline T vecdot_ansi(const std::vector<T>& x,
  *                 element-wise multiplication will be stored.
  *
  * @example
- * std::vector<int> vec1 = {1, 2, 3};
- * std::vector<int> vec2 = {4, 5, 6};
- * std::vector<int> result(3);
+ * sgdlib::vector<int> vec1 = {1, 2, 3};
+ * sgdlib::vector<int> vec2 = {4, 5, 6};
+ * sgdlib::vector<int> result(3);
  * vecmul_ansi(vec1, vec2, result);
  * // result will be {4, 10, 18}
  */
@@ -296,4 +325,4 @@ inline void vecmul_ansi(const std::vector<T>& x,
 
 }
 }
-#endif // MATH_MATH_KERNELS_OPS_ANSI_HPP_
+#endif // MATH_KERNELS_OPS_ANSI_HPP_
