@@ -110,16 +110,26 @@ namespace detail {
 
 #if defined(USE_SSE)
     #include <smmintrin.h> // SSE4.2
-    constexpr std::uintptr_t MEMORY_ALIGNMENT_MASK = 0xF;
-    constexpr std::size_t DEFAULT_MEMORY_ALIGNMENT = 16;
+    constexpr std::size_t DTYPE_ELEMS_PER_REGISTER = 2; // nums of double stored in register
+    constexpr std::size_t DTYPE_UNROLLING_FACTOR = 2;   // double-precision expansion factor
+    constexpr std::size_t DTYPE_UNROLLING_SIZE =
+        DTYPE_ELEMS_PER_REGISTER * DTYPE_UNROLLING_FACTOR;
 #elif defined(USE_AVX)
     #include <immintrin.h> // AVX2
-    constexpr std::uintptr_t MEMORY_ALIGNMENT_MASK = 0x1F;
-    constexpr std::size_t DEFAULT_MEMORY_ALIGNMENT = 32;
+    // float type
+    constexpr std::size_t FTYPE_ELEMS_PER_REGISTER = 8;  // nums of float stored in register
+    constexpr std::size_t FTYPE_UNROLLING_FACTOR = 2;    // single-precision expansion factor
+    constexpr std::size_t FTYPE_UNROLLING_SIZE  =
+        FTYPE_ELEMS_PER_REGISTER * FTYPE_UNROLLING_FACTOR; // 16
+
+    // double type
+    constexpr std::size_t DTYPE_ELEMS_PER_REGISTER = 4; // nums of double stored in register
+    constexpr std::size_t DTYPE_UNROLLING_FACTOR = 4;   // double-precision expansion factor
+    constexpr std::size_t DTYPE_UNROLLING_SIZE =
+        DTYPE_ELEMS_PER_REGISTER * DTYPE_UNROLLING_FACTOR; // 16
+
 #else
     #pragma message("Running in scalar mode (define USE_SSE or USE_AVX for SIMD acceleration)")
-    constexpr std::size_t DEFAULT_MEMORY_ALIGNMENT = alignof(std::max_align_t);
-    constexpr std::uintptr_t MEMORY_ALIGNMENT_MASK = DEFAULT_MEMORY_ALIGNMENT - 1;
 #endif
 
 #define GLOG_USE_GLOG_EXPORT
