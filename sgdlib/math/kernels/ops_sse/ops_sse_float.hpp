@@ -243,10 +243,10 @@ inline float vecnorm2_sse_float(const float* x, std::size_t n, bool squared) noe
         sum = _mm_add_ps(sum, _mm_mul_ps(xvec, xvec));
     }
 
-    const __m128 shuf = _mm_movehdup_ps(sum);  // [a,b,c,d] -> [b,b,d,d]
-    const __m128 sumh = _mm_add_ps(sum, shuf); // [a+b, b+b, c+d, d+d]
-    const __m128 sums = _mm_add_ss(sumh, _mm_movehl_ps(sumh, sumh)); // add [a+b, c+d] -> [a+b+c+d]
-    total += _mm_cvtss_f32(sums);
+    const __m128 shuffle = _mm_movehdup_ps(sum);  // [a,b,c,d] -> [b,b,d,d]
+    const __m128 combine_sum = _mm_add_ps(sum, shuffle); // [a+b, b+b, c+d, d+d]
+    const __m128 scalar_sum = _mm_add_ss(combine_sum, _mm_movehl_ps(combine_sum, combine_sum)); // add [a+b, c+d] -> [a+b+c+d]
+    total += _mm_cvtss_f32(scalar_sum);
 
     // handle remaining elements
     const std::size_t remainder = end - xptr;
@@ -295,10 +295,11 @@ inline float vecnorm1_sse_float(const float* x, std::size_t n) noexcept {
     }
 
     // sum = [a,b,c,d] -> [b,b,d,d] -> [a+b, b+c, c+d, d+0] -> [a+b+c+d, c+d, d+0, 0]
-    const __m128 shuf = _mm_movehdup_ps(sum);  // [a,b,c,d] -> [b,b,d,d]
-    const __m128 sums = _mm_add_ps(sum, shuf); // [a+b, b+b, c+d, d+d]
-    const __m128 sumv = _mm_add_ss(sums, _mm_movehl_ps(sums, sums)); // add [a+b, c+d] -> [a+b+c+d]
-    total += _mm_cvtss_f32(sumv);
+    const __m128 shuffle = _mm_movehdup_ps(sum);  // [a,b,c,d] -> [b,b,d,d]
+    const __m128 combine_sum = _mm_add_ps(sum, shuffle); // [a+b, b+b, c+d, d+d]
+    // add [a+b, c+d] -> [a+b+c+d]
+    const __m128 scalar_sum = _mm_add_ss(combine_sum, _mm_movehl_ps(combine_sum, combine_sum));
+    total += _mm_cvtss_f32(scalar_sum);
 
     const std::size_t remainder = end - xptr;
     switch (remainder) {
@@ -582,10 +583,10 @@ inline float vecdot_sse_float(const float* x,
     // _mm_add_ps: tmp = [a+c,b+d,c+c,d+d]
     // 0x55 = 0b01'01'01'01，
     // _mm_shuffle_ps(tmp, tmp, 0x55) → [b+d, b+d, b+d, b+d]
-    const __m128 shuf = _mm_movehl_ps(sum, sum);
-    const __m128 tmp = _mm_add_ps(sum, shuf);
-    const __m128 sumh = _mm_add_ps(tmp, _mm_shuffle_ps(tmp, tmp, 0x55));
-    float total = _mm_cvtss_f32(sumh);
+    const __m128 shuffle = _mm_movehl_ps(sum, sum);
+    const __m128 combine_sum = _mm_add_ps(sum, shuffle);
+    const __m128 scalar_sum = _mm_add_ps(combine_sum, _mm_shuffle_ps(combine_sum, combine_sum, 0x55));
+    float total = _mm_cvtss_f32(scalar_sum);
 
     const std::size_t remainder = end - xptr;
     switch (remainder) {
