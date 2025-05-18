@@ -28,16 +28,16 @@ inline void vecset_avx_float(float* x, const float c, std::size_t n) noexcept {
     // load scalar into register
     const __m256 scalar = _mm256_set1_ps(c);
     // handle aligned elements, process 16 elemts for each loop
-    for (; xptr + UNROLLING_SIZE <= end; xptr += UNROLLING_SIZE) {
+    for (; xptr + FTYPE_UNROLLING_SIZE <= end; xptr += FTYPE_UNROLLING_SIZE) {
         _mm256_storeu_ps(xptr, scalar);
         _mm256_storeu_ps(xptr + 8, scalar);
     }
 
     // handle teh last 8 * 15 elements
     std::size_t remainder = end - xptr;
-    if (remainder >= FTYPE_ELEMS_PER_BLOCK) {
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
         _mm256_storeu_ps(xptr, scalar);
-        xptr += FTYPE_ELEMS_PER_BLOCK;
+        xptr += FTYPE_ELEMS_PER_REGISTER;
     }
 
     // handle the last 1 -7 remaining elemts
@@ -70,7 +70,7 @@ void veccpy_avx_float(const float* x, std::size_t n, float* out) noexcept {
     const float* end = x + n;
 
     // loop unrolling
-    const std::size_t num_unrolls = n / UNROLLING_SIZE;
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
 
     // main loop to process simd
     for (std::size_t i = 0; i < num_unrolls; ++i) {
@@ -80,17 +80,17 @@ void veccpy_avx_float(const float* x, std::size_t n, float* out) noexcept {
         _mm256_storeu_ps(outptr, xvec0);
         _mm256_storeu_ps(outptr + 8, xvec1);
         // increment
-        xptr += UNROLLING_SIZE;
-        outptr += UNROLLING_SIZE;
+        xptr += FTYPE_UNROLLING_SIZE;
+        outptr += FTYPE_UNROLLING_SIZE;
     }
 
     // handle the last 8 - 15 elements
     std::size_t remainder = end - xptr;
-    if (remainder >= FTYPE_ELEMS_PER_BLOCK) {
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
         const __m256 xvec = _mm256_loadu_ps(xptr);
         _mm256_storeu_ps(outptr, xvec);
-        xptr += FTYPE_ELEMS_PER_BLOCK;
-        outptr += FTYPE_ELEMS_PER_BLOCK;
+        xptr += FTYPE_ELEMS_PER_REGISTER;
+        outptr += FTYPE_ELEMS_PER_REGISTER;
     }
 
     // handle the last 1 -7 remaining elemts
@@ -123,7 +123,7 @@ void vecncpy_avx_float(const float* x, std::size_t n, float* out) noexcept {
     const float* end = x + n;
 
     // loop unrolling
-    const std::size_t num_unrolls = n / UNROLLING_SIZE;
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
 
     // define sign_flip mask
     const __m256 sign_flip = _mm256_castsi256_ps(
@@ -141,18 +141,18 @@ void vecncpy_avx_float(const float* x, std::size_t n, float* out) noexcept {
         _mm256_storeu_ps(outptr, xvec0);
         _mm256_storeu_ps(outptr + 8, xvec1);
         // increment
-        xptr += UNROLLING_SIZE;
-        outptr += UNROLLING_SIZE;
+        xptr += FTYPE_UNROLLING_SIZE;
+        outptr += FTYPE_UNROLLING_SIZE;
     }
 
     // handle teh last 8 - 15 elements
     std::size_t remainder = end - xptr;
-    if (remainder >= FTYPE_ELEMS_PER_BLOCK) {
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
         __m256 xvec = _mm256_loadu_ps(xptr);
         xvec = _mm256_xor_ps(xvec, sign_flip);
         _mm256_storeu_ps(outptr, xvec);
-        xptr += FTYPE_ELEMS_PER_BLOCK;
-        outptr += FTYPE_ELEMS_PER_BLOCK;
+        xptr += FTYPE_ELEMS_PER_REGISTER;
+        outptr += FTYPE_ELEMS_PER_REGISTER;
     }
 
     // handle the last 1 -7 remaining elemts
@@ -183,7 +183,7 @@ inline void vecclip_avx_float(float* x, float min, float max, std::size_t n) noe
     const float* end = x + n;
 
     // loop unrolling
-    const std::size_t num_unrolls = n / UNROLLING_SIZE;
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
 
     // load const values min/max to SIMD register
     const __m256 xmin = _mm256_set1_ps(min);
@@ -199,16 +199,16 @@ inline void vecclip_avx_float(float* x, float min, float max, std::size_t n) noe
         _mm256_storeu_ps(xptr + 8, xvec1);
 
          // increment
-        xptr += UNROLLING_SIZE;
+        xptr += FTYPE_UNROLLING_SIZE;
     }
 
     // handle teh last 8 - 15 elements
     std::size_t remainder = end - xptr;
-    if (remainder >= FTYPE_ELEMS_PER_BLOCK) {
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
         __m256 xvec = _mm256_loadu_ps(xptr);
         xvec = _mm256_min_ps(_mm256_max_ps(xvec, xmin), xmax);
         _mm256_storeu_ps(xptr, xvec);
-        xptr += FTYPE_ELEMS_PER_BLOCK;
+        xptr += FTYPE_ELEMS_PER_REGISTER;
     }
 
     // handle the last 1 - 7 remaining elemts
@@ -240,7 +240,7 @@ inline bool hasinf_avx_float(const float* x, std::size_t n) noexcept {
     const float* xptr = x;
     const float* end = x + n;
     // loop unrolling
-    const std::size_t num_unrolls = n / UNROLLING_SIZE;
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
 
     // load const val to register
     const __m256 pos_inf = _mm256_set1_ps(INF);
@@ -257,19 +257,19 @@ inline bool hasinf_avx_float(const float* x, std::size_t n) noexcept {
             return true;
         }
 
-        xptr += UNROLLING_SIZE;
+        xptr += FTYPE_UNROLLING_SIZE;
     }
 
     // handle teh last 8 - 15 elements
     std::size_t remainder = end - xptr;
-    if (remainder >= FTYPE_ELEMS_PER_BLOCK) {
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
         const __m256 xvec = _mm256_loadu_ps(xptr);
         const __m256 cmp = _mm256_or_ps(_mm256_cmp_ps(xvec, pos_inf, _CMP_EQ_OQ),
                                         _mm256_cmp_ps(xvec, neg_inf, _CMP_EQ_OQ));
         if (_mm256_movemask_ps(cmp) != 0) {
             return true;
         }
-        xptr += FTYPE_ELEMS_PER_BLOCK;
+        xptr += FTYPE_ELEMS_PER_REGISTER;
     }
 
     // handle the last 1 - 7 remaining elemts
@@ -303,7 +303,7 @@ inline float vecnorm2_avx_float(const float* x, std::size_t n, bool squared) noe
     float total = 0.0f;
 
     // loop unrolling
-    const std::size_t num_unrolls = n / UNROLLING_SIZE;
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
 
     // main loop: memory unaligned
     // init sum0, sum1 to 0
@@ -318,7 +318,7 @@ inline float vecnorm2_avx_float(const float* x, std::size_t n, bool squared) noe
         sum0 = _mm256_fmadd_ps(xvec0, xvec0, sum0);
         sum1 = _mm256_fmadd_ps(xvec1, xvec1, sum1);
         // increment
-        xptr += UNROLLING_SIZE;
+        xptr += FTYPE_UNROLLING_SIZE;
     }
 
     // combine sum0 and sum1
@@ -326,11 +326,11 @@ inline float vecnorm2_avx_float(const float* x, std::size_t n, bool squared) noe
 
     // handle teh last 8 - 15 elements
     std::size_t remainder = end - xptr;
-    if (remainder >= FTYPE_ELEMS_PER_BLOCK) {
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
         __m256 xvec = _mm256_loadu_ps(xptr);
         // sums = _mm256_add_ps(sums, _mm256_mul_ps(xvec, xvec));
         sums = _mm256_fmadd_ps(xvec, xvec, sums);
-        xptr += FTYPE_ELEMS_PER_BLOCK;
+        xptr += FTYPE_ELEMS_PER_REGISTER;
     }
 
     // exact avx horizontal sum
@@ -343,12 +343,16 @@ inline float vecnorm2_avx_float(const float* x, std::size_t n, bool squared) noe
     //   [(a+e)+(b+f),(b+f)+(b+f),(c+g)+(d+h),(d+h)+(d+h)]
     // + [(c+g)+(d+h),(d+h)+(d+h),(c+g)+(d+h),(d+h)+(d+h)]
     // =                   [(a+e)+(b+f)+(c+g)+(d+h),*,*,*]
-    __m128 sum128 = _mm_add_ps(_mm256_castps256_ps128(sums),
-                               _mm256_extractf128_ps(sums, 1));
-    sum128 = _mm_add_ps(sum128, _mm_movehdup_ps(sum128));
-    sum128 = _mm_add_ss(sum128, _mm_movehl_ps(sum128, sum128));
+    const __m128 partial_sum = _mm_add_ps(_mm256_castps256_ps128(sums),
+                                          _mm256_extractf128_ps(sums, 1));
+    const __m128 shuffle = _mm_movehdup_ps(partial_sum);
+    const __m128 combine_sum = _mm_add_ps(partial_sum, shuffle);
+    const __m128 scalar_sum = _mm_add_ss(combine_sum, _mm_movehl_ps(combine_sum, combine_sum));
+
+    // sum128 = _mm_add_ps(sum128, _mm_movehdup_ps(sum128));
+    // sum128 = _mm_add_ss(sum128, _mm_movehl_ps(sum128, sum128));
     // extract first element
-    total += _mm_cvtss_f32(sum128);
+    total += _mm_cvtss_f32(scalar_sum);
 
     // handle the last 1 - 7 remaining elemts
     if (end > xptr) {
@@ -381,7 +385,7 @@ inline float vecnorm1_avx_float(const float* x, std::size_t n) noexcept {
     float total = 0.0f;
 
     // loop unrolling
-    const std::size_t num_unrolls = n / UNROLLING_SIZE;
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
 
     // _mm256_set1_epi32: generate a sequence which contains 8
     // 32bit int value, each value is 0x7FFFFFFF
@@ -396,7 +400,7 @@ inline float vecnorm1_avx_float(const float* x, std::size_t n) noexcept {
         // _mm_and_ps: bitwise '&' operation between mask and vec
         sum0 = _mm256_add_ps(sum0, _mm256_and_ps(xvec0, abs_mask));
         sum1 = _mm256_add_ps(sum1, _mm256_and_ps(xvec1, abs_mask));
-        xptr += UNROLLING_SIZE;
+        xptr += FTYPE_UNROLLING_SIZE;
     }
 
     // combine sum0 and sum1
@@ -404,10 +408,10 @@ inline float vecnorm1_avx_float(const float* x, std::size_t n) noexcept {
 
     // handle teh last 8 - 15 elements
     std::size_t remainder = end - xptr;
-    if (remainder >= FTYPE_ELEMS_PER_BLOCK) {
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
         __m256 xvec = _mm256_loadu_ps(xptr);
         sums = _mm256_add_ps(sums, _mm256_and_ps(xvec, abs_mask));
-        xptr += FTYPE_ELEMS_PER_BLOCK;
+        xptr += FTYPE_ELEMS_PER_REGISTER;
     }
 
     // [a,b,c,d,e,f,g,h] -> [a,b,c,d]
@@ -418,11 +422,14 @@ inline float vecnorm1_avx_float(const float* x, std::size_t n) noexcept {
     //   [(a+e)+(b+f),(b+f)+(b+f),(c+g)+(d+h),(d+h)+(d+h)]
     // + [(c+g)+(d+h),(d+h)+(d+h),(c+g)+(d+h),(d+h)+(d+h)]
     // =                   [(a+e)+(b+f)+(c+g)+(d+h),*,*,*]
-    __m128 sum128 = _mm_add_ps(_mm256_castps256_ps128(sums),
-                               _mm256_extractf128_ps(sums, 1));
-    sum128 = _mm_add_ps(sum128, _mm_movehdup_ps(sum128));
-    sum128 = _mm_add_ss(sum128, _mm_movehl_ps(sum128, sum128));
-    total += _mm_cvtss_f32(sum128);
+    const __m128 partial_sum = _mm_add_ps(_mm256_castps256_ps128(sums),
+                                          _mm256_extractf128_ps(sums, 1));
+    const __m128 shuffle = _mm_movehdup_ps(partial_sum);
+    const __m128 combine_sum = _mm_add_ps(partial_sum, shuffle);
+    const __m128 scalar_sum = _mm_add_ss(combine_sum, _mm_movehl_ps(combine_sum, combine_sum));
+    // sum128 = _mm_add_ps(sum128, _mm_movehdup_ps(sum128));
+    // sum128 = _mm_add_ss(sum128, _mm_movehl_ps(sum128, sum128));
+    total += _mm_cvtss_f32(scalar_sum);
 
     // handle 1 - 7 last remaing elements
     if (end > xptr) {
@@ -460,7 +467,7 @@ inline void vecscale_avx_float(const float* x,
     const float* end = x + n;
 
     // loop unrolling
-    const std::size_t num_unrolls = n / UNROLLING_SIZE;
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
 
     // load constant c into register
     const __m256 scalar = _mm256_set1_ps(c);
@@ -470,17 +477,17 @@ inline void vecscale_avx_float(const float* x,
         __m256 xvec1 = _mm256_loadu_ps(xptr + 8);
         _mm256_storeu_ps(outptr, _mm256_mul_ps(xvec0, scalar));
         _mm256_storeu_ps(outptr + 8, _mm256_mul_ps(xvec1, scalar));
-        xptr += UNROLLING_SIZE;
-        outptr += UNROLLING_SIZE;
+        xptr += FTYPE_UNROLLING_SIZE;
+        outptr += FTYPE_UNROLLING_SIZE;
     }
 
     // handle teh last 8 - 15 elements
     std::size_t remainder = end - xptr;
-    if (remainder >= FTYPE_ELEMS_PER_BLOCK) {
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
         __m256 xvec = _mm256_loadu_ps(xptr);
         _mm256_storeu_ps(outptr, _mm256_mul_ps(xvec, scalar));
-        xptr += FTYPE_ELEMS_PER_BLOCK;
-        outptr += FTYPE_ELEMS_PER_BLOCK;
+        xptr += FTYPE_ELEMS_PER_REGISTER;
+        outptr += FTYPE_ELEMS_PER_REGISTER;
     }
 
     // handle last 1 - 7 remaining elements
@@ -511,7 +518,8 @@ inline void vecscale_avx_float(const float* xbegin,
 };
 
 /**
- *
+ * @brief perform addition of float vectors on element-wise
+ *        out[i] = x[i] + y[i]
  */
 inline void vecadd_avx_float(const float* x,
                              const float* y,
@@ -538,7 +546,7 @@ inline void vecadd_avx_float(const float* x,
     const float* end = x + n;
 
     // loop unrolling
-    const std::size_t num_unrolls = n / UNROLLING_SIZE;
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
 
     // main SIMD loop
     for (std::size_t i = 0; i < num_unrolls; ++i) {
@@ -548,20 +556,20 @@ inline void vecadd_avx_float(const float* x,
         __m256 yvec1 = _mm256_loadu_ps(yptr + 8);
         _mm256_storeu_ps(outptr, _mm256_add_ps(xvec0, yvec0));
         _mm256_storeu_ps(outptr + 8, _mm256_add_ps(xvec1, yvec1));
-        xptr += UNROLLING_SIZE;
-        yptr += UNROLLING_SIZE;
-        outptr += UNROLLING_SIZE;
+        xptr += FTYPE_UNROLLING_SIZE;
+        yptr += FTYPE_UNROLLING_SIZE;
+        outptr += FTYPE_UNROLLING_SIZE;
     }
 
     // handle teh last 8 - 15 elements
     std::size_t remainder = end - xptr;
-    if (remainder >= FTYPE_ELEMS_PER_BLOCK) {
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
         __m256 xvec = _mm256_loadu_ps(xptr);
         __m256 yvec = _mm256_loadu_ps(yptr);
         _mm256_storeu_ps(outptr, _mm256_add_ps(xvec, yvec));
-        xptr += FTYPE_ELEMS_PER_BLOCK;
-        yptr += FTYPE_ELEMS_PER_BLOCK;
-        outptr += FTYPE_ELEMS_PER_BLOCK;
+        xptr += FTYPE_ELEMS_PER_REGISTER;
+        yptr += FTYPE_ELEMS_PER_REGISTER;
+        outptr += FTYPE_ELEMS_PER_REGISTER;
     }
 
     // handle 1 - 7 remaining elements
@@ -574,7 +582,7 @@ inline void vecadd_avx_float(const float* x,
 };
 
 /**
- *
+ * @brief Performs double vector addition with scaling: out = c * x + y
  */
 inline void vecadd_avx_float(const float* x,
                              const float* y,
@@ -587,7 +595,7 @@ inline void vecadd_avx_float(const float* x,
     if (n == 0 || m == 0) return ;
     if (m != n) return ;
 
-    if (n < 8) {
+    if (n < 16) {
         for (std::size_t i = 0; i < n; ++i) {
             out[i] = c * x[i] + y[i];
         }
@@ -600,30 +608,45 @@ inline void vecadd_avx_float(const float* x,
     const float* yptr = y;
     const float* end = x + n;
 
-    // define aligned bound of input x
-    const float* aligned_end = xptr + ((end - xptr) & ~7ULL);
+    // loop unrolling
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
 
     // load constant c into register
     const __m256 scalar = _mm256_set1_ps(c);
+    for (std::size_t i = 0; i < num_unrolls; ++i) {
+        __m256 xvec0 = _mm256_loadu_ps(xptr);
+        __m256 yvec0 = _mm256_loadu_ps(yptr);
+        __m256 xvec1 = _mm256_loadu_ps(xptr + 8);
+        __m256 yvec1 = _mm256_loadu_ps(yptr + 8);
+        _mm256_storeu_ps(outptr, _mm256_fmadd_ps(xvec0, scalar, yvec0));
+        _mm256_storeu_ps(outptr + 8, _mm256_fmadd_ps(xvec1, scalar, yvec1));
+        xptr += FTYPE_UNROLLING_SIZE;
+        yptr += FTYPE_UNROLLING_SIZE;
+        outptr += FTYPE_UNROLLING_SIZE;
+    }
 
-    // start SIMD loop
-    for (; xptr < aligned_end; xptr += 8, yptr += 8, outptr += 8) {
-        const __m256 xvec = _mm256_loadu_ps(xptr);
-        const __m256 yvec = _mm256_loadu_ps(yptr);
-        _mm256_storeu_ps(outptr, _mm256_add_ps(_mm256_mul_ps(xvec, scalar), yvec));
+    // handle teh last 8 - 15 elements
+    std::size_t remainder = end - xptr;
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
+        __m256 xvec = _mm256_loadu_ps(xptr);
+        __m256 yvec = _mm256_loadu_ps(yptr);
+        _mm256_storeu_ps(outptr, _mm256_fmadd_ps(xvec, scalar, yvec));
+        xptr += FTYPE_ELEMS_PER_REGISTER;
+        yptr += FTYPE_ELEMS_PER_REGISTER;
+        outptr += FTYPE_ELEMS_PER_REGISTER;
     }
 
     // handle remaining elements
     if (end > xptr) {
-        const std::size_t remains = end - xptr;
-        for (std::size_t i = 0; i < remains; ++i) {
+        const std::size_t tails = end - xptr;
+        for (std::size_t i = 0; i < tails; ++i) {
             outptr[i] = c * xptr[i] + yptr[i];
         }
     }
 };
 
 /**
- *
+ * @brief Computes element-wise difference between two float arrays using AVX2 vectorization
  */
 inline void vecdiff_avx_float(const float* x,
                               const float* y,
@@ -636,7 +659,7 @@ inline void vecdiff_avx_float(const float* x,
     if (m != n) return ;
 
     // handle small size n < 4
-    if (n < 8) {
+    if (n < 16) {
         for (std::size_t i = 0; i < n; ++i) {
             out[i] = x[i] - y[i];
         }
@@ -649,27 +672,44 @@ inline void vecdiff_avx_float(const float* x,
     const float* yptr = y;
     const float* end = x + n;
 
-    // define aligned bound of input x
-    const float* aligned_end = xptr + ((end - xptr) & ~7ULL);
+    // loop unrolling
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
 
     // start SIMD loop
-    for (; xptr < aligned_end; xptr += 8, yptr += 8, outptr += 8) {
-        const __m256 xvec = _mm256_loadu_ps(xptr);
-        const __m256 yvec = _mm256_loadu_ps(yptr);
+    for (std::size_t i = 0; i < num_unrolls; ++i) {
+        __m256 xvec0 = _mm256_loadu_ps(xptr);
+        __m256 yvec0 = _mm256_loadu_ps(yptr);
+        __m256 xvec1 = _mm256_loadu_ps(xptr + 8);
+        __m256 yvec1 = _mm256_loadu_ps(yptr + 8);
+        _mm256_storeu_ps(outptr, _mm256_sub_ps(xvec0, yvec0));
+        _mm256_storeu_ps(outptr + 8, _mm256_sub_ps(xvec1, yvec1));
+        xptr += FTYPE_UNROLLING_SIZE;
+        yptr += FTYPE_UNROLLING_SIZE;
+        outptr += FTYPE_UNROLLING_SIZE;
+    }
+
+    // handle teh last 8 - 15 elements
+    std::size_t remainder = end - xptr;
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
+        __m256 xvec = _mm256_loadu_ps(xptr);
+        __m256 yvec = _mm256_loadu_ps(yptr);
         _mm256_storeu_ps(outptr, _mm256_sub_ps(xvec, yvec));
+        xptr += FTYPE_ELEMS_PER_REGISTER;
+        yptr += FTYPE_ELEMS_PER_REGISTER;
+        outptr += FTYPE_ELEMS_PER_REGISTER;
     }
 
     // handle remaining elements
     if (end > xptr) {
-        const std::size_t remains = end - xptr;
-        for (std::size_t i = 0; i < remains; ++i) {
+        const std::size_t tails = end - xptr;
+        for (std::size_t i = 0; i < tails; ++i) {
             outptr[i] = xptr[i] - yptr[i];
         }
     }
 };
 
 /**
- *
+ * @brief Computes the dot product of two float arrays using AVX vectorization
  */
 inline float vecdot_avx_float(const float* x,
                               const float* y,
@@ -681,7 +721,7 @@ inline float vecdot_avx_float(const float* x,
     if (n == 0) return 0.0f;
 
     // handle small size case n < 4
-    if (n < 8 && m < 8) {
+    if (n < 16) {
         float sum = 0.0f;
         for (std::size_t i = 0; i < n; ++i) {
             sum += x[i] * y[i];
@@ -690,46 +730,133 @@ inline float vecdot_avx_float(const float* x,
     }
 
     // define xptr and yptr point to x and y
+    float total = 0.0f;
     const float* xptr = x;
     const float* yptr = y;
     const float* end = x + n;
 
-    // define aligned bound of input x
-    const float* aligned_end = xptr + ((end - xptr) & ~7ULL);
+    // loop unrolling
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
 
     // load sum of vec to register
-    __m256 sum = _mm256_setzero_ps();
-
-    // loop array x and y in chunks of 8 elems
-    for (; xptr < aligned_end; xptr += 8, yptr += 8) {
-        const __m256 xvec = _mm256_loadu_ps(xptr);
-        const __m256 yvec = _mm256_loadu_ps(yptr);
-        sum = _mm256_add_ps(sum, _mm256_mul_ps(xvec, yvec));
+    __m256 sum0 = _mm256_setzero_ps();
+    __m256 sum1 = _mm256_setzero_ps();
+    // loop array x and y in chunks of 16 elems
+    for (std::size_t i = 0; i < num_unrolls; ++i) {
+        __m256 xvec0 = _mm256_loadu_ps(xptr);
+        __m256 yvec0 = _mm256_loadu_ps(yptr);
+        __m256 xvec1 = _mm256_loadu_ps(xptr + 8);
+        __m256 yvec1 = _mm256_loadu_ps(yptr + 8);
+        // sum0 = _mm256_add_ps(sum0, _mm256_mul_ps(xvec0, yvec0));
+        // sum1 = _mm256_add_ps(sum1, _mm256_mul_ps(xvec1, yvec1));
+        sum0 = _mm256_fmadd_ps(xvec0, yvec0, sum0);
+        sum1 = _mm256_fmadd_ps(xvec1, yvec1, sum1);
+        xptr += FTYPE_UNROLLING_SIZE;
+        yptr += FTYPE_UNROLLING_SIZE;
     }
 
-    //
-    const __m128 vlow = _mm256_castps256_ps128(sum);     // [a,b,c,d,e,f,g,h] -> [a,b,c,d]
-    const __m128 vhigh = _mm256_extractf128_ps(sum, 1);  // [a,b,c,d,e,f,g,h] -> [e,f,g,h]
-    const __m128 sum128 = _mm_add_ps(vlow, vhigh);       // [a+e,b+f,c+g,d+h]
-    const __m128 shuf = _mm_movehdup_ps(sum128);         // [a+e,b+f,c+g,d+h] -> [b+f,b+f,d+h,d+h]
-    const __m128 sumh = _mm_add_ps(sum128, shuf);        // [(a+e)+(b+f), (b+f)+(b+f), (c+g)+(d+h), (d+h)+(d+h)]
+    // combine sum0 and sum1
+    __m256 sums = _mm256_add_ps(sum0, sum1);
+
+    // handle teh last 8 - 15 elements
+    std::size_t remainder = end - xptr;
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
+        __m256 xvec = _mm256_loadu_ps(xptr);
+        __m256 yvec = _mm256_loadu_ps(yptr);
+        // sums =  _mm256_add_ps(sums, _mm256_mul_ps(xvec, yvec));
+        sums = _mm256_fmadd_ps(xvec, yvec, sums);
+        xptr += FTYPE_ELEMS_PER_REGISTER;
+        yptr += FTYPE_ELEMS_PER_REGISTER;
+    }
+
+    // [a,b,c,d,e,f,g,h] -> [a,b,c,d]
+    // [a,b,c,d,e,f,g,h] -> [e,f,g,h]
+    // [a+e,b+f,c+g,d+h]
+    // [a+e,b+f,c+g,d+h] -> [b+f,b+f,d+h,d+h]
+    // [(a+e)+(b+f), (b+f)+(b+f), (c+g)+(d+h), (d+h)+(d+h)]
     //   [(a+e)+(b+f),(b+f)+(b+f),(c+g)+(d+h),(d+h)+(d+h)]
     // + [(c+g)+(d+h),(d+h)+(d+h),(c+g)+(d+h),(d+h)+(d+h)]
     // =                   [(a+e)+(b+f)+(c+g)+(d+h),*,*,*]
-    const __m128 sums = _mm_add_ss(sumh, _mm_movehl_ps(sumh, sumh));
-    float total = _mm_cvtss_f32(sums);
+    const __m128 partial_sum = _mm_add_ps(_mm256_castps256_ps128(sums),
+                                          _mm256_extractf128_ps(sums, 1));
+    const __m128 shuffle = _mm_movehdup_ps(partial_sum);
+    const __m128 combine_sum = _mm_add_ps(partial_sum, shuffle);
+    const __m128 scalar_sum = _mm_add_ss(combine_sum, _mm_movehl_ps(combine_sum, combine_sum));
+    // extract first element
+    total += _mm_cvtss_f32(scalar_sum);
 
     // handle remaining elements
     if (end > xptr) {
-        const std::size_t remains = end - xptr;
-        for (std::size_t i = 0; i < remains; ++i) {
+        const std::size_t tails = end - xptr;
+        for (std::size_t i = 0; i < tails; ++i) {
             total += xptr[i] * yptr[i];
         }
     }
     return total;
 };
 
+/**
+ * @brief Performs element-wise multiplication of two float arrays using AVX2 intrinsics.
+ *        out[i] = x[i] * y[i]
+ */
+inline void vecmul_avx_float(const float* x,
+                             const float* y,
+                             std::size_t n,
+                             std::size_t m,
+                             float* out) noexcept {
+    if (x == nullptr || y == nullptr) return ;
+    if (out == nullptr) return ;
+    if (n == 0 || m == 0) return ;
+    if (m != n) return ;
 
+    // small size n < 16
+    if (n < 16) {
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] = x[i] * y[i];
+        }
+        return ;
+    }
+
+    // define pointers
+    float* outptr = out;
+    const float* xptr = x;
+    const float* yptr = y;
+    const float* end = x + n;
+
+    // define param for loop unrolling
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
+    // main loop to iter array x and y in chunks of 16 elems
+    for (std::size_t i = 0; i < num_unrolls; ++i) {
+        __m256 xvec0 = _mm256_loadu_ps(xptr);
+        __m256 yvec0 = _mm256_loadu_ps(yptr);
+        __m256 xvec1 = _mm256_loadu_ps(xptr + 8);
+        __m256 yvec1 = _mm256_loadu_ps(yptr + 8);
+        _mm256_storeu_ps(outptr, _mm256_mul_ps(xvec0, yvec0));
+        _mm256_storeu_ps(outptr + 8, _mm256_mul_ps(xvec1, yvec1));
+        xptr += FTYPE_UNROLLING_SIZE;
+        yptr += FTYPE_UNROLLING_SIZE;
+        outptr += FTYPE_UNROLLING_SIZE;
+    }
+
+    // handle teh last 8 - 15 elements
+    std::size_t remainder = end - xptr;
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
+        __m256 xvec = _mm256_loadu_ps(xptr);
+        __m256 yvec = _mm256_loadu_ps(yptr);
+        _mm256_storeu_ps(outptr, _mm256_mul_ps(xvec, yvec));
+        xptr += FTYPE_ELEMS_PER_REGISTER;
+        yptr += FTYPE_ELEMS_PER_REGISTER;
+        outptr += FTYPE_ELEMS_PER_REGISTER;
+    }
+
+    // handle last 1 -3 remaining elements
+    if (end > xptr) {
+        const std::size_t tails = end - xptr;
+        for (std::size_t i = 0; i < tails; ++i) {
+            outptr[i] = xptr[i] * yptr[i];
+        }
+    }
+};
 
 }
 }
