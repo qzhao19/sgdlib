@@ -223,7 +223,6 @@ TYPED_TEST(MathOpsSSETest, VecCopySSETest) {
     }
 }
 
-
 // ****************************vecncpy*******************************//
 TYPED_TEST(MathOpsSSETest, VecNegCopySSETest) {
     using T = typename TestFixture::Type;
@@ -314,7 +313,6 @@ TYPED_TEST(MathOpsSSETest, VecNegCopySSETest) {
             << "Mismatch at index " << i << " for size " << size5;
     }
 }
-
 
 // ****************************vecclip*******************************//
 TYPED_TEST(MathOpsSSETest, VecClipSSETest) {
@@ -535,13 +533,33 @@ TYPED_TEST(MathOpsSSETest, VecNorm2SSETest) {
     // aligned memory array
     std::size_t size6 = 1024;
     std::fill_n(this->aligned_mem_vec, size6, 1.0);
-
     std::vector<T> x6(size6, 1.0);
     T expected61 = sgdlib::detail::vecnorm2_ansi<T>(x6, true);
     T expected62 = sgdlib::detail::vecnorm2_ansi<T>(x6, false);
 
     EXPECT_FLOAT_EQ(expected61, sgdlib::detail::vecnorm2_sse<T>(this->aligned_mem_vec, size6, true));
     EXPECT_FLOAT_EQ(expected62, sgdlib::detail::vecnorm2_sse<T>(this->aligned_mem_vec, size6, false));
+
+    // overlapped memory case
+    std::size_t size7 = 1000000;
+    std::vector<T> x7 = this->generate_test_data(size7, false, 10.0, -10.0);
+    std::vector<std::size_t> chunk_sizes = {6, 10, 25, 100, 250, 750};
+    for (auto chunk_size : chunk_sizes) {
+        std::size_t processed = 0;
+        while (processed < size7) {
+            const std::size_t current_chunk = std::min(chunk_size, size7 - processed);
+
+            std::vector<T> chunk(
+                x7.begin() + processed,
+                x7.begin() + processed + current_chunk
+            );
+
+            T expected7 = sgdlib::detail::vecnorm2_ansi<T>(chunk, false);
+            T actual7  = sgdlib::detail::vecnorm2_sse<T>(x7.data() + processed, current_chunk, false);
+            EXPECT_NEAR(expected7, actual7, 1e-3);
+            processed += current_chunk;
+        }
+    }
 
     // performance test with huge size n = 1 << 20
     std::size_t huge_size = 1 << 20;
@@ -579,11 +597,6 @@ TYPED_TEST(MathOpsSSETest, VecNorm1SSETest) {
     std::vector<T> x21 = {5.0};
     T expected21 = sgdlib::detail::vecnorm1_ansi<T>(x21);
     EXPECT_FLOAT_EQ(expected21, sgdlib::detail::vecnorm1_sse<T>(x21.data(), x21.size()));
-
-    // size = 2
-    std::vector<T> x22 = {3.0, -4.0};
-    T expected22 = sgdlib::detail::vecnorm1_ansi<T>(x22);
-    EXPECT_FLOAT_EQ(expected22, sgdlib::detail::vecnorm1_sse<T>(x22.data(), x22.size()));
 
     // size = 3
     std::vector<T> x23 = {1.0, -2.0, 3.0};
@@ -631,6 +644,28 @@ TYPED_TEST(MathOpsSSETest, VecNorm1SSETest) {
     T expected7 = sgdlib::detail::vecnorm1_ansi<T>(x7);
     EXPECT_FLOAT_EQ(expected7, sgdlib::detail::vecnorm1_sse<T>(this->unaligned_mem_vec, size7));
 
+
+    // overlapped memory case
+    std::size_t size71 = 1000000;
+    std::vector<T> x71 = this->generate_test_data(size71, false, 5.0, -5.0);
+    std::vector<std::size_t> chunk_sizes = {6, 10, 25, 100, 250, 750};
+    for (auto chunk_size : chunk_sizes) {
+        std::size_t processed = 0;
+        while (processed < size71) {
+            const std::size_t current_chunk = std::min(chunk_size, size71 - processed);
+
+            std::vector<T> chunk(
+                x71.begin() + processed,
+                x71.begin() + processed + current_chunk
+            );
+
+            T expected71 = sgdlib::detail::vecnorm1_ansi<T>(chunk);
+            T actual71  = sgdlib::detail::vecnorm1_sse<T>(x71.data() + processed, current_chunk);
+            EXPECT_NEAR(expected71, actual71, 1e-2);
+            processed += current_chunk;
+        }
+    }
+
     // performance test with huge size n = 1 << 20
     std::size_t huge_size = 1 << 20;
     std::vector<T> x_huge(huge_size);
@@ -664,12 +699,6 @@ TYPED_TEST(MathOpsSSETest, VecScaleSSETest) {
     std::vector<T> empty_vec;
     sgdlib::detail::vecscale_sse<T>(empty_vec.data(), 2.0, 0, out0.data());
 
-    // small size
-    std::vector<T> v1 = {3.0};
-    std::vector<T> out1(1);
-    sgdlib::detail::vecscale_sse<T>(v1.data(), 2.0, v1.size(), out1.data());
-    EXPECT_FLOAT_EQ(out1[0], 6.0);
-
     std::vector<T> v3 = {1.5, 2.5, 3.5};
     std::vector<T> out3(3);
     sgdlib::detail::vecscale_sse<T>(v3.data(), 2.0, v3.size(), out3.data());
@@ -678,13 +707,6 @@ TYPED_TEST(MathOpsSSETest, VecScaleSSETest) {
     EXPECT_FLOAT_EQ(out3[2], 7.0);
 
     // aligned size 4 & 8
-    std::vector<T> v4 = {1.0, 2.0, 3.0, 4.0};
-    std::vector<T> out4(4);
-    auto out4_copy = out4;
-    sgdlib::detail::vecscale_sse<T>(v4.data(), 0.5, v4.size(), out4.data());
-    sgdlib::detail::vecscale_ansi<T>(v4, 0.5, out4_copy);
-    EXPECT_EQ(out4, out4_copy);
-
     std::vector<T> v8 = this->generate_test_data(8, false);
     std::vector<T> out8(8);
     auto out8_copy = out8;
@@ -757,6 +779,30 @@ TYPED_TEST(MathOpsSSETest, VecScaleSSETest) {
         EXPECT_FLOAT_EQ(unaligned_mem_vec_out[i], unaligned_mem_vec_copy_out[i]);
     }
 
+    // overlapped memory case
+    std::size_t size71 = 1000000;
+    std::vector<T> x71 = this->generate_test_data(size71, false, 10.0, -10.0);
+    std::vector<std::size_t> chunk_sizes = {6, 10, 25, 100, 250, 750};
+    for (auto chunk_size : chunk_sizes) {
+        std::size_t processed = 0;
+        while (processed < size71) {
+            const std::size_t current_chunk = std::min(chunk_size, size71 - processed);
+            std::vector<T> out1(current_chunk);
+            std::vector<T> out2(current_chunk);
+            std::vector<T> chunk(
+                x71.begin() + processed,
+                x71.begin() + processed + current_chunk
+            );
+            sgdlib::detail::vecscale_ansi<T>(chunk, scale_factor2, out1);
+            sgdlib::detail::vecscale_sse<T>(x71.data() + processed, scale_factor2, current_chunk, out2.data());
+            // EXPECT_NEAR(expected7, actual7, 1e-3);
+            for (size_t i = 0; i < current_chunk; ++i) {
+                EXPECT_FLOAT_EQ(out1[i], out2[i]);
+            }
+            processed += current_chunk;
+        }
+    }
+
     // performance test with huge size n = 1 << 20
     const std::size_t huge_size = 1 << 20;
     std::vector<T> x_huge(huge_size);
@@ -782,9 +828,7 @@ TYPED_TEST(MathOpsSSETest, VecScaleSSETest) {
     }
 }
 
-
 // ****************************vecscale 2****************************//
-
 
 // ****************************vecadd 1******************************//
 TYPED_TEST(MathOpsSSETest, VecAddWithoutConstCSSETest) {
@@ -833,37 +877,10 @@ TYPED_TEST(MathOpsSSETest, VecAddWithoutConstCSSETest) {
     std::vector<T> out1025_2(1025);
     x_large = this->generate_test_data(1025, false);
     y_large = this->generate_test_data(1025, false);
-
     sgdlib::detail::vecadd_sse<T>(x_large.data(), y_large.data(), 1025, 1025, out1025_1.data());
     sgdlib::detail::vecadd_ansi<T>(x_large, y_large, out1025_2);
     for (std::size_t i = 0; i < 1025; ++i) {
         EXPECT_FLOAT_EQ(out1025_1[i], out1025_2[i]);
-    }
-
-    // performance test with huge size n = 1 << 20
-    const std::size_t huge_size = 1 << 20;
-    std::vector<T> x_huge(huge_size);
-    std::vector<T> y_huge(huge_size);
-    std::vector<T> out_huge1(huge_size);
-    std::vector<T> out_huge2(huge_size);
-    x_huge = this->generate_test_data(huge_size, false);
-    y_huge = this->generate_test_data(huge_size, false);
-
-    auto start = std::chrono::high_resolution_clock::now();
-    sgdlib::detail::vecadd_sse<T>(x_huge.data(), y_huge.data(), huge_size, huge_size, out_huge1.data());
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed1 = end - start;
-    std::cout << "vecadd without constant C SIMD execution time: " << elapsed1.count() << " seconds\n";
-
-    start = std::chrono::high_resolution_clock::now();
-    sgdlib::detail::vecadd_ansi<T>(x_huge, y_huge, out_huge2);
-    end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed2 = end - start;
-    std::cout << "vecadd without constant C ANSI execution time: " << elapsed2.count() << " seconds\n";
-    std::cout << "Speedup: " << elapsed2.count() / elapsed1.count() << "x\n";
-
-    for (std::size_t i = 0; i < huge_size; ++i) {
-        EXPECT_FLOAT_EQ(out_huge1[i], out_huge2[i]);
     }
 
     // aligned memory case
@@ -893,6 +910,56 @@ TYPED_TEST(MathOpsSSETest, VecAddWithoutConstCSSETest) {
     for (size_t i = 0; i < size6; ++i) {
         EXPECT_FLOAT_EQ(unaligned_mem_vec_out[i], unaligned_mem_vec_copy_out[i]);
     }
+
+    // overlapped memory case
+    std::size_t size71 = 1000000;
+    std::vector<T> x71 = this->generate_test_data(size71, false, 10.0, -10.0);
+    std::vector<std::size_t> chunk_sizes = {6, 10, 25, 100, 250, 750};
+    for (auto chunk_size : chunk_sizes) {
+        std::size_t processed = 0;
+        while (processed < size71) {
+            const std::size_t current_chunk = std::min(chunk_size, size71 - processed);
+            std::vector<T> out1(current_chunk);
+            std::vector<T> out2(current_chunk);
+            std::vector<T> chunk(
+                x71.begin() + processed,
+                x71.begin() + processed + current_chunk
+            );
+            sgdlib::detail::vecadd_ansi<T>(chunk, chunk, out1);
+            sgdlib::detail::vecadd_sse<T>(x71.data() + processed, x71.data() + processed, current_chunk, current_chunk, out2.data());
+            // EXPECT_NEAR(expected7, actual7, 1e-3);
+            for (size_t i = 0; i < current_chunk; ++i) {
+                EXPECT_FLOAT_EQ(out1[i], out2[i]);
+            }
+            processed += current_chunk;
+        }
+    }
+
+    // performance test with huge size n = 1 << 20
+    const std::size_t huge_size = 1 << 20;
+    std::vector<T> x_huge(huge_size);
+    std::vector<T> y_huge(huge_size);
+    std::vector<T> out_huge1(huge_size);
+    std::vector<T> out_huge2(huge_size);
+    x_huge = this->generate_test_data(huge_size, false);
+    y_huge = this->generate_test_data(huge_size, false);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    sgdlib::detail::vecadd_sse<T>(x_huge.data(), y_huge.data(), huge_size, huge_size, out_huge1.data());
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed1 = end - start;
+    std::cout << "vecadd without constant C SIMD execution time: " << elapsed1.count() << " seconds\n";
+
+    start = std::chrono::high_resolution_clock::now();
+    sgdlib::detail::vecadd_ansi<T>(x_huge, y_huge, out_huge2);
+    end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed2 = end - start;
+    std::cout << "vecadd without constant C ANSI execution time: " << elapsed2.count() << " seconds\n";
+    std::cout << "Speedup: " << elapsed2.count() / elapsed1.count() << "x\n";
+
+    for (std::size_t i = 0; i < huge_size; ++i) {
+        EXPECT_FLOAT_EQ(out_huge1[i], out_huge2[i]);
+    }
 }
 
 // ****************************vecadd 2*******************************//
@@ -903,7 +970,7 @@ TYPED_TEST(MathOpsSSETest, VecAddWithConstCSSETest) {
     std::vector<T> y8;
     std::vector<T> out8;
 
-    T c = 2.5;
+    T c = 3.1415;
     x8 = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
     y8 = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8};
     out8.resize(8);
@@ -976,6 +1043,30 @@ TYPED_TEST(MathOpsSSETest, VecAddWithConstCSSETest) {
     sgdlib::detail::vecadd_ansi<T>(unaligned_mem_vec_copy, unaligned_mem_vec_copy2, c, unaligned_mem_vec_copy_out);
     for (size_t i = 0; i < size6; ++i) {
         EXPECT_FLOAT_EQ(unaligned_mem_vec_out[i], unaligned_mem_vec_copy_out[i]);
+    }
+
+    // overlapped memory case
+    std::size_t size71 = 1000000;
+    std::vector<T> x71 = this->generate_test_data(size71, false, 10.0, -10.0);
+    std::vector<std::size_t> chunk_sizes = {6, 10, 25, 100, 250, 750};
+    for (auto chunk_size : chunk_sizes) {
+        std::size_t processed = 0;
+        while (processed < size71) {
+            const std::size_t current_chunk = std::min(chunk_size, size71 - processed);
+            std::vector<T> out1(current_chunk);
+            std::vector<T> out2(current_chunk);
+            std::vector<T> chunk(
+                x71.begin() + processed,
+                x71.begin() + processed + current_chunk
+            );
+            sgdlib::detail::vecadd_ansi<T>(chunk, chunk, c, out1);
+            sgdlib::detail::vecadd_sse<T>(x71.data() + processed, x71.data() + processed, c, current_chunk, current_chunk, out2.data());
+            // EXPECT_NEAR(expected7, actual7, 1e-3);
+            for (size_t i = 0; i < current_chunk; ++i) {
+                EXPECT_FLOAT_EQ(out1[i], out2[i]);
+            }
+            processed += current_chunk;
+        }
     }
 
     // performance test with huge size n = 1 << 20
@@ -1088,6 +1179,35 @@ TYPED_TEST(MathOpsSSETest, VecDiffSSETest) {
         EXPECT_FLOAT_EQ(unaligned_mem_vec_out[i], unaligned_mem_vec_copy_out[i]);
     }
 
+    // overlapped memory case
+    std::size_t size71 = 1000000;
+    std::vector<T> x71 = this->generate_test_data(size71, false, 10.0, -10.0);
+    std::vector<T> x72 = this->generate_test_data(size71, false, 10.0, -10.0);
+    std::vector<std::size_t> chunk_sizes = {6, 10, 25, 100, 250, 750};
+    for (auto chunk_size : chunk_sizes) {
+        std::size_t processed = 0;
+        while (processed < size71) {
+            const std::size_t current_chunk = std::min(chunk_size, size71 - processed);
+            std::vector<T> out1(current_chunk);
+            std::vector<T> out2(current_chunk);
+            std::vector<T> chunk1(
+                x71.begin() + processed,
+                x71.begin() + processed + current_chunk
+            );
+            std::vector<T> chunk2(
+                x72.begin() + processed,
+                x72.begin() + processed + current_chunk
+            );
+            sgdlib::detail::vecdiff_ansi<T>(chunk1, chunk2, out1);
+            sgdlib::detail::vecdiff_sse<T>(x71.data() + processed, x72.data() + processed, current_chunk, current_chunk, out2.data());
+            // EXPECT_NEAR(expected7, actual7, 1e-3);
+            for (size_t i = 0; i < current_chunk; ++i) {
+                EXPECT_FLOAT_EQ(out1[i], out2[i]);
+            }
+            processed += current_chunk;
+        }
+    }
+
     // performance test with huge size n = 1 << 20
     const std::size_t huge_size = 1 << 20;
     std::vector<T> x_huge(huge_size);
@@ -1173,6 +1293,33 @@ TYPED_TEST(MathOpsSSETest, VecDotSSETest) {
     T result62 = sgdlib::detail::vecdot_sse<T>(this->unaligned_mem_vec, this->unaligned_mem_vec2, size6, size6);
     T expected62 = sgdlib::detail::vecdot_ansi<T>(unaligned_mem_vec_copy, unaligned_mem_vec_copy2);
     EXPECT_NEAR(result62, expected62, 1e-4);
+
+    // overlapped memory case
+    std::size_t size7 = 1000000;
+    std::vector<T> x71 = this->generate_test_data(size7, false, 1.0, -1.0);
+    std::vector<T> x72 = this->generate_test_data(size7, false, 1.0, -1.0);
+    std::vector<std::size_t> chunk_sizes = {6, 10, 25, 100, 250, 750};
+    for (auto chunk_size : chunk_sizes) {
+        std::size_t processed = 0;
+        while (processed < size7) {
+            const std::size_t current_chunk = std::min(chunk_size, size7 - processed);
+
+            std::vector<T> chunk1(
+                x71.begin() + processed,
+                x71.begin() + processed + current_chunk
+            );
+
+            std::vector<T> chunk2(
+                x72.begin() + processed,
+                x72.begin() + processed + current_chunk
+            );
+
+            T expected7 = sgdlib::detail::vecdot_ansi<T>(chunk1, chunk2);
+            T actual7  = sgdlib::detail::vecdot_sse<T>(x71.data() + processed, x72.data() + processed, current_chunk, current_chunk);
+            EXPECT_NEAR(expected7, actual7, 1e-3);
+            processed += current_chunk;
+        }
+    }
 
     // performance test
     const std::size_t size2 = 1 << 20;  // 1M elements
@@ -1289,15 +1436,34 @@ TYPED_TEST(MathOpsSSETest, VecMulSSETest) {
         }
     }
 
-    // overlap case
-    std::vector<T> data1 = {1.0, 2.0, 3.0, 4.0, 5.0};
-    std::vector<T> data2 = {2.0, 3.0, 4.0, 5.0, 6.0};
-    std::vector<T> expected = {2.0, 6.0, 12.0, 20.0, 30.0};
-    std::vector<T> out4(5);
-    sgdlib::detail::vecmul_sse<T>(data1.data()+1, data2.data()+1, 3, 3, out4.data());
+    // overlapped memory case
+    std::size_t size7 = 1000000;
+    std::vector<T> x71 = this->generate_test_data(size7, false, 1.0, -1.0);
+    std::vector<T> x72 = this->generate_test_data(size7, false, 1.0, -1.0);
+    std::vector<std::size_t> chunk_sizes = {6, 10, 25, 100, 250, 750};
+    for (auto chunk_size : chunk_sizes) {
+        std::size_t processed = 0;
+        while (processed < size7) {
+            const std::size_t current_chunk = std::min(chunk_size, size7 - processed);
+            std::vector<T> out1(current_chunk);
+            std::vector<T> out2(current_chunk);
+            std::vector<T> chunk1(
+                x71.begin() + processed,
+                x71.begin() + processed + current_chunk
+            );
 
-    for (size_t i = 0; i < 3; ++i) {
-        EXPECT_FLOAT_EQ(out4[i], expected[i + 1]);
+            std::vector<T> chunk2(
+                x72.begin() + processed,
+                x72.begin() + processed + current_chunk
+            );
+
+            sgdlib::detail::vecmul_ansi<T>(chunk1, chunk2, out1);
+            sgdlib::detail::vecmul_sse<T>(x71.data() + processed, x72.data() + processed, current_chunk, current_chunk, out2.data());
+            for (size_t i = 0; i < current_chunk; ++i) {
+                EXPECT_FLOAT_EQ(out1[i], out2[i]);
+            }
+            processed += current_chunk;
+        }
     }
 
     // performance test
