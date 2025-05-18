@@ -8,7 +8,7 @@ namespace sgdlib {
 namespace detail {
 
 template <typename T>
-void vecset_avx(T* x, const T c, std::size_t n) {
+inline void vecset_avx(T* x, const T c, std::size_t n) {
     if constexpr (std::is_same_v<T, float>) {
         vecset_avx_float(x, c, n);
     }
@@ -18,7 +18,7 @@ void vecset_avx(T* x, const T c, std::size_t n) {
 }
 
 template <typename T>
-void veccpy_avx(const T* x, std::size_t n, T* out) {
+inline void veccpy_avx(const T* x, std::size_t n, T* out) {
     if constexpr (std::is_same_v<T, float>) {
         veccpy_avx_float(x, n, out);
     }
@@ -28,7 +28,7 @@ void veccpy_avx(const T* x, std::size_t n, T* out) {
 }
 
 template <typename T>
-void vecncpy_avx(const T* x, std::size_t n, T* out) {
+inline void vecncpy_avx(const T* x, std::size_t n, T* out) {
     if constexpr (std::is_same_v<T, float>) {
         vecncpy_avx_float(x, n, out);
     }
@@ -38,7 +38,7 @@ void vecncpy_avx(const T* x, std::size_t n, T* out) {
 }
 
 template <typename T>
-void vecclip_avx(T* x, T min, T max, std::size_t n) {
+inline void vecclip_avx(T* x, T min, T max, std::size_t n) {
     if constexpr (std::is_same_v<T, float>) {
         vecclip_avx_float(x, min, max, n);
     }
@@ -48,7 +48,7 @@ void vecclip_avx(T* x, T min, T max, std::size_t n) {
 };
 
 template <typename T>
-bool hasinf_avx(const T* x, std::size_t n) {
+inline bool hasinf_avx(const T* x, std::size_t n) {
     bool retval;
     if constexpr (std::is_same_v<T, float>) {
         retval = hasinf_avx_float(x, n);
@@ -60,7 +60,7 @@ bool hasinf_avx(const T* x, std::size_t n) {
 };
 
 template <typename T>
-T vecnorm2_avx(const T* x, std::size_t n, bool squared) {
+inline T vecnorm2_avx(const T* x, std::size_t n, bool squared) {
     T retval;
     if constexpr (std::is_same_v<T, float>) {
         retval = vecnorm2_avx_float(x, n, squared);
@@ -72,7 +72,7 @@ T vecnorm2_avx(const T* x, std::size_t n, bool squared) {
 };
 
 template <typename T>
-T vecnorm1_avx(const T* x, std::size_t n) {
+inline T vecnorm1_avx(const T* x, std::size_t n) {
     T retval;
     if constexpr (std::is_same_v<T, float>) {
         retval = vecnorm1_avx_float(x, n);
@@ -84,7 +84,7 @@ T vecnorm1_avx(const T* x, std::size_t n) {
 };
 
 template <typename T>
-void vecscale_avx(const T* x, const T c, std::size_t n, T* out) {
+inline void vecscale_avx(const T* x, const T c, std::size_t n, T* out) {
     if constexpr (std::is_same_v<T, float>) {
         vecscale_avx_float(x, c, n, out);
     }
@@ -94,7 +94,7 @@ void vecscale_avx(const T* x, const T c, std::size_t n, T* out) {
 };
 
 template <typename T>
-void vecscale_avx(const T* xbegin, const T* xend, const T c, std::size_t n, T* out) {
+inline void vecscale_avx(const T* xbegin, const T* xend, const T c, std::size_t n, T* out) {
     if constexpr (std::is_same_v<T, float>) {
         vecscale_avx_float(xbegin, xend, c, n, out);
     }
@@ -104,7 +104,7 @@ void vecscale_avx(const T* xbegin, const T* xend, const T c, std::size_t n, T* o
 };
 
 template <typename T>
-void vecadd_avx(const T* x, const T* y, std::size_t n, std::size_t m, T* out) {
+inline void vecadd_avx(const T* x, const T* y, std::size_t n, std::size_t m, T* out) {
     if constexpr (std::is_same_v<T, float>) {
         vecadd_avx_float(x, y, n, m, out);
     }
@@ -114,7 +114,7 @@ void vecadd_avx(const T* x, const T* y, std::size_t n, std::size_t m, T* out) {
 };
 
 template <typename T>
-void vecadd_avx(const T* x, const T* y, const T c, std::size_t n, std::size_t m, T* out) {
+inline void vecadd_avx(const T* x, const T* y, const T c, std::size_t n, std::size_t m, T* out) {
     if constexpr (std::is_same_v<T, float>) {
         vecadd_avx_float(x, y, c, n, n, out);
     }
@@ -124,7 +124,7 @@ void vecadd_avx(const T* x, const T* y, const T c, std::size_t n, std::size_t m,
 };
 
 template <typename T>
-void vecdiff_avx(const T* x, const T* y, std::size_t n, std::size_t m, T* out) {
+inline void vecdiff_avx(const T* x, const T* y, std::size_t n, std::size_t m, T* out) {
     if constexpr (std::is_same_v<T, float>) {
         vecdiff_avx_float(x, y, n, m, out);
     }
@@ -134,7 +134,7 @@ void vecdiff_avx(const T* x, const T* y, std::size_t n, std::size_t m, T* out) {
 };
 
 template <typename T>
-T vecdot_avx(const T* x, const T* y, std::size_t n, std::size_t m) {
+inline T vecdot_avx(const T* x, const T* y, std::size_t n, std::size_t m) {
     T retval;
     if constexpr (std::is_same_v<T, float>) {
         retval = vecdot_avx_float(x, y, n, m);
@@ -146,7 +146,7 @@ T vecdot_avx(const T* x, const T* y, std::size_t n, std::size_t m) {
 };
 
 template<typename T>
-void vecmul_avx(const T* x, const T* y, std::size_t n, std::size_t m, T* out) {
+inline void vecmul_avx(const T* x, const T* y, std::size_t n, std::size_t m, T* out) {
     if constexpr (std::is_same_v<T, float>) {
         vecmul_avx_float(x, y, n, m, out);
     }
