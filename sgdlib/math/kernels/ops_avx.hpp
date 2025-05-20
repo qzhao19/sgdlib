@@ -1,8 +1,10 @@
 #ifndef MATH_KERNELS_OPS_AVX_HPP_
 #define MATH_KERNELS_OPS_AVX_HPP_
 
-#include "ops_avx/ops_avx_double.hpp"
-#include "ops_avx/ops_avx_float.hpp"
+#if defined(USE_AVX)
+    #include "ops_avx/ops_avx_float.hpp"
+    #include "ops_avx/ops_avx_double.hpp"
+#endif
 
 namespace sgdlib {
 namespace detail {
@@ -49,38 +51,38 @@ inline void vecclip_avx(T* x, T min, T max, std::size_t n) {
 
 template <typename T>
 inline bool hasinf_avx(const T* x, std::size_t n) {
-    bool retval;
+    bool has_inf = false;
     if constexpr (std::is_same_v<T, float>) {
-        retval = hasinf_avx_float(x, n);
+        has_inf = hasinf_avx_float(x, n);
     }
     else if constexpr (std::is_same_v<T, double>) {
-        retval = hasinf_avx_double(x, n);
+        has_inf = hasinf_avx_double(x, n);
     }
-    return retval;
+    return has_inf;
 };
 
 template <typename T>
 inline T vecnorm2_avx(const T* x, std::size_t n, bool squared) {
-    T retval;
+    T norm2;
     if constexpr (std::is_same_v<T, float>) {
-        retval = vecnorm2_avx_float(x, n, squared);
+        norm2 = vecnorm2_avx_float(x, n, squared);
     }
     else if constexpr (std::is_same_v<T, double>) {
-        retval = vecnorm2_avx_double(x, n, squared);
+        norm2 = vecnorm2_avx_double(x, n, squared);
     }
-    return retval;
+    return norm2;
 };
 
 template <typename T>
 inline T vecnorm1_avx(const T* x, std::size_t n) {
-    T retval;
+    T norm1;
     if constexpr (std::is_same_v<T, float>) {
-        retval = vecnorm1_avx_float(x, n);
+        norm1 = vecnorm1_avx_float(x, n);
     }
     else if constexpr (std::is_same_v<T, double>) {
-        retval = vecnorm1_avx_double(x, n);
+        norm1 = vecnorm1_avx_double(x, n);
     }
-    return retval;
+    return norm1;
 };
 
 template <typename T>
@@ -135,14 +137,14 @@ inline void vecdiff_avx(const T* x, const T* y, std::size_t n, std::size_t m, T*
 
 template <typename T>
 inline T vecdot_avx(const T* x, const T* y, std::size_t n, std::size_t m) {
-    T retval;
+    T prod;
     if constexpr (std::is_same_v<T, float>) {
-        retval = vecdot_avx_float(x, y, n, m);
+        prod = vecdot_avx_float(x, y, n, m);
     }
     else if constexpr (std::is_same_v<T, double>) {
-        retval = vecdot_avx_double(x, y, n, m);
+        prod = vecdot_avx_double(x, y, n, m);
     }
-    return retval;
+    return prod;
 };
 
 template<typename T>
