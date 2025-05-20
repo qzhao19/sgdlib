@@ -127,7 +127,6 @@ namespace detail {
     constexpr std::size_t DTYPE_UNROLLING_FACTOR = 4;   // double-precision expansion factor
     constexpr std::size_t DTYPE_UNROLLING_SIZE =
         DTYPE_ELEMS_PER_REGISTER * DTYPE_UNROLLING_FACTOR; // 16
-
 #else
     #pragma message("Running in scalar mode (define USE_SSE or USE_AVX for SIMD acceleration)")
 #endif
