@@ -7,6 +7,8 @@
 namespace sgdlib {
 namespace detail {
 
+#if defined(USE_AVX)
+
 /**
  * @brief Sets all elements of a double array to a constant value using AVX instructions.
  */
@@ -954,6 +956,8 @@ inline void vecmul_avx_double(const double* x,
         default: break;
     }
 };
+
+#endif
 
 }
 }
