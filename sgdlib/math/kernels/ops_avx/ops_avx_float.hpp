@@ -7,6 +7,8 @@
 namespace sgdlib {
 namespace detail {
 
+#if defined(USE_AVX)
+
 /**
  * @brief Sets all elements of a float array to a constant value using AVX instructions.
  */
@@ -857,6 +859,8 @@ inline void vecmul_avx_float(const float* x,
         }
     }
 };
+
+#endif
 
 }
 }
