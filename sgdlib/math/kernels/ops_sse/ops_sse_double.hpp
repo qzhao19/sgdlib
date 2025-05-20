@@ -7,6 +7,8 @@
 namespace sgdlib {
 namespace detail {
 
+#if defined(USE_SSE)
+
 /**
  * @brief Sets all elements of a double array to a specified value using SSE instructions.
  */
@@ -143,8 +145,6 @@ void vecncpy_sse_double(const double* x, std::size_t n, double* out) noexcept {
         default: break;
     }
 };
-
-
 
 /**
  * @brief Clips (clamps) an array of double-precision values to a specified range using SSE intrinsics.
@@ -746,6 +746,8 @@ inline void vecmul_sse_double(const double* x,
         default: break;
     }
 };
+
+#endif
 
 }
 }
