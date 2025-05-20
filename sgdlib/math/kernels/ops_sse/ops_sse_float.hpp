@@ -7,6 +7,7 @@
 namespace sgdlib {
 namespace detail {
 
+#if defined(USE_SSE)
 /**
  * @brief Sets all elements of a float array to a specified value using SSE instructions.
  */
@@ -644,6 +645,7 @@ inline void vecmul_sse_float(const float* x,
         default: break;
     }
 };
+#endif
 
 }
 }
