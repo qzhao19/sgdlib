@@ -7,7 +7,6 @@
 #include "math/kernels/ops_avx.hpp"
 #include "math/kernels/ops_sse.hpp"
 
-
 namespace sgdlib {
 namespace detail {
 
@@ -27,8 +26,8 @@ namespace detail {
  */
 template<typename T>
 inline void vecset(std::vector<T>& x, const T c) {
-    static_assert(std::is_arithmetic_v<T>,
-        "vecset requires arithmetic types (e.g. int, float, double)");
+    static_assert(std::is_floating_point_v<T>,
+        "vecset requires floating-point types (e.g. float, double)");
 
     if (x.empty()) {
         THROW_INVALID_ERROR("vecset: input vector cannot be empty");
@@ -37,11 +36,11 @@ inline void vecset(std::vector<T>& x, const T c) {
     std::size_t n = x.size();
 
 #if defined(USE_SSE)
-    vecset_sse(x.data(), c, n);
+    vecset_sse<T>(x.data(), c, n);
 #elif defined(USE_AVX)
-    vecset_avx(x.data(), c, n);
+    vecset_avx<T>(x.data(), c, n);
 #else
-    vecset_ansi(x, c);
+    vecset_ansi<T>(x, c);
 #endif
 };
 
@@ -60,8 +59,8 @@ inline void vecset(std::vector<T>& x, const T c) {
  */
 template<typename T>
 inline void veccpy(const std::vector<T>& x, std::vector<T>& out) {
-    static_assert(std::is_arithmetic_v<T>,
-        "veccpy requires arithmetic types (e.g. int, float, double)");
+    static_assert(std::is_floating_point_v<T>,
+        "veccpy requires floating-point types (e.g. float, double)");
 
     if (x.empty() || out.empty()) {
         THROW_INVALID_ERROR("veccpy: input/output vector cannot be empty");
@@ -71,7 +70,7 @@ inline void veccpy(const std::vector<T>& x, std::vector<T>& out) {
         THROW_INVALID_ERROR("veccpy: requires x.size() == out.size()");
     }
 
-    veccpy_ansi(x, out);
+    veccpy_ansi<T>(x, out);
 };
 
 /**
@@ -90,8 +89,8 @@ inline void veccpy(const std::vector<T>& x, std::vector<T>& out) {
  */
 template<typename T>
 inline void vecncpy(const std::vector<T>& x, std::vector<T>& out) {
-    static_assert(std::is_arithmetic_v<T>,
-        "vecncpy requires arithmetic types (e.g. int, float, double)");
+    static_assert(std::is_floating_point_v<T>,
+        "vecncpy requires floating-point types (e.g. float, double)");
 
     if (x.empty() || out.empty()) {
         THROW_INVALID_ERROR("vecncpy: input/output vector cannot be empty");
@@ -103,11 +102,11 @@ inline void vecncpy(const std::vector<T>& x, std::vector<T>& out) {
     std::size_t n = x.size();
 
 #if defined(USE_SSE)
-    vecncpy_sse(x.data(), n, out);
+    vecncpy_sse<T>(x.data(), n, out.data());
 #elif defined(USE_AVX)
-    vecncpy_avx(x.data(), n, out);
+    vecncpy_avx<T>(x.data(), n, out.data());
 #else
-    vecncpy_ansi(x, out);
+    vecncpy_ansi<T>(x, out);
 #endif
 };
 
@@ -132,8 +131,8 @@ inline void vecncpy(const std::vector<T>& x, std::vector<T>& out) {
 template<typename T>
 inline void vecclip(std::vector<T>& x, T min, T max) {
     static_assert(
-        std::is_arithmetic_v<T>,
-        "vecclip requires arithmetic types (e.g. int, float, double)"
+        std::is_floating_point_v<T>,
+        "vecclip requires floating-point types (e.g. float, double)"
     );
 
     if (x.empty()) {
@@ -149,11 +148,11 @@ inline void vecclip(std::vector<T>& x, T min, T max) {
     std::size_t n = x.size();
 
 #if defined(USE_SSE)
-    vecclip_sse(x.data(), min, max, n);
+    vecclip_sse<T>(x.data(), min, max, n);
 #elif defined(USE_AVX)
-    vecclip_avx(x.data(), min, max, n);
+    vecclip_avx<T>(x.data(), min, max, n);
 #else
-    vecclip_ansi(x, min, max);
+    vecclip_ansi<T>(x, min, max);
 #endif
 };
 
@@ -185,11 +184,11 @@ inline bool hasinf(const std::vector<T>& x) {
     std::size_t n = x.size();
     bool has_inf = false;
 #if defined(USE_SSE)
-    has_inf = hasinf_sse(x.data(), n);
+    has_inf = hasinf_sse<T>(x.data(), n);
 #elif defined(USE_AVX)
-    has_inf = hasinf_avx(x.data(), n);
+    has_inf = hasinf_avx<T>(x.data(), n);
 #else
-    has_inf = hasinf_ansi(x);
+    has_inf = hasinf_ansi<T>(x);
 #endif
     return has_inf;
 };
@@ -223,11 +222,11 @@ inline T vecnorm2(const std::vector<T>& x, bool squared = false) {
     T norm2;
     std::size_t n = x.size();
 #if defined(USE_SSE)
-    norm2 = vecnorm2_sse(x.data(), n, squared);
+    norm2 = vecnorm2_sse<T>(x.data(), n, squared);
 #elif defined(USE_AVX)
-    norm2 = vecnorm2_avx(x.data(), n, squared);
+    norm2 = vecnorm2_avx<T>(x.data(), n, squared);
 #else
-    norm2 = vecnorm2_ansi(x, squared);
+    norm2 = vecnorm2_ansi<T>(x, squared);
 #endif
     return norm2;
 }
@@ -261,11 +260,11 @@ inline T vecnorm1(const std::vector<T>& x) {
     T norm1;
     std::size_t n = x.size();
 #if defined(USE_SSE)
-    norm1 = vecnorm1_sse(x.data(), n);
+    norm1 = vecnorm1_sse<T>(x.data(), n);
 #elif defined(USE_AVX)
-    norm1 = vecnorm1_avx(x.data(), n);
+    norm1 = vecnorm1_avx<T>(x.data(), n);
 #else
-    norm1 = vecnorm1_ansi(x);
+    norm1 = vecnorm1_ansi<T>(x);
 #endif
     return norm1;
 }
@@ -305,11 +304,11 @@ inline void vecscale(const std::vector<T>& x,
     std::size_t n = x.size();
 
 #if defined(USE_SSE)
-    vecscale_sse(x.data(), c, n, out.data());
+    vecscale_sse<T>(x.data(), c, n, out.data());
 #elif defined(USE_AVX)
-    vecscale_avx(x.data(), c, n, out.data());
+    vecscale_avx<T>(x.data(), c, n, out.data());
 #else
-    vecscale_ansi(x, c, out);
+    vecscale_ansi<T>(x, c, out);
 #endif
 }
 
@@ -362,11 +361,11 @@ inline void vecscale(const T* xbegin,
     }
 
 #if defined(USE_SSE)
-    vecscale_sse(xbegin, xend, c, n, out.data());
+    vecscale_sse<T>(xbegin, xend, c, n, out.data());
 #elif defined(USE_AVX)
-    vecscale_avx(xbegin, xend, c, n, out.data());
+    vecscale_avx<T>(xbegin, xend, c, n, out.data());
 #else
-    vecscale_ansi(xbegin, xend, c, out);
+    vecscale_ansi<T>(xbegin, xend, c, out);
 #endif
 
 };
@@ -413,11 +412,11 @@ inline void vecadd(const std::vector<T>& x,
     }
 
 #if defined(USE_SSE)
-    vecadd_sse(x.data(), y.data(), n, m, out.data());
+    vecadd_sse<T>(x.data(), y.data(), n, m, out.data());
 #elif defined(USE_AVX)
-    vecadd_avx(x.data(), y.data(), n, m, out.data());
+    vecadd_avx<T>(x.data(), y.data(), n, m, out.data());
 #else
-    vecadd_ansi(x, y, out);
+    vecadd_ansi<T>(x, y, out);
 #endif
 }
 
@@ -465,11 +464,11 @@ inline void vecadd(const std::vector<T>& x,
     }
 
 #if defined(USE_SSE)
-    vecadd_sse(x.data(), y.data(), c, n, m, out.data());
+    vecadd_sse<T>(x.data(), y.data(), c, n, m, out.data());
 #elif defined(USE_AVX)
-    vecadd_avx(x.data(), y.data(), c, n, m, out.data());
+    vecadd_avx<T>(x.data(), y.data(), c, n, m, out.data());
 #else
-    vecadd_ansi(x, y, c, out);
+    vecadd_ansi<T>(x, y, c, out);
 #endif
 }
 
@@ -516,11 +515,11 @@ inline void vecdiff(const std::vector<T>& x,
         THROW_INVALID_ERROR("vecdiff: requires x.size() == out.size()");
     }
 #if defined(USE_SSE)
-    vecdiff_sse(x.data(), y.data(), n, m, out.data());
+    vecdiff_sse<T>(x.data(), y.data(), n, m, out.data());
 #elif defined(USE_AVX)
-    vecdiff_avx(x.data(), y.data(), n, m, out.data());
+    vecdiff_avx<T>(x.data(), y.data(), n, m, out.data());
 #else
-    vecdiff_ansi(x, y, out);
+    vecdiff_ansi<T>(x, y, out);
 #endif
 
 }
@@ -560,11 +559,11 @@ inline T vecdot(const std::vector<T>& x,
 
     T prod;
 #if defined(USE_SSE)
-    prod = vecdot_sse(x.data(), y.data(), n, m);
+    prod = vecdot_sse<T>(x.data(), y.data(), n, m);
 #elif defined(USE_AVX)
-    prod = vecdot_avx(x.data(), y.data(), n, m);
+    prod = vecdot_avx<T>(x.data(), y.data(), n, m);
 #else
-    prod = vecdot_ansi(x, y, out);
+    prod = vecdot_ansi<T>(x, y);
 #endif
     return prod;
 }
@@ -573,7 +572,7 @@ inline T vecdot(const std::vector<T>& x,
  * @brief Performs element-wise vector multiplication with hardware acceleration
  *
  * @tparam T Floating-point type (float/double)
- * 
+ *
  * @param[in] x First input vector
  * @param[in] y Second input vector
  * @param[out] out Output vector storing element-wise product x * y
@@ -609,11 +608,11 @@ inline void vecmul(const std::vector<T>& x,
         THROW_INVALID_ERROR("vecmul: requires x.size() == out.size()");
     }
 #if defined(USE_SSE)
-    vecmul_sse(x.data(), y.data(), n, m, out.data());
+    vecmul_sse<T>(x.data(), y.data(), n, m, out.data());
 #elif defined(USE_AVX)
-    vecmul_avx(x.data(), y.data(), n, m, out.data());
+    vecmul_avx<T>(x.data(), y.data(), n, m, out.data());
 #else
-    vecmul_ansi(x, y, out);
+    vecmul_ansi<T>(x, y, out);
 #endif
 }
 
