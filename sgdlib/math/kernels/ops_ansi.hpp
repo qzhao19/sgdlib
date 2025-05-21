@@ -121,6 +121,18 @@ inline T vecdot_ansi(const std::vector<T>& x,
 };
 
 template<typename T>
+inline T vecdot_ansi(const T* xbegin,
+                     const T* xend,
+                     const T* ybegin) noexcept {
+    T prod = std::inner_product(xbegin, xend,
+                                ybegin,
+                                static_cast<T>(0));
+    return prod;
+
+};
+
+
+template<typename T>
 inline void vecmul_ansi(const std::vector<T>& x,
                         const std::vector<T>& y,
                         std::vector<T>& out) noexcept {
@@ -129,6 +141,16 @@ inline void vecmul_ansi(const std::vector<T>& x,
                    out.begin(),
                    std::multiplies<T>());
 };
+
+template<typename T>
+inline T vecaccmul_ansi(const T* xbegin,
+                        const T* xend) {
+    T acc = std::accumulate(xbegin, xend,
+                            static_cast<T>(0));
+    return acc;
+}
+
+
 
 } // namespace detail
 } // namespace sgdlib
