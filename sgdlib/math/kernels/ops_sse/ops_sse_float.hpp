@@ -611,7 +611,7 @@ inline void vecmul_sse_float(const float* x,
     if (x == nullptr || y == nullptr) return ;
     if (out == nullptr) return ;
     if (n == 0 || m == 0) return ;
-    if (m!= n) return ;
+    if (m != n) return ;
 
     // handle small size case n < 4
     if (n < 4 && m < 4) {
@@ -645,6 +645,55 @@ inline void vecmul_sse_float(const float* x,
         default: break;
     }
 };
+
+/**
+ * @brief Computes the accumulated sum of single-precision floating-point elements
+ *        using SSE4.2 intrinsics
+ */
+inline float vecaccmul_sse_float(const float* xbegin,
+                                 const float* xend,
+                                 std::size_t n) noexcept {
+    if (xbegin == nullptr || xend == nullptr) return 0.0f;
+    if (xend <= xbegin) return 0.0f;
+    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
+    if (n != m) return 0.0f;
+    if (n == 0) return 0.0f;
+
+    if (n < 4) {
+        float acc = 0.0f;
+        for (std::size_t i = 0; i < m; ++i) {
+            acc += xbegin[i];
+        }
+        return acc;
+    }
+
+    const float* xptr = xbegin;
+    const float* end = xbegin + n;
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
+    float total = 0.0f;
+
+    __m128 sum = _mm_setzero_ps();
+    for (; xptr < aligned_end; xptr += 4) {
+        __m128 xvec = _mm_loadu_ps(xptr);
+        sum = _mm_add_ps(sum, xvec);
+    }
+
+    const __m128 shuffle = _mm_movehdup_ps(sum);  // [a,b,c,d] -> [b,b,d,d]
+    const __m128 combine_sum = _mm_add_ps(sum, shuffle); // [a+b, b+b, c+d, d+d]
+    const __m128 scalar_sum = _mm_add_ss(combine_sum, _mm_movehl_ps(combine_sum, combine_sum)); // add [a+b, c+d] -> [a+b+c+d]
+    total += _mm_cvtss_f32(scalar_sum);
+
+    const std::size_t remainder = end - xptr;
+    switch (remainder) {
+        case 3: total += xptr[2]; [[fallthrough]];
+        case 2: total += xptr[1]; [[fallthrough]];
+        case 1: total += xptr[0];
+        default: break;
+    }
+    return total;
+};
+
+
 #endif
 
 }
