@@ -747,6 +747,63 @@ inline void vecmul_sse_double(const double* x,
     }
 };
 
+/**
+ * @brief Computes the accumulated sum of double-precision elements
+ *        using SSE4.2 intrinsics
+ */
+inline double vecaccmul_sse_double(const double* xbegin,
+                                   const double* xend,
+                                   std::size_t n) noexcept {
+    if (xbegin == nullptr || xend == nullptr) return 0.0;
+    if (xend <= xbegin) return 0.0;
+    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
+    if (n != m) return 0.0;
+    if (n == 0) return 0.0;
+
+    if (n < 4) {
+        double acc = 0.0;
+        for (std::size_t i = 0; i < m; ++i) {
+            acc += xbegin[i];
+        }
+        return acc;
+    }
+
+    const double* xptr = xbegin;
+    const double* end = xbegin + n;
+    double total = 0.0;
+
+    // loop unrolling
+    const std::size_t num_unrolls = n / DTYPE_UNROLLING_SIZE;
+
+    // init sum0 and sum1 to 0
+    __m128d sum0 = _mm_setzero_pd();
+    __m128d sum1 = _mm_setzero_pd();
+    // main loop
+    for (std::size_t i = 0; i < num_unrolls; ++i) {
+        // load 4 elements from x to 2 register
+        __m128d xvec0 = _mm_loadu_pd(xptr);
+        __m128d xvec1 = _mm_loadu_pd(xptr + 2);
+        // compute sum = sum + vec * vec
+        sum0 = _mm_add_pd(sum0, xvec0);
+        sum1 = _mm_add_pd(sum1, xvec1);
+        xptr += DTYPE_UNROLLING_SIZE;
+    }
+
+    // perform a horizontal addition
+    const __m128d combine_sum = _mm_add_pd(sum0, sum1);
+    const __m128d scalar_sum = _mm_add_pd(combine_sum, _mm_shuffle_pd(combine_sum, combine_sum, 0x01));
+    total += _mm_cvtsd_f64(scalar_sum);
+
+    // handle remaining elements
+    const std::size_t remainder = end - xptr;
+    switch (remainder) {
+        case 3: total += xptr[2]; [[fallthrough]];
+        case 2: total += xptr[1]; [[fallthrough]];
+        case 1: total += xptr[0];
+        default: break;
+    }
+    return squared ? total : std::sqrt(total);
+
 #endif
 
 }
