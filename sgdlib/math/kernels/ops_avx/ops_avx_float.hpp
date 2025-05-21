@@ -860,6 +860,91 @@ inline void vecmul_avx_float(const float* x,
     }
 };
 
+/**
+ * @brief Computes the accumulated sum of single-precision floating-point elements
+ *        using AVX2 intrinsics
+ */
+inline float vecaccuml_avx_float(const float* xbegin,
+                                 const float* xend,
+                                 std::size_t n) noexcept {
+    if (xbegin == nullptr || xend == nullptr) return 0.0f;
+    if (xend <= xbegin) return 0.0f;
+    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
+    if (n != m) return 0.0f;
+    if (n == 0) return 0.0f;
+
+    if (n < 16) {
+        float sum = 0.0f;
+        for (std::size_t i = 0; i < n; ++i) {
+            sum += x[i];
+        }
+        return sum;
+    }
+
+    // define ptr points to x and end of x
+    const float* xptr = x;
+    const float* end = x + n;
+    float total = 0.0f;
+
+    // loop unrolling
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
+
+    // main loop: memory unaligned
+    // init sum0, sum1 to 0
+    __m256 sum0 = _mm256_setzero_ps();
+    __m256 sum1 = _mm256_setzero_ps();
+    for (std::size_t i = 0; i < num_unrolls; ++i) {
+        __m256 xvec0 = _mm256_loadu_ps(xptr);
+        __m256 xvec1 = _mm256_loadu_ps(xptr + 8);
+        // sum += x
+        sum0 = _mm256_add_ps(xvec0, xvec0);
+        sum1 = _mm256_add_ps(xvec1, xvec1);
+        // increment
+        xptr += FTYPE_UNROLLING_SIZE;
+    }
+
+    // combine sum0 and sum1
+    __m256 sums = _mm256_add_ps(sum0, sum1);
+
+    // handle teh last 8 - 15 elements
+    std::size_t remainder = end - xptr;
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
+        __m256 xvec = _mm256_loadu_ps(xptr);
+        sums = _mm256_add_ps(sums, xvec);
+        xptr += FTYPE_ELEMS_PER_REGISTER;
+    }
+
+    // exact avx horizontal sum
+    // [a,b,c,d,e,f,g,h] + [a,b,c,d,e,f,g,h]
+    // [a,b,c,d,e,f,g,h] -> [a,b,c,d]
+    // [a,b,c,d,e,f,g,h] -> [e,f,g,h]
+    // [a+e,b+f,c+g,d+h]
+    // [a+e,b+f,c+g,d+h] -> [b+f,b+f,d+h,d+h]
+    // [(a+e)+(b+f),(b+f)+(b+f),(c+g)+(d+h),(d+h)+(d+h)]
+    //   [(a+e)+(b+f),(b+f)+(b+f),(c+g)+(d+h),(d+h)+(d+h)]
+    // + [(c+g)+(d+h),(d+h)+(d+h),(c+g)+(d+h),(d+h)+(d+h)]
+    // =                   [(a+e)+(b+f)+(c+g)+(d+h),*,*,*]
+    const __m128 partial_sum = _mm_add_ps(_mm256_castps256_ps128(sums),
+                                          _mm256_extractf128_ps(sums, 1));
+    const __m128 shuffle = _mm_movehdup_ps(partial_sum);
+    const __m128 combine_sum = _mm_add_ps(partial_sum, shuffle);
+    const __m128 scalar_sum = _mm_add_ss(combine_sum, _mm_movehl_ps(combine_sum, combine_sum));
+
+    // sum128 = _mm_add_ps(sum128, _mm_movehdup_ps(sum128));
+    // sum128 = _mm_add_ss(sum128, _mm_movehl_ps(sum128, sum128));
+    // extract first element
+    total += _mm_cvtss_f32(scalar_sum);
+
+    // handle the last 1 - 7 remaining elemts
+    if (end > xptr) {
+        const std::size_t tails = end - xptr;
+        for (std::size_t i = 0; i < tails; ++i) {
+            total += xptr[i];
+        }
+    }
+    return total;
+};
+
 #endif
 
 }
