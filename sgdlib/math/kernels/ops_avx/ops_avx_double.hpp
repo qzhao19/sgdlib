@@ -957,6 +957,92 @@ inline void vecmul_avx_double(const double* x,
     }
 };
 
+/**
+ * @brief Computes the accumulated sum of double-precision elements
+ *        using AVX2 intrinsics
+ */
+inline double vecaccmul_sse_double(const double* xbegin,
+                                   const double* xend,
+                                   std::size_t n) noexcept {
+    if (xbegin == nullptr || xend == nullptr) return 0.0;
+    if (xend <= xbegin) return 0.0;
+    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
+    if (n != m) return 0.0;
+    if (n == 0) return 0.0;
+    if (n < 16) {
+        double sum = 0.0;
+        for (std::size_t i = 0; i < n; ++i) {
+            sum += x[i];
+        }
+        return sum;
+    }
+
+    // define xptr and end point to x and end of x
+    const double* xptr = x;
+    const double* end = x + n;
+    double total = 0.0;
+
+    // loop unrolling
+    const std::size_t num_unrolls = n / DTYPE_UNROLLING_SIZE;
+
+    // init sum to 0
+    __m256d sum0 = _mm256_setzero_pd();
+    __m256d sum1 = _mm256_setzero_pd();
+    __m256d sum2 = _mm256_setzero_pd();
+    __m256d sum3 = _mm256_setzero_pd();
+    for (std::size_t i = 0; i < num_unrolls; ++i) {
+        // load 16 elements from x to 4 SIMD register
+        __m256d xvec0 = _mm256_loadu_pd(xptr);
+        __m256d xvec1 = _mm256_loadu_pd(xptr + 4);
+        __m256d xvec2 = _mm256_loadu_pd(xptr + 8);
+        __m256d xvec3 = _mm256_loadu_pd(xptr + 12);
+        // compute sum = sum + vec
+        sum0 = _mm256_add_pd(sum0, xvec0);
+        sum1 = _mm256_add_pd(sum1, xvec1);
+        sum2 = _mm256_add_pd(sum2, xvec2);
+        sum3 = _mm256_add_pd(sum3, xvec3);
+
+        // increment
+        xptr += DTYPE_UNROLLING_SIZE;
+    }
+    // combine sum0, sum1, sum2 and sum3
+    __m256d partial_sum = _mm256_add_pd(_mm256_add_pd(sum0, sum1),
+                                        _mm256_add_pd(sum2, sum3));
+
+    // handle teh last 4 - 15 elements
+    const std::size_t remainder = end - xptr;
+    if (remainder >= DTYPE_ELEMS_PER_REGISTER) {
+        const std::size_t num_blocks = remainder / DTYPE_ELEMS_PER_REGISTER;
+        for (std::size_t i = 0; i < num_blocks; ++i) {
+            const __m256d xvec = _mm256_loadu_pd(xptr);
+            sums = _mm256_add_pd(sums, xvec);
+            xptr += DTYPE_ELEMS_PER_REGISTER;
+        }
+    }
+
+    // perform a horizontal addition
+    // [a,b,c,d] -> [c,d,a,b]
+    // [a+c,b+d,c+a,d+d]
+    // [(a+c)+(b+d),*,*,*]
+    const __m256d perm = _mm256_permute2f128_pd(partial_sum, partial_sum, 0x01);
+    const __m256d combine_sum = _mm256_add_pd(partial_sum, perm);
+    const __m256d scalar_sum = _mm256_hadd_pd(combine_sum, combine_sum);
+    total += _mm256_cvtsd_f64(scalar_sum);
+    // sums = _mm256_add_pd(sums, _mm256_permute2f128_pd(sums, sums, 0x01));
+    // sums = _mm256_hadd_pd(sums, sums);
+    // total += _mm256_cvtsd_f64(sums);
+
+    // process remaining elements
+    const std::size_t tails = end - xptr;
+    switch (tails) {
+        case 3: total += xptr[2]; [[fallthrough]];
+        case 2: total += xptr[1]; [[fallthrough]];
+        case 1: total += xptr[0];
+        default: break;
+    }
+    return total;
+};
+
 #endif
 
 }
