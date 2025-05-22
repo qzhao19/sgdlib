@@ -157,6 +157,19 @@ inline void vecmul_avx(const T* x, const T* y, std::size_t n, std::size_t m, T* 
     }
 };
 
+template <typename T>
+inline T vecaccmul_avx(const T* xbegin, const T* xend, std::size_t n) {
+    T prod;
+    if constexpr (std::is_same_v<T, float>) {
+        prod = vecaccuml_avx_float(xbegin, xend, n);
+    }
+    else if constexpr (std::is_same_v<T, double>) {
+        prod = vecaccmul_avx_double(xbegin, xend, n);
+    }
+    return prod;
+};
+
+
 } // namespace detail
 } // namespace sgdlib
 
