@@ -802,7 +802,8 @@ inline double vecaccmul_sse_double(const double* xbegin,
         case 1: total += xptr[0];
         default: break;
     }
-    return squared ? total : std::sqrt(total);
+    return total;
+};
 
 #endif
 
