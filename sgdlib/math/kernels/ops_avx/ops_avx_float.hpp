@@ -876,14 +876,14 @@ inline float vecaccuml_avx_float(const float* xbegin,
     if (n < 16) {
         float sum = 0.0f;
         for (std::size_t i = 0; i < n; ++i) {
-            sum += x[i];
+            sum += xbegin[i];
         }
         return sum;
     }
 
     // define ptr points to x and end of x
-    const float* xptr = x;
-    const float* end = x + n;
+    const float* xptr = xbegin;
+    const float* end = xbegin + n;
     float total = 0.0f;
 
     // loop unrolling
@@ -897,8 +897,8 @@ inline float vecaccuml_avx_float(const float* xbegin,
         __m256 xvec0 = _mm256_loadu_ps(xptr);
         __m256 xvec1 = _mm256_loadu_ps(xptr + 8);
         // sum += x
-        sum0 = _mm256_add_ps(xvec0, xvec0);
-        sum1 = _mm256_add_ps(xvec1, xvec1);
+        sum0 = _mm256_add_ps(sum0, xvec0);
+        sum1 = _mm256_add_ps(sum1, xvec1);
         // increment
         xptr += FTYPE_UNROLLING_SIZE;
     }
