@@ -961,7 +961,7 @@ inline void vecmul_avx_double(const double* x,
  * @brief Computes the accumulated sum of double-precision elements
  *        using AVX2 intrinsics
  */
-inline double vecaccmul_sse_double(const double* xbegin,
+inline double vecaccmul_avx_double(const double* xbegin,
                                    const double* xend,
                                    std::size_t n) noexcept {
     if (xbegin == nullptr || xend == nullptr) return 0.0;
@@ -972,14 +972,14 @@ inline double vecaccmul_sse_double(const double* xbegin,
     if (n < 16) {
         double sum = 0.0;
         for (std::size_t i = 0; i < n; ++i) {
-            sum += x[i];
+            sum += xbegin[i];
         }
         return sum;
     }
 
     // define xptr and end point to x and end of x
-    const double* xptr = x;
-    const double* end = x + n;
+    const double* xptr = xbegin;
+    const double* end = xbegin + n;
     double total = 0.0;
 
     // loop unrolling
@@ -1015,7 +1015,7 @@ inline double vecaccmul_sse_double(const double* xbegin,
         const std::size_t num_blocks = remainder / DTYPE_ELEMS_PER_REGISTER;
         for (std::size_t i = 0; i < num_blocks; ++i) {
             const __m256d xvec = _mm256_loadu_pd(xptr);
-            sums = _mm256_add_pd(sums, xvec);
+            partial_sum = _mm256_add_pd(partial_sum, xvec);
             xptr += DTYPE_ELEMS_PER_REGISTER;
         }
     }
