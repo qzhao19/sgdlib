@@ -314,6 +314,7 @@ inline void vecscale(const std::vector<T>& x,
 
 /**
  * @brief Scales vector elements in a range [xbegin, xend) by a constant with hardware acceleration
+ *        out[i] = x[i] * c
  *
  * @tparam T Floating-point type (float/double)
  *
@@ -568,6 +569,45 @@ inline T vecdot(const std::vector<T>& x,
     return prod;
 }
 
+
+template<typename T>
+inline T vecdot(const T* xbegin,
+                const T* xend,
+                const T* ybegin) {
+    static_assert(std::is_floating_point_v<T>,
+        "vecdot requires floating-point types (e.g. float, double)");
+
+    if (xbegin == nullptr || xend == nullptr) {
+        THROW_INVALID_ERROR("vecscale: input pointers cannot be null (xbegin="
+                            + std::to_string(reinterpret_cast<uintptr_t>(xbegin))
+                            + ", xend="
+                            + std::to_string(reinterpret_cast<uintptr_t>(xend)) + ")");
+    }
+
+    if (ybegin == nullptr) {
+        THROW_INVALID_ERROR("vecdot: ybegin pointer cannot be null (ybegin="
+                            + std::to_string(reinterpret_cast<uintptr_t>(ybegin)) + ")");
+    }
+
+    if (xbegin >= xend) {
+        THROW_INVALID_ERROR("vecscale: invalid range [xbegin, xend) with size="
+                            + std::to_string(xend - xbegin));
+    }
+    const std::size_t n = static_cast<std::size_t>(xend - xbegin);
+    if (n == 0) {
+        THROW_INVALID_ERROR("vecscale: empty input range");
+    }
+    T prod;
+#if defined(USE_SSE)
+    prod = vecdot_sse<T>(xbegin, ybegin, n, n);
+#elif defined(USE_AVX)
+    prod = vecdot_avx<T>(xbegin, ybegin, n, n);
+#else
+    prod = vecdot_ansi<T>(xbegin, xend, ybegin);
+#endif
+    return prod;
+};
+
 /**
  * @brief Performs element-wise vector multiplication with hardware acceleration
  *
@@ -614,7 +654,61 @@ inline void vecmul(const std::vector<T>& x,
 #else
     vecmul_ansi<T>(x, y, out);
 #endif
-}
+};
+
+
+/**
+ * @brief Computes the accumulated sum of elements in a range [xbegin, xend) with hardware acceleration
+ *
+ * @tparam T Floating-point type (float/double)
+ *
+ * @param[in] xbegin Pointer to the first element in the input range
+ * @param[in] xend   Pointer past the last element in the input range
+ *
+ * @return T Sum of all elements in the range [xbegin, xend)
+ *
+ * @note Implementation priority:
+ * 1. AVX vectorization when USE_AVX defined (processes 8 elements per cycle)
+ * 2. SSE vectorization when USE_SSE defined (processes 4 elements per cycle)
+ * 3. ANSI std::accumulate otherwise
+ *
+ * @throws std::invalid_argument For:
+ * - Null pointer inputs (xbegin or xend is nullptr)
+ * - Invalid range (xbegin >= xend)
+ * - Empty input range (xend - xbegin == 0)
+ */
+template<typename T>
+inline T vecaccumul(const T* xbegin,
+                    const T* xend) {
+    static_assert(std::is_floating_point_v<T>,
+        "vecdot requires floating-point types (e.g. float, double)");
+
+    if (xbegin == nullptr || xend == nullptr) {
+        THROW_INVALID_ERROR("vecscale: input pointers cannot be null (xbegin="
+                            + std::to_string(reinterpret_cast<uintptr_t>(xbegin))
+                            + ", xend="
+                            + std::to_string(reinterpret_cast<uintptr_t>(xend)) + ")");
+    }
+
+    if (xbegin >= xend) {
+        THROW_INVALID_ERROR("vecscale: invalid range [xbegin, xend) with size="
+                            + std::to_string(xend - xbegin));
+    }
+    const std::size_t n = static_cast<std::size_t>(xend - xbegin);
+    if (n == 0) {
+        THROW_INVALID_ERROR("vecscale: empty input range");
+    }
+    T prod;
+#if defined(USE_SSE)
+    prod = vecaccmul_sse<T>(xbegin, xend, n);
+#elif defined(USE_AVX)
+    prod = vecaccmul_avx<T>(xbegin, xend, n);
+#else
+    prod = vecaccmul_ansi<T>(xbegin, xend);
+#endif
+    return prod;
+};
+
 
 
 /**
