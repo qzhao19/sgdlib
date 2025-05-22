@@ -157,6 +157,18 @@ inline void vecmul_sse(const T* x, const T* y, std::size_t n, std::size_t m, T* 
     }
 };
 
+template <typename T>
+inline T vecaccmul_sse(const T* xbegin, const T* xend, std::size_t n) {
+    T prod;
+    if constexpr (std::is_same_v<T, float>) {
+        prod = vecaccmul_sse_float(xbegin, xend, n);
+    }
+    else if constexpr (std::is_same_v<T, double>) {
+        prod = vecaccmul_sse_double(xbegin, xend, n);
+    }
+    return prod;
+};
+
 } // namespace detail
 } // namespace sgdlib
 
