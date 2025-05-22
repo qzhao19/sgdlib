@@ -693,7 +693,6 @@ inline float vecaccmul_sse_float(const float* xbegin,
     return total;
 };
 
-
 #endif
 
 }
