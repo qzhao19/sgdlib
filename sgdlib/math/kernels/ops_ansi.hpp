@@ -13,12 +13,14 @@ inline void vecset_ansi(std::vector<T>& x, const T c) noexcept {
 }
 
 template<typename T>
-inline void veccpy_ansi(const std::vector<T>& x, std::vector<T>& out) noexcept {
+inline void veccpy_ansi(const std::vector<T>& x,
+                        std::vector<T>& out) noexcept {
     std::copy(x.begin(), x.end(), out.begin());
 }
 
 template<typename T>
-inline void vecncpy_ansi(const std::vector<T>& x, std::vector<T>& out) noexcept {
+inline void vecncpy_ansi(const std::vector<T>& x,
+                         std::vector<T>& out) noexcept {
     std::transform(x.begin(), x.end(),
                    out.begin(),
                    [](const T& val) { return -val; });
@@ -44,7 +46,8 @@ inline bool hasinf_ansi(const std::vector<T>& x) noexcept {
 };
 
 template<typename T>
-inline T vecnorm2_ansi(const std::vector<T>& x, bool squared) noexcept {
+inline T vecnorm2_ansi(const std::vector<T>& x,
+                       bool squared) noexcept {
     T l2_norm = std::inner_product(x.begin(), x.end(),
                                    x.begin(),
                                    static_cast<T>(0));
@@ -73,7 +76,7 @@ inline void vecscale_ansi(const T* xbegin,
                           const T* xend,
                           const T& c,
                           std::vector<T>& out) noexcept {
-    std::transform(out.begin(), out.end(),
+    std::transform(xbegin, xend,
                    out.begin(),
                    [&c](const T& val) { return val * c; });
 };
@@ -131,7 +134,6 @@ inline T vecdot_ansi(const T* xbegin,
 
 };
 
-
 template<typename T>
 inline void vecmul_ansi(const std::vector<T>& x,
                         const std::vector<T>& y,
@@ -148,9 +150,7 @@ inline T vecaccmul_ansi(const T* xbegin,
     T acc = std::accumulate(xbegin, xend,
                             static_cast<T>(0));
     return acc;
-}
-
-
+};
 
 } // namespace detail
 } // namespace sgdlib
