@@ -1400,3 +1400,82 @@ TYPED_TEST(MathOpsAVXTest, VecMulAVXTest) {
     }
 }
 
+// ****************************vecaccumul******************************//
+TYPED_TEST(MathOpsAVXTest, VecAccumulAVXTest) {
+    using T = typename TestFixture::Type;
+
+    // empty vector
+    std::vector<T> x1;
+    EXPECT_FLOAT_EQ(0.0, sgdlib::detail::vecaccmul_avx<T>(x1.data(), x1.data(), x1.size()));
+
+    // single element
+    std::vector<T> x2 = {3.0};
+    T expected21 = sgdlib::detail::vecaccmul_ansi<T>(x2.data(), x2.data() + 1);
+    EXPECT_FLOAT_EQ(expected21, sgdlib::detail::vecaccmul_avx<T>(x2.data(), x2.data() + 1, x2.size()));
+
+    // multiple elements aligned
+    std::vector<T> x3 = {1.0, 2.0, 3.0, 4.0}; // 4 elements for SSE alignment
+    T expected31 = sgdlib::detail::vecaccmul_ansi<T>(x3.data(), x3.data() + x3.size()); // 1.0 + 4.0 + 9.0 + 16.0;
+    EXPECT_FLOAT_EQ(expected31, sgdlib::detail::vecaccmul_avx<T>(x3.data(), x3.data() + x3.size(), x3.size()));
+
+    // elements with Nan
+    std::vector<T> x4 = {1.0, 2.0, std::numeric_limits<T>::quiet_NaN(), 4.0};
+    T expected41 = sgdlib::detail::vecaccmul_ansi(x4.data(), x4.data() + x4.size());
+    EXPECT_TRUE(std::isnan(expected41));
+    EXPECT_TRUE(std::isnan(sgdlib::detail::vecaccmul_avx<T>(x4.data(), x4.data() + x4.size(), x4.size())));
+
+    // multiple elements unaligned with large size
+    std::size_t size5 = 1025;
+    std::vector<T> x5 = this->generate_test_data(size5, false, 10, 0);
+    T expected51 = sgdlib::detail::vecaccmul_ansi<T>(x5.data(), x5.data() + x5.size());
+    EXPECT_FLOAT_EQ(expected51, sgdlib::detail::vecaccmul_avx<T>(x5.data(), x5.data() + x5.size(), x5.size()));
+
+    // aligned memory array
+    std::size_t size6 = 1024;
+    std::fill_n(this->aligned_mem_vec, size6, 1.0);
+    std::vector<T> x6(size6, 1.0);
+    T expected61 = sgdlib::detail::vecaccmul_ansi<T>(x6.data(), x6.data() + size6);
+    EXPECT_FLOAT_EQ(expected61, sgdlib::detail::vecaccmul_avx<T>(this->aligned_mem_vec, this->aligned_mem_vec + size6, size6));
+
+    // overlapped memory case
+    std::size_t size7 = 1000000;
+    std::vector<T> x7 = this->generate_test_data(size7, false, 10.0, -10.0);
+    std::vector<std::size_t> chunk_sizes = {6, 10, 25, 100, 250, 750};
+    for (auto chunk_size : chunk_sizes) {
+        std::size_t processed = 0;
+        while (processed < size7) {
+            const std::size_t current_chunk = std::min(chunk_size, size7 - processed);
+
+            std::vector<T> chunk(
+                x7.begin() + processed,
+                x7.begin() + processed + current_chunk
+            );
+
+            T expected7 = sgdlib::detail::vecaccmul_ansi<T>(chunk.data(), chunk.data() + current_chunk);
+            T actual7  = sgdlib::detail::vecaccmul_avx<T>(x7.data() + processed, x7.data() + processed + current_chunk, current_chunk);
+            EXPECT_NEAR(expected7, actual7, 1e-3);
+            processed += current_chunk;
+        }
+    }
+
+    // performance test with huge size n = 1 << 20
+    std::size_t huge_size = 1 << 20;
+    std::vector<T> x_huge(huge_size);
+    x_huge = this->generate_test_data(huge_size, false, 1, 0);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    T out1 = sgdlib::detail::vecaccmul_avx<T>(x_huge.data(), x_huge.data() + huge_size, huge_size);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed1 = end - start;
+    std::cout << "vecnorm2 SIMD execution time: " << elapsed1.count() << " seconds\n";
+
+    start = std::chrono::high_resolution_clock::now();
+    T out2 = sgdlib::detail::vecaccmul_ansi<T>(x_huge.data(), x_huge.data() + huge_size);
+    end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed2 = end - start;
+    std::cout << "vecnorm2 ANSI execution time: " << elapsed2.count() << " seconds\n";
+    std::cout << "Speedup: " << elapsed2.count() / elapsed1.count() << "x\n";
+
+    EXPECT_NEAR(out1, out2, 1e+2);;
+
+}
