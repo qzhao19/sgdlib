@@ -13,16 +13,6 @@ namespace detail {
  * @brief Sets all elements of a double array to a specified value using SSE instructions.
  */
 inline void vecset_sse_double(double* x, const double c, std::size_t n) noexcept {
-    if (x == nullptr || n == 0) return ;
-
-    // handle small size n <= 4
-    if (n < 4) {
-        for (std::size_t i = 0; i < n; ++i) {
-            x[i] = c;
-        }
-        return ;
-    }
-
     // define a ptr points to x, end of bound
     double* xptr = x;
     const double* end = x + n;
@@ -52,17 +42,6 @@ inline void vecset_sse_double(double* x, const double c, std::size_t n) noexcept
  * @brief Copies an array of double-precision floating-point numbers using SSE4.2 instructions.
  */
 void veccpy_sse_double(const double* x, std::size_t n, double* out) noexcept {
-    if (n == 0) return ;
-    if (x == nullptr) return ;
-    if (out == nullptr) return ;
-    // handle small size n < 4
-    if (n < 4) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i];
-        }
-        return ;
-    }
-
     // define xptr, outptr and a ptr to end of x
     double* outptr = out;
     const double* xptr = x;
@@ -98,17 +77,6 @@ void veccpy_sse_double(const double* x, std::size_t n, double* out) noexcept {
  * @brief Negates and copies elements of a double array using SSE intrinsics.
  */
 void vecncpy_sse_double(const double* x, std::size_t n, double* out) noexcept {
-    if (n == 0) return ;
-    if (x == nullptr) return ;
-    if (out == nullptr) return ;
-    // handle small size n < 2
-    if (n < 4) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = -x[i];
-        }
-        return ;
-    }
-
     // define xptr, outptr and a ptr to end of x
     double* outptr = out;
     const double* xptr = x;
@@ -153,17 +121,6 @@ void vecncpy_sse_double(const double* x, std::size_t n, double* out) noexcept {
  *        unaligned memory, and various edge conditions.
  */
 inline void vecclip_sse_double(double* x, double min, double max, std::size_t n) noexcept {
-    if (n == 0 || x == nullptr) return ;
-    if (min > max) return ;
-
-    // check if x is aligned to 16 bytes == 2 elems
-    if (n < 4) {
-        for (std::size_t i = 0; i < n; ++i) {
-            x[i] = std::clamp(x[i], min, max);
-        }
-        return ;
-    }
-
     // define ptr points to x and end of x
     double* xptr = x;
     const double* end = x + n;
@@ -217,18 +174,6 @@ inline void vecclip_sse_double(double* x, double min, double max, std::size_t n)
  * @brief Checks if a double-precision array contains any infinite values using SSE intrinsics.
  */
 inline bool hasinf_sse_double(const double* x, std::size_t n) noexcept {
-    if (n == 0 || x == nullptr) return false;
-
-    // check if x has 4 elems
-    if (n < 4) {
-        for (std::size_t i = 0; i < n; ++i) {
-            if (std::isinf(x[i])) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     // define ptr points to x and end of x
     const double* xptr = x;
     const double* end = x + n;
@@ -273,16 +218,6 @@ inline bool hasinf_sse_double(const double* x, std::size_t n) noexcept {
 inline double vecnorm2_sse_double(const double* x,
                                   std::size_t n,
                                   bool squared) noexcept {
-    if (n == 0 || x == nullptr) return 0.0;
-    // For small arrays with less than or equal to two elements
-    if (n <= 4) {
-        double sum = 0.0;
-        for (std::size_t i = 0; i < n; ++i) {
-            sum += x[i] * x[i];
-        }
-        return squared ? sum : std::sqrt(sum);
-    }
-
     const double* xptr = x;
     const double* end = x + n;
     double total = 0.0;
@@ -330,16 +265,6 @@ inline double vecnorm2_sse_double(const double* x,
  */
 inline double vecnorm1_sse_double(const double* x,
                                   std::size_t n) noexcept {
-    if (n == 0 || x == nullptr) return 0.0;
-    // For small arrays with less than 4 elements
-    if (n < 4) {
-        float sum = 0.0f;
-        for (std::size_t i = 0; i < n; ++i) {
-            sum += std::abs(x[i]);
-        }
-        return sum;
-    }
-
     // define ptr points to x and end of x
     const double* xptr = x;
     const double* end = x + n;
@@ -391,17 +316,6 @@ inline void vecscale_sse_double(const double* x,
                                 const double c,
                                 std::size_t n,
                                 double* out) noexcept {
-    if (x == nullptr || out == nullptr) return ;
-    if (n == 0 || c == 1.0) return ;
-
-    // for small size n < 2
-    if (n < 4) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i] * c;
-        }
-        return;
-    }
-
     // define ptr points to x and end of x
     double* outptr = out;
     const double* xptr = x;
@@ -445,12 +359,6 @@ inline void vecscale_sse_double(const double* xbegin,
                                 const double c,
                                 std::size_t n,
                                 double* out) noexcept {
-    if (xbegin == nullptr || xend == nullptr || out == nullptr) return;
-    if (n == 0 || c == 1.0) return ;
-    if (xend <= xbegin) return ;
-    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
-    if (n != m) return ;
-
     // call vecscale_sse_double function
     vecscale_sse_double(xbegin, c, n, out);
 };
@@ -467,18 +375,6 @@ inline void vecadd_sse_double(const double* x,
                               const std::size_t n,
                               const std::size_t m,
                               double* out) noexcept {
-    if (x == nullptr || y == nullptr) return ;
-    if (out == nullptr) return ;
-    if (n == 0 || m == 0) return ;
-    if (m != n) return ;
-
-    if (n < 4) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i] + y[i];
-        }
-        return ;
-    }
-
     // define ptr points to x and aligned end
     double* outptr = out;
     const double* xptr = x;
@@ -521,18 +417,6 @@ inline void vecadd_sse_double(const double* x,
                               const std::size_t n,
                               const std::size_t m,
                               double* out) noexcept {
-    if (x == nullptr || y == nullptr) return ;
-    if (out == nullptr) return ;
-    if (n == 0 || m == 0) return ;
-    if (m != n) return ;
-
-    if (n < 4) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = c * x[i] + y[i];
-        }
-        return ;
-    }
-
     // define ptr points to x and aligned end
     double* outptr = out;
     const double* xptr = x;
@@ -583,18 +467,6 @@ inline void vecdiff_sse_double(const double* x,
                                const std::size_t n,
                                const std::size_t m,
                                double* out) noexcept {
-    if (x == nullptr || y == nullptr) return ;
-    if (out == nullptr) return ;
-    if (n == 0 || m == 0) return ;
-    if (m != n) return ;
-
-    if (n < 4) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i] - y[i];
-        }
-        return ;
-    }
-
     // define ptr points to x and aligned end
     double* outptr = out;
     const double* xptr = x;
@@ -631,6 +503,50 @@ inline void vecdiff_sse_double(const double* x,
 };
 
 /**
+ * @brief Computes out[i] = c * x[i] - y[i] for each element using SSE4.2 instructions.
+ */
+inline void vecdiff_sse_double(const double* x,
+                               const double* y,
+                               const double c,
+                               const std::size_t n,
+                               const std::size_t m,
+                               double* out) noexcept {
+    // define ptr points to x and aligned end
+    double* outptr = out;
+    const double* xptr = x;
+    const double* yptr = y;
+    const double* end = x + n;
+
+    // loop unrolling
+    const std::size_t num_unrolls = n / DTYPE_UNROLLING_SIZE;
+    const __m128d scalar = _mm_set1_pd(c);
+    // main SIMD loop
+    for (std::size_t i = 0; i < num_unrolls; ++i) {
+        // load x, y to register
+        __m128d xvec0 = _mm_loadu_pd(xptr);
+        __m128d xvec1 = _mm_loadu_pd(xptr + 2);
+        __m128d yvec0 = _mm_loadu_pd(yptr);
+        __m128d yvec1 = _mm_loadu_pd(yptr + 2);
+        // x - y
+        _mm_storeu_pd(outptr, _mm_sub_pd(xvec0, _mm_mul_pd(yvec0, scalar)));
+        _mm_storeu_pd(outptr + 2, _mm_sub_pd(xvec1, _mm_mul_pd(yvec1, scalar)));
+        // increment
+        xptr += DTYPE_UNROLLING_SIZE;
+        yptr += DTYPE_UNROLLING_SIZE;
+        outptr += DTYPE_UNROLLING_SIZE;
+    }
+
+    // handle remaining elements
+    const std::size_t remainder = end - xptr;
+    switch (remainder) {
+        case 3: outptr[2] = xptr[2] - c * yptr[2]; [[fallthrough]];
+        case 2: outptr[1] = xptr[1] - c * yptr[1]; [[fallthrough]];
+        case 1: outptr[0] = xptr[0] - c * yptr[0];
+        default: break;
+    }
+};
+
+/**
  * @brief Computes the dot product of two double-precision vectors using SSE4.2 intrinsics.
  *        Calculates the sum of element-wise products: Σ(x[i] * y[i]) for i = 0 to n-1.
  */
@@ -638,19 +554,6 @@ inline double vecdot_sse_double(const double* x,
                                 const double* y,
                                 std::size_t n,
                                 std::size_t m) noexcept {
-    if (x == nullptr || y == nullptr) return 0.0;
-    if (n == 0 || m == 0) return 0.0;
-    if (n != m) return 0.0;
-
-    // for small size array
-    if (n < 4 && m < 4) {
-        float sum = 0.0;
-        for (std::size_t i = 0; i < n; ++i) {
-            sum += x[i] * y[i];
-        }
-        return sum;
-    }
-
     const double* xptr = x;
     const double* yptr = y;
     const double* end = x + n;
@@ -700,19 +603,6 @@ inline void vecmul_sse_double(const double* x,
                               std::size_t n,
                               std::size_t m,
                               double* out) noexcept {
-    if (x == nullptr || y == nullptr) return ;
-    if (out == nullptr) return ;
-    if (n == 0 || m == 0) return ;
-    if (m != n) return ;
-
-    // handle small size case n < 4
-    if (n < 4) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i] * y[i];
-        }
-        return ;
-    }
-
     // define ptr points to x and aligned end
     double* outptr = out;
     const double* xptr = x;
@@ -754,20 +644,6 @@ inline void vecmul_sse_double(const double* x,
 inline double vecaccmul_sse_double(const double* xbegin,
                                    const double* xend,
                                    std::size_t n) noexcept {
-    if (xbegin == nullptr || xend == nullptr) return 0.0;
-    if (xend <= xbegin) return 0.0;
-    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
-    if (n != m) return 0.0;
-    if (n == 0) return 0.0;
-
-    if (n < 4) {
-        double acc = 0.0;
-        for (std::size_t i = 0; i < m; ++i) {
-            acc += xbegin[i];
-        }
-        return acc;
-    }
-
     const double* xptr = xbegin;
     const double* end = xbegin + n;
     double total = 0.0;
