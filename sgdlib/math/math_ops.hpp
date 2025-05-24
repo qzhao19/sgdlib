@@ -232,6 +232,42 @@ inline T vecnorm2(const std::vector<T>& x, bool squared = false) {
 }
 
 /**
+ *
+ */
+template<typename T>
+inline T vecnorm2(const T* xbegin, const T* xend, bool squared = false) {
+    static_assert(std::is_floating_point_v<T>,
+        "vecnorm2 requires floating-point types (e.g. float, double)"
+    );
+
+    if (xbegin == nullptr || xend == nullptr) {
+        THROW_INVALID_ERROR("vecnorm2: input pointers cannot be null (xbegin="
+                            + std::to_string(reinterpret_cast<uintptr_t>(xbegin))
+                            + ", xend="
+                            + std::to_string(reinterpret_cast<uintptr_t>(xend)) + ")");
+    }
+
+    if (xbegin >= xend) {
+        THROW_INVALID_ERROR("vecnorm2: invalid range [xbegin, xend) with size="
+                            + std::to_string(xend - xbegin));
+    }
+    const std::size_t n = static_cast<std::size_t>(xend - xbegin);
+    if (n == 0) {
+        THROW_INVALID_ERROR("vecnorm2: empty input range");
+    }
+
+    T norm2;
+#if defined(USE_SSE)
+    norm2 = vecnorm2_sse<T>(xbegin, n, squared);
+#elif defined(USE_AVX)
+    norm2 = vecnorm2_avx<T>(xbegin, n, squared);
+#else
+    norm2 = vecnorm2_ansi<T>(xbegin, xend, squared);
+#endif
+    return norm2;
+}
+
+/**
  * @brief Computes L1 norm of a vector with hardware acceleration
  *
  * @tparam T Floating-point type (float/double)
@@ -423,13 +459,13 @@ inline void vecadd(const std::vector<T>& x,
 
 /**
  * @brief Performs scaled vector addition with hardware acceleration
- *
+ *        x*c + y
  * @tparam T Floating-point type (float/double)
  *
  * @param[in] x First input vector
  * @param[in] y Second input vector
  * @param[in] c Scaling factor applied to x
- * @param[out] out Output vector storing element-wise result x*c + y
+ * @param[out] out Output vector storing element-wise result
  *
  * @note Implementation priority:
  * 1. AVX vectorization when USE_AVX defined
@@ -475,12 +511,13 @@ inline void vecadd(const std::vector<T>& x,
 
 /**
  * @brief Performs vector subtraction with hardware acceleration
+ *        x - y
  *
  * @tparam T Floating-point type (float/double)
  *
  * @param[in] x First input vector
  * @param[in] y Second input vector
- * @param[out] out Output vector storing element-wise difference x - y
+ * @param[out] out Output vector storing element-wise difference
  *
  * @note Implementation priority:
  * 1. AVX vectorization when USE_AVX defined
@@ -522,7 +559,60 @@ inline void vecdiff(const std::vector<T>& x,
 #else
     vecdiff_ansi<T>(x, y, out);
 #endif
+}
 
+/**
+ * @brief Performs scaled vector subtraction with hardware acceleration
+ *        out[i] = c * x[i] - y[i]
+ *
+ * @tparam T Floating-point type (float/double)
+ *
+ * @param[in] x First input vector (minuend)
+ * @param[in] y Second input vector (subtrahend)
+ * @param[in] c Scaling factor applied to y vector elements
+ * @param[out] out Output vector storing element-wise
+ *
+ * @note Implementation priority:
+ * 1. AVX vectorization when USE_AVX defined (processes 8 elements per cycle)
+ * 2. SSE vectorization when USE_SSE defined (processes 4 elements per cycle)
+ * 3. ANSI std::transform otherwise
+ *
+ * @throws std::invalid_argument For:
+ * - Empty input vectors (x or y)
+ * - Size mismatch between input vectors (x.size() != y.size())
+ * - Output vector size mismatch (out.size() != x.size())
+ */
+template<typename T>
+inline void vecdiff(const std::vector<T>& x,
+                    const std::vector<T>& y,
+                    const T c,
+                    std::vector<T>& out) {
+    static_assert(std::is_floating_point_v<T>,
+        "vecdiff requires floating-point types (e.g. float, double)");
+
+    if (x.empty() || y.empty()) {
+        THROW_INVALID_ERROR("vecdiff: input x, y vector cannot be empty");
+    }
+
+    if (out.empty()) {
+        THROW_INVALID_ERROR("vecdiff: output vector cannot be empty");
+    }
+
+    std::size_t n = x.size();
+    std::size_t m = y.size();
+    if (m != n || n != out.size()) {
+        THROW_INVALID_ERROR("vecdiff: requires x.size() == y.size()");
+    }
+    if (n != out.size()) {
+        THROW_INVALID_ERROR("vecdiff: requires x.size() == out.size()");
+    }
+#if defined(USE_SSE)
+    vecdiff_sse<T>(x.data(), y.data(), c, n, m, out.data());
+#elif defined(USE_AVX)
+    vecdiff_avx<T>(x.data(), y.data(), c, n, m, out.data());
+#else
+    vecdiff_ansi<T>(x, y, c, out);
+#endif
 }
 
 /**
