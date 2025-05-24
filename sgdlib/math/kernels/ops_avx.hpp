@@ -136,6 +136,16 @@ inline void vecdiff_avx(const T* x, const T* y, std::size_t n, std::size_t m, T*
 };
 
 template <typename T>
+inline void vecdiff_avx(const T* x, const T* y, const T c, std::size_t n, std::size_t m, T* out) {
+    if constexpr (std::is_same_v<T, float>) {
+        vecdiff_avx_float(x, y, c, n, m, out);
+    }
+    else if constexpr (std::is_same_v<T, double>) {
+        vecdiff_avx_double(x, y, c, n, m, out);
+    }
+};
+
+template <typename T>
 inline T vecdot_avx(const T* x, const T* y, std::size_t n, std::size_t m) {
     T prod;
     if constexpr (std::is_same_v<T, float>) {
