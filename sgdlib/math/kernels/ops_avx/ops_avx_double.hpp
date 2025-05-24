@@ -13,16 +13,6 @@ namespace detail {
  * @brief Sets all elements of a double array to a constant value using AVX instructions.
  */
 inline void vecset_avx_double(double* x, const double c, std::size_t n) noexcept {
-    if (x == nullptr || n == 0) return;
-
-    // handle small size n < 8
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            x[i] = c;
-        }
-        return;
-    }
-
     // define a ptr points to x, end of bound
     double* xptr = x;
     const double* end = x + n;
@@ -62,17 +52,6 @@ inline void vecset_avx_double(double* x, const double c, std::size_t n) noexcept
  * @brief Copies an array of double floating-point numbers using AVX2 instructions.
  */
 void veccpy_avx_double(const double* x, std::size_t n, double* out) noexcept {
-    if (n == 0) return ;
-    if (x == nullptr) return ;
-    if (out == nullptr) return ;
-    // handle small size n < 4
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i];
-        }
-        return ;
-    }
-
     // define xptr, outptr and a ptr to end of x
     double* outptr = out;
     const double* xptr = x;
@@ -123,17 +102,6 @@ void veccpy_avx_double(const double* x, std::size_t n, double* out) noexcept {
  *        negates their values using AVX instructions.
  */
 void vecncpy_avx_double(const double* x, std::size_t n, double* out) noexcept {
-    if (n == 0) return ;
-    if (x == nullptr) return ;
-    if (out == nullptr) return ;
-    // handle small size n < 4
-    if (n < 4) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = -x[i];
-        }
-        return ;
-    }
-
     // define xptr, outptr and a ptr to end of x
     double* outptr = out;
     const double* xptr = x;
@@ -196,18 +164,6 @@ void vecncpy_avx_double(const double* x, std::size_t n, double* out) noexcept {
  * @brief Clips elements of a double array to specified range using AVX intrinsics
  */
 inline void vecclip_avx_double(double* x, double min, double max, std::size_t n) noexcept {
-    if (n == 0 || x == nullptr) return ;
-    if (min > max) return ;
-
-    // check if x is aligned to 16 bytes == 2 elems
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            x[i] = std::clamp(x[i], min, max);
-            // x[i] = (x[i] < min) ? min : (x[i] > max) ? max : x[i];
-        }
-        return ;
-    }
-
     // define ptr points to x and end of x
     double* xptr = x;
     const double* end = x + n;
@@ -221,14 +177,41 @@ inline void vecclip_avx_double(double* x, double min, double max, std::size_t n)
 
     // Process the array in chunks of 2 elements using SSE intrinsics
     for (std::size_t i = 0; i < num_unrolls; ++i) {
+        // __m256d xvec0 = _mm256_loadu_pd(xptr);
+        // __m256d xvec1 = _mm256_loadu_pd(xptr + 4);
+        // __m256d xvec2 = _mm256_loadu_pd(xptr + 8);
+        // __m256d xvec3 = _mm256_loadu_pd(xptr + 12);
+        // xvec0 = _mm256_min_pd(_mm256_max_pd(xvec0, xmin), xmax);
+        // xvec1 = _mm256_min_pd(_mm256_max_pd(xvec1, xmin), xmax);
+        // xvec2 = _mm256_min_pd(_mm256_max_pd(xvec2, xmin), xmax);
+        // xvec3 = _mm256_min_pd(_mm256_max_pd(xvec3, xmin), xmax);
+        // _mm256_storeu_pd(xptr, xvec0);
+        // _mm256_storeu_pd(xptr + 4, xvec1);
+        // _mm256_storeu_pd(xptr + 8, xvec2);
+        // _mm256_storeu_pd(xptr + 12, xvec3);
+        // // increment
+        // xptr += DTYPE_UNROLLING_SIZE;
+
         __m256d xvec0 = _mm256_loadu_pd(xptr);
         __m256d xvec1 = _mm256_loadu_pd(xptr + 4);
         __m256d xvec2 = _mm256_loadu_pd(xptr + 8);
         __m256d xvec3 = _mm256_loadu_pd(xptr + 12);
-        xvec0 = _mm256_min_pd(_mm256_max_pd(xvec0, xmin), xmax);
-        xvec1 = _mm256_min_pd(_mm256_max_pd(xvec1, xmin), xmax);
-        xvec2 = _mm256_min_pd(_mm256_max_pd(xvec2, xmin), xmax);
-        xvec3 = _mm256_min_pd(_mm256_max_pd(xvec3, xmin), xmax);
+
+        __m256d isnan0 = _mm256_cmp_pd(xvec0, xvec0, _CMP_UNORD_Q);
+        __m256d isnan1 = _mm256_cmp_pd(xvec1, xvec1, _CMP_UNORD_Q);
+        __m256d isnan2 = _mm256_cmp_pd(xvec2, xvec2, _CMP_UNORD_Q);
+        __m256d isnan3 = _mm256_cmp_pd(xvec3, xvec3, _CMP_UNORD_Q);
+
+        __m256d clipped0 = _mm256_min_pd(_mm256_max_pd(xvec0, xmin), xmax);
+        __m256d clipped1 = _mm256_min_pd(_mm256_max_pd(xvec1, xmin), xmax);
+        __m256d clipped2 = _mm256_min_pd(_mm256_max_pd(xvec2, xmin), xmax);
+        __m256d clipped3 = _mm256_min_pd(_mm256_max_pd(xvec3, xmin), xmax);
+        // keep Nan element
+        xvec0  = _mm256_blendv_pd(clipped0, xvec0, isnan0);
+        xvec1  = _mm256_blendv_pd(clipped1, xvec1, isnan1);
+        xvec2  = _mm256_blendv_pd(clipped2, xvec2, isnan2);
+        xvec3  = _mm256_blendv_pd(clipped3, xvec3, isnan3);
+
         _mm256_storeu_pd(xptr, xvec0);
         _mm256_storeu_pd(xptr + 4, xvec1);
         _mm256_storeu_pd(xptr + 8, xvec2);
@@ -243,7 +226,9 @@ inline void vecclip_avx_double(double* x, double min, double max, std::size_t n)
         const std::size_t num_blocks = remainder / DTYPE_ELEMS_PER_REGISTER;
         for (std::size_t i = 0; i < num_blocks; ++i) {
             __m256d xvec = _mm256_loadu_pd(xptr);
-            xvec = _mm256_min_pd(_mm256_max_pd(xvec, xmin), xmax);
+            __m256d isnan = _mm256_cmp_pd(xvec, xvec, _CMP_UNORD_Q);
+            __m256d clipped = _mm256_min_pd(_mm256_max_pd(xvec, xmin), xmax);
+            xvec = _mm256_blendv_pd(clipped, xvec, isnan);
             _mm256_storeu_pd(xptr, xvec);
             xptr += DTYPE_ELEMS_PER_REGISTER;
         }
@@ -263,18 +248,6 @@ inline void vecclip_avx_double(double* x, double min, double max, std::size_t n)
  * @brief Checks for infinite values in a double array using AVX intrinsics
  */
 inline bool hasinf_avx_double(const double* x, std::size_t n) noexcept {
-    if (n == 0 || x == nullptr) return false;
-
-    // check if x has 2 elems
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            if (std::isinf(x[i])) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     // define ptr points to x and end of x
     const double* xptr = x;
     const double* end = x + n;
@@ -341,16 +314,6 @@ inline bool hasinf_avx_double(const double* x, std::size_t n) noexcept {
 inline double vecnorm2_avx_double(const double* x,
                                   std::size_t n,
                                   bool squared) noexcept {
-    if (n == 0 || x == nullptr) return 0.0;
-    // For small arrays with less than or equal to two elements
-    if (n < 16) {
-        double sum = 0.0;
-        for (std::size_t i = 0; i < n; ++i) {
-            sum += x[i] * x[i];
-        }
-        return squared ? sum : std::sqrt(sum);
-    }
-
     // define xptr and end point to x and end of x
     const double* xptr = x;
     const double* end = x + n;
@@ -426,16 +389,6 @@ inline double vecnorm2_avx_double(const double* x,
  */
 inline double vecnorm1_avx_double(const double* x,
                                   std::size_t n) noexcept {
-    if (n == 0 || x == nullptr) return 0.0;
-    // For small arrays with less than or equal to two elements
-    if (n < 16) {
-        double sum = 0.0;
-        for (std::size_t i = 0; i < n; ++i) {
-            sum += std::abs(x[i]);
-        }
-        return sum;
-    }
-
     // define ptr points to x and end of x
     const double* xptr = x;
     const double* end = x + n;
@@ -510,17 +463,6 @@ inline void vecscale_avx_double(const double* x,
                                 const double c,
                                 std::size_t n,
                                 double* out) noexcept {
-    if (x == nullptr || out == nullptr) return ;
-    if (n == 0 || c == 1.0) return ;
-
-    // for small size n < 4
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i] * c;
-        }
-        return ;
-    }
-
      // define ptr points to x and end of x
      double* outptr = out;
      const double* xptr = x;
@@ -575,12 +517,6 @@ inline void vecscale_avx_double(const double* xbegin,
                                 const double c,
                                 std::size_t n,
                                 double* out) noexcept {
-    if (xbegin == nullptr || xend == nullptr || out == nullptr) return;
-    if (n == 0 || c == 1.0) return ;
-    if (xend <= xbegin) return ;
-    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
-    if (n != m) return ;
-
     // call vecscale_sse_double function
     vecscale_avx_double(xbegin, c, n, out);
 };
@@ -593,18 +529,6 @@ inline void vecadd_avx_double(const double* x,
                               const std::size_t n,
                               const std::size_t m,
                               double* out) noexcept {
-    if (x == nullptr || y == nullptr) return ;
-    if (out == nullptr) return ;
-    if (n == 0 || m == 0) return ;
-    if (m != n) return ;
-
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i] + y[i];
-        }
-        return ;
-    }
-
     // define ptr points to x and aligned end
     double* outptr = out;
     const double* xptr = x;
@@ -666,18 +590,6 @@ inline void vecadd_avx_double(const double* x,
                               const std::size_t n,
                               const std::size_t m,
                               double* out) noexcept {
-    if (x == nullptr || y == nullptr) return ;
-    if (out == nullptr) return ;
-    if (n == 0 || m == 0) return ;
-    if (m != n) return ;
-
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = c * x[i] + y[i];
-        }
-        return ;
-    }
-
     // define ptr points to x and aligned end
     double* outptr = out;
     const double* xptr = x;
@@ -741,18 +653,6 @@ inline void vecdiff_avx_double(const double* x,
                                const std::size_t n,
                                const std::size_t m,
                                double* out) noexcept {
-    if (x == nullptr || y == nullptr) return ;
-    if (out == nullptr) return ;
-    if (n == 0 || m == 0) return ;
-    if (m != n) return ;
-
-    if (n < 4) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i] - y[i];
-        }
-        return ;
-    }
-
     // define ptr points to x and aligned end
     double* outptr = out;
     const double* xptr = x;
@@ -804,25 +704,73 @@ inline void vecdiff_avx_double(const double* x,
 };
 
 /**
+ *
+ */
+inline void vecdiff_avx_double(const double* x,
+                               const double* y,
+                               const double c,
+                               const std::size_t n,
+                               const std::size_t m,
+                               double* out) noexcept {
+    // define ptr points to x and aligned end
+    double* outptr = out;
+    const double* xptr = x;
+    const double* yptr = y;
+    const double* end = x + n;
+
+    // loop unrolling
+    const std::size_t num_unrolls = n / DTYPE_UNROLLING_SIZE;
+    const __m256d scalar = _mm256_set1_pd(c);
+    for (std::size_t i = 0; i < num_unrolls; ++i) {
+        __m256d xvec0 = _mm256_loadu_pd(xptr);
+        __m256d yvec0 = _mm256_loadu_pd(yptr);
+        __m256d xvec1 = _mm256_loadu_pd(xptr + 4);
+        __m256d yvec1 = _mm256_loadu_pd(yptr + 4);
+        __m256d xvec2 = _mm256_loadu_pd(xptr + 8);
+        __m256d yvec2 = _mm256_loadu_pd(yptr + 8);
+        __m256d xvec3 = _mm256_loadu_pd(xptr + 12);
+        __m256d yvec3 = _mm256_loadu_pd(yptr + 12);
+        // _mm256_fnmadd_pd : -(a[i+63:i] * b[i+63:i]) + c[i+63:i]
+        _mm256_storeu_pd(outptr, _mm256_fnmadd_pd(yvec0, scalar, xvec0));
+        _mm256_storeu_pd(outptr + 4, _mm256_fnmadd_pd(yvec1, scalar, xvec1));
+        _mm256_storeu_pd(outptr + 8, _mm256_fnmadd_pd(yvec2, scalar, xvec2));
+        _mm256_storeu_pd(outptr + 12, _mm256_fnmadd_pd(yvec3, scalar, xvec3));
+        xptr += DTYPE_UNROLLING_SIZE;
+        yptr += DTYPE_UNROLLING_SIZE;
+        outptr += DTYPE_UNROLLING_SIZE;
+    }
+
+    // handle the last 4 - 15 elements
+    const std::size_t remainder = end - xptr;
+    if (remainder >= DTYPE_ELEMS_PER_REGISTER) {
+        const std::size_t num_blocks = remainder / DTYPE_ELEMS_PER_REGISTER;
+        for (std::size_t i = 0; i < num_blocks; ++i) {
+            __m256d xvec = _mm256_loadu_pd(xptr);
+            __m256d yvec = _mm256_loadu_pd(yptr);
+            _mm256_storeu_pd(outptr, _mm256_fnmadd_pd(yvec, scalar, xvec));
+            xptr += DTYPE_ELEMS_PER_REGISTER;
+            yptr += DTYPE_ELEMS_PER_REGISTER;
+            outptr += DTYPE_ELEMS_PER_REGISTER;
+        }
+    }
+
+    // handle remaining elements
+    const std::size_t tails = end - xptr;
+    switch (tails) {
+        case 3: outptr[2] = xptr[2] - c * yptr[2]; [[fallthrough]];
+        case 2: outptr[1] = xptr[1] - c * yptr[1]; [[fallthrough]];
+        case 1: outptr[0] = xptr[0] - c * yptr[0];
+        default: break;
+    }
+};
+
+/**
  * @brief Computes the dot product of two double arrays using AVX vectorization
  */
 inline double vecdot_avx_double(const double* x,
                                 const double* y,
                                 std::size_t n,
                                 std::size_t m) noexcept {
-    if (x == nullptr || y == nullptr) return 0.0;
-    if (n == 0 || m == 0) return 0.0;
-    if (n != m) return 0.0;
-
-    // for small size array
-    if (n < 16) {
-        double sum = 0.0;
-        for (std::size_t i = 0; i < n; ++i) {
-            sum += x[i] * y[i];
-        }
-        return sum;
-    }
-
     const double* xptr = x;
     const double* yptr = y;
     const double* end = x + n;
@@ -894,19 +842,6 @@ inline void vecmul_avx_double(const double* x,
                               std::size_t n,
                               std::size_t m,
                               double* out) noexcept {
-    if (x == nullptr || y == nullptr) return ;
-    if (out == nullptr) return ;
-    if (n == 0 || m == 0) return ;
-    if (m != n) return ;
-
-    // handle small size case n < 4
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i] * y[i];
-        }
-        return ;
-    }
-
     // define pointers
     double* outptr = out;
     const double* xptr = x;
@@ -964,19 +899,6 @@ inline void vecmul_avx_double(const double* x,
 inline double vecaccmul_avx_double(const double* xbegin,
                                    const double* xend,
                                    std::size_t n) noexcept {
-    if (xbegin == nullptr || xend == nullptr) return 0.0;
-    if (xend <= xbegin) return 0.0;
-    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
-    if (n != m) return 0.0;
-    if (n == 0) return 0.0;
-    if (n < 16) {
-        double sum = 0.0;
-        for (std::size_t i = 0; i < n; ++i) {
-            sum += xbegin[i];
-        }
-        return sum;
-    }
-
     // define xptr and end point to x and end of x
     const double* xptr = xbegin;
     const double* end = xbegin + n;

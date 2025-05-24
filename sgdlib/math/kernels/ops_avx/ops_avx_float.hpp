@@ -13,16 +13,6 @@ namespace detail {
  * @brief Sets all elements of a float array to a constant value using AVX instructions.
  */
 inline void vecset_avx_float(float* x, const float c, std::size_t n) noexcept {
-    if (x == nullptr || n == 0) return;
-
-    // handle small size n < 16
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            x[i] = c;
-        }
-        return;
-    }
-
     // define a ptr points to x, end of bound and aligned bound
     float* xptr = x;
     const float* end = x + n;
@@ -55,17 +45,6 @@ inline void vecset_avx_float(float* x, const float c, std::size_t n) noexcept {
  * @brief Copies an array of float-precision floating-point numbers using AVX2 instructions.
  */
 void veccpy_avx_float(const float* x, std::size_t n, float* out) noexcept {
-    if (n == 0) return ;
-    if (x == nullptr) return ;
-    if (out == nullptr) return ;
-    // handle small size n < 16
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i];
-        }
-        return ;
-    }
-
     // define xptr, outptr and a ptr to end of x
     float* outptr = out;
     const float* xptr = x;
@@ -108,17 +87,6 @@ void veccpy_avx_float(const float* x, std::size_t n, float* out) noexcept {
  * @brief Negates and copies elements of a float array using AVX2 intrinsics.
  */
 void vecncpy_avx_float(const float* x, std::size_t n, float* out) noexcept {
-    if (n == 0) return ;
-    if (x == nullptr) return ;
-    if (out == nullptr) return ;
-    // handle small size n < 16
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = -x[i];
-        }
-        return ;
-    }
-
     // define xptr, outptr and a ptr to end of x
     float* outptr = out;
     const float* xptr = x;
@@ -170,16 +138,6 @@ void vecncpy_avx_float(const float* x, std::size_t n, float* out) noexcept {
  * @brief Clips elements of a float array to specified range using AVX intrinsics
  */
 inline void vecclip_avx_float(float* x, float min, float max, std::size_t n) noexcept {
-    if (n == 0 || x == nullptr) return ;
-    if (min > max) return ;
-    // handle small size n < 16
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            x[i] = std::clamp(x[i], min, max);
-        }
-        return;
-    }
-
     // define ptr points to x and end of x
     float* xptr = x;
     const float* end = x + n;
@@ -193,13 +151,24 @@ inline void vecclip_avx_float(float* x, float min, float max, std::size_t n) noe
 
     // process the array in chunks of 16 elements
     for (std::size_t i = 0; i < num_unrolls; ++i) {
+        // xvec0 = _mm256_min_ps(_mm256_max_ps(xvec0, xmin), xmax);
+        // xvec1 = _mm256_min_ps(_mm256_max_ps(xvec1, xmin), xmax);
+        // _mm256_storeu_ps(xptr, xvec0);
+        // _mm256_storeu_ps(xptr + 8, xvec1);
         __m256 xvec0 = _mm256_loadu_ps(xptr);
         __m256 xvec1 = _mm256_loadu_ps(xptr + 8);
-        xvec0 = _mm256_min_ps(_mm256_max_ps(xvec0, xmin), xmax);
-        xvec1 = _mm256_min_ps(_mm256_max_ps(xvec1, xmin), xmax);
+        // check if element is Nan
+        __m256 isnan0 = _mm256_cmp_ps(xvec0, xvec0, _CMP_UNORD_Q);
+        __m256 isnan1 = _mm256_cmp_ps(xvec0, xvec0, _CMP_UNORD_Q);
+
+        __m256 clipped0 = _mm256_min_ps(_mm256_max_ps(xvec0, xmin), xmax);
+        __m256 clipped1 = _mm256_min_ps(_mm256_max_ps(xvec1, xmin), xmax);
+
+        xvec0 = _mm256_blendv_ps(clipped0, xvec0, isnan0);
+        xvec1 = _mm256_blendv_ps(clipped1, xvec1, isnan1);
+
         _mm256_storeu_ps(xptr, xvec0);
         _mm256_storeu_ps(xptr + 8, xvec1);
-
          // increment
         xptr += FTYPE_UNROLLING_SIZE;
     }
@@ -207,8 +176,13 @@ inline void vecclip_avx_float(float* x, float min, float max, std::size_t n) noe
     // handle teh last 8 - 15 elements
     std::size_t remainder = end - xptr;
     if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
+        // __m256 xvec = _mm256_loadu_ps(xptr);
+        // xvec = _mm256_min_ps(_mm256_max_ps(xvec, xmin), xmax);
+        // _mm256_storeu_ps(xptr, xvec);
         __m256 xvec = _mm256_loadu_ps(xptr);
-        xvec = _mm256_min_ps(_mm256_max_ps(xvec, xmin), xmax);
+        __m256 isnan = _mm256_cmp_ps(xvec, xvec, _CMP_UNORD_Q);
+        __m256 clipped = _mm256_min_ps(_mm256_max_ps(xvec, xmin), xmax);
+        xvec = _mm256_blendv_ps(clipped, xvec, isnan);
         _mm256_storeu_ps(xptr, xvec);
         xptr += FTYPE_ELEMS_PER_REGISTER;
     }
@@ -226,18 +200,6 @@ inline void vecclip_avx_float(float* x, float min, float max, std::size_t n) noe
  * @brief Checks for infinite values in a float array using AVX intrinsics
  */
 inline bool hasinf_avx_float(const float* x, std::size_t n) noexcept {
-    if (n == 0 || x == nullptr) return false;
-
-    // handle small size n < 16
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            if (std::isinf(x[i])) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     // define ptr to x
     const float* xptr = x;
     const float* end = x + n;
@@ -290,15 +252,6 @@ inline bool hasinf_avx_float(const float* x, std::size_t n) noexcept {
  * @brief Computes the squared L2 norm (Euclidean norm) of a single-precision vector using AVX2 intrinsics.
  */
 inline float vecnorm2_avx_float(const float* x, std::size_t n, bool squared) noexcept {
-    if (n == 0 || x == nullptr) return 0.0f;
-    if (n < 16) {
-        float sum = 0.0f;
-        for (std::size_t i = 0; i < n; ++i) {
-            sum += x[i] * x[i];
-        }
-        return squared ? sum : std::sqrt(sum);
-    }
-
     // define ptr points to x and end of x
     const float* xptr = x;
     const float* end = x + n;
@@ -371,16 +324,6 @@ inline float vecnorm2_avx_float(const float* x, std::size_t n, bool squared) noe
  * @brief Computes the squared L1 norm of a single-precision vector using AVX2 intrinsics.
  */
 inline float vecnorm1_avx_float(const float* x, std::size_t n) noexcept {
-    if (n == 0 || x == nullptr) return 0.0f;
-    // handle small size n < 16
-    if (n < 16) {
-        float sum = 0.0f;
-        for (std::size_t i = 0; i < n; ++i) {
-            sum += std::abs(x[i]);
-        }
-        return sum;
-    }
-
     // define ptr point to x and end of x
     const float* xptr = x;
     const float* end = x + n;
@@ -450,18 +393,6 @@ inline void vecscale_avx_float(const float* x,
                                const float c,
                                std::size_t n,
                                float* out) noexcept {
-    // conditionn check
-    if (x == nullptr || out == nullptr) return;
-    if (n == 0 || c == 1.0f) return ;
-
-    // for small size array
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i] * c;
-        }
-        return;
-    }
-
     // define ptr points to x and end of x
     // avoid modify origin output ptr out
     float* outptr = out;
@@ -509,12 +440,6 @@ inline void vecscale_avx_float(const float* xbegin,
                                const float c,
                                std::size_t n,
                                float* out) noexcept {
-    if (xbegin == nullptr || xend == nullptr || out == nullptr) return;
-    if (n == 0 || c == 1.0) return ;
-    if (xend <= xbegin) return ;
-    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
-    if (n != m) return ;
-
     // call vecscale_sse_float function
     vecscale_avx_float(xbegin, c, n, out);
 };
@@ -528,19 +453,6 @@ inline void vecadd_avx_float(const float* x,
                              const std::size_t n,
                              const std::size_t m,
                              float* out) noexcept {
-    if (x == nullptr || y == nullptr) return ;
-    if (out == nullptr) return ;
-    if (n == 0 || m == 0) return ;
-    if (m != n) return ;
-
-    // handle small size array n < 16
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i] + y[i];
-        }
-        return ;
-    }
-
     // define ptr points to x
     float* outptr = out;
     const float* xptr = x;
@@ -592,18 +504,6 @@ inline void vecadd_avx_float(const float* x,
                              const std::size_t n,
                              const std::size_t m,
                              float* out) noexcept {
-    if (x == nullptr || y == nullptr) return ;
-    if (out == nullptr) return ;
-    if (n == 0 || m == 0) return ;
-    if (m != n) return ;
-
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = c * x[i] + y[i];
-        }
-        return ;
-    }
-
     // define xptr and yptr point to x and y
     float* outptr = out;
     const float* xptr = x;
@@ -655,19 +555,6 @@ inline void vecdiff_avx_float(const float* x,
                               const std::size_t n,
                               const std::size_t m,
                               float* out) noexcept {
-    if (x == nullptr || y == nullptr) return ;
-    if (out == nullptr) return ;
-    if (n == 0 || m == 0) return ;
-    if (m != n) return ;
-
-    // handle small size n < 4
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i] - y[i];
-        }
-        return ;
-    }
-
     // define xptr and yptr point to x and y
     float* outptr = out;
     const float* xptr = x;
@@ -711,26 +598,67 @@ inline void vecdiff_avx_float(const float* x,
 };
 
 /**
+ * @brief Computes element-wise difference between two float arrays with scalar c using AVX2 vectorization
+ *        out[i] = x[i] - y[i] * c
+ */
+inline void vecdiff_avx_float(const float* x,
+                              const float* y,
+                              const float c,
+                              const std::size_t n,
+                              const std::size_t m,
+                              float* out) noexcept {
+    // define xptr and yptr point to x and y
+    float* outptr = out;
+    const float* xptr = x;
+    const float* yptr = y;
+    const float* end = x + n;
+
+    // loop unrolling
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
+    // load constant c into register
+    const __m256 scalar = _mm256_set1_ps(c);
+    // start SIMD loop
+    for (std::size_t i = 0; i < num_unrolls; ++i) {
+        __m256 xvec0 = _mm256_loadu_ps(xptr);
+        __m256 yvec0 = _mm256_loadu_ps(yptr);
+        __m256 xvec1 = _mm256_loadu_ps(xptr + 8);
+        __m256 yvec1 = _mm256_loadu_ps(yptr + 8);
+        // _mm256_fnmadd_ps : -(a[i+31:i] * b[i+31:i]) + c[i+31:i]
+        _mm256_storeu_ps(outptr, _mm256_fnmadd_ps(yvec0, scalar, xvec0));
+        _mm256_storeu_ps(outptr + 8, _mm256_fnmadd_ps(yvec1, scalar, xvec1));
+        xptr += FTYPE_UNROLLING_SIZE;
+        yptr += FTYPE_UNROLLING_SIZE;
+        outptr += FTYPE_UNROLLING_SIZE;
+    }
+
+    // handle teh last 8 - 15 elements
+    std::size_t remainder = end - xptr;
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
+        __m256 xvec = _mm256_loadu_ps(xptr);
+        __m256 yvec = _mm256_loadu_ps(yptr);
+        _mm256_storeu_ps(outptr, _mm256_fnmadd_ps(yvec, scalar, xvec));
+        xptr += FTYPE_ELEMS_PER_REGISTER;
+        yptr += FTYPE_ELEMS_PER_REGISTER;
+        outptr += FTYPE_ELEMS_PER_REGISTER;
+    }
+
+    // handle remaining elements
+    if (end > xptr) {
+        const std::size_t tails = end - xptr;
+        for (std::size_t i = 0; i < tails; ++i) {
+            outptr[i] = xptr[i] - yptr[i] * c;
+        }
+    }
+};
+
+
+/**
  * @brief Computes the dot product of two float arrays using AVX vectorization
  */
 inline float vecdot_avx_float(const float* x,
                               const float* y,
                               std::size_t n,
                               std::size_t m) noexcept {
-
-    if (x == nullptr || y == nullptr) return 0.0f;
-    if (n != m) return 0.0f;
-    if (n == 0) return 0.0f;
-
-    // handle small size case n < 4
-    if (n < 16) {
-        float sum = 0.0f;
-        for (std::size_t i = 0; i < n; ++i) {
-            sum += x[i] * y[i];
-        }
-        return sum;
-    }
-
     // define xptr and yptr point to x and y
     float total = 0.0f;
     const float* xptr = x;
@@ -806,19 +734,6 @@ inline void vecmul_avx_float(const float* x,
                              std::size_t n,
                              std::size_t m,
                              float* out) noexcept {
-    if (x == nullptr || y == nullptr) return ;
-    if (out == nullptr) return ;
-    if (n == 0 || m == 0) return ;
-    if (m != n) return ;
-
-    // small size n < 16
-    if (n < 16) {
-        for (std::size_t i = 0; i < n; ++i) {
-            out[i] = x[i] * y[i];
-        }
-        return ;
-    }
-
     // define pointers
     float* outptr = out;
     const float* xptr = x;
@@ -867,20 +782,6 @@ inline void vecmul_avx_float(const float* x,
 inline float vecaccuml_avx_float(const float* xbegin,
                                  const float* xend,
                                  std::size_t n) noexcept {
-    if (xbegin == nullptr || xend == nullptr) return 0.0f;
-    if (xend <= xbegin) return 0.0f;
-    const std::size_t m = static_cast<std::size_t>(xend - xbegin);
-    if (n != m) return 0.0f;
-    if (n == 0) return 0.0f;
-
-    if (n < 16) {
-        float sum = 0.0f;
-        for (std::size_t i = 0; i < n; ++i) {
-            sum += xbegin[i];
-        }
-        return sum;
-    }
-
     // define ptr points to x and end of x
     const float* xptr = xbegin;
     const float* end = xbegin + n;
