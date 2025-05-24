@@ -55,6 +55,16 @@ inline T vecnorm2_ansi(const std::vector<T>& x,
 };
 
 template<typename T>
+inline T vecnorm2_ansi(const T* xbegin,
+                       const T* xend,
+                       bool squared) noexcept {
+    T l2_norm = std::inner_product(xbegin, xend,
+                                   xbegin,
+                                   static_cast<T>(0));
+    return squared ? l2_norm : std::sqrt(l2_norm);
+};
+
+template<typename T>
 inline T vecnorm1_ansi(const std::vector<T>& x) noexcept {
     return std::accumulate(x.begin(), x.end(), static_cast<T>(0),
         [](T acc, const T& value) {
@@ -112,6 +122,19 @@ inline void vecdiff_ansi(const std::vector<T>& x,
                    y.begin(),
                    out.begin(),
                    std::minus<T>());
+};
+
+template<typename T>
+inline void vecdiff_ansi(const std::vector<T>& x,
+                         const std::vector<T>& y,
+                         const T& c,
+                         std::vector<T>& out) noexcept {
+    std::transform(x.begin(), x.end(),
+                   y.begin(),
+                   out.begin(),
+                   [&c](const T& xval, const T& yval) {
+                        return xval - yval * c;
+                   });
 };
 
 template<typename T>
