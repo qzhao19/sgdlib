@@ -235,6 +235,8 @@ protected:
     LRDecayParamType lr_decay_params_;
     StepSizeSearchParamType* stepsize_search_params_;
 
+    std::vector<std::size_t> X_data_index_;
+    std::vector<FeatValType> loss_history_;
     std::vector<FeatValType> w_opt_;
     FeatValType b_opt_;
     sgdlib::detail::RandomState random_state_;
