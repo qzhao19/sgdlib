@@ -65,8 +65,6 @@ public:
             shuffle,
             verbose) {};
     /**
-     * @brief Destructor for the SAG optimizer.
-     *
      * Default destructor.
      */
     ~SAG() = default;
@@ -74,8 +72,8 @@ public:
     void optimize(const std::vector<FeatValType>& X,
                   const std::vector<LabelValType>& y) override {
 
-        std::size_t num_samples = y.size();
-        std::size_t num_features = this->w0_.size();
+        const std::size_t num_samples = y.size();
+        const std::size_t num_features = this->w0_.size();
 
         // initialize w0 (weight) and b0 (bias)
         std::vector<FeatValType> w0 = this->w0_;
@@ -93,6 +91,7 @@ public:
         std::size_t iter = 0;
         std::size_t num_seens = 0;
         std::size_t sample_index = 0;
+        FeatValType inv_num_seens = 0.0;
 
         bool is_converged = false;
         bool is_infinity = false;
@@ -100,17 +99,15 @@ public:
         FeatValType wscale = 1.0;
 
         // initialize a lookup table for training X, y
-        std::vector<std::size_t> X_data_index(num_samples);
-        std::iota(X_data_index.begin(), X_data_index.end(), 0);
+        this->X_data_index_.resize(num_samples);
+        std::iota(this->X_data_index_.begin(), this->X_data_index_.end(), 0);
 
         // initialize loss, loss_history, gradient,
-        FeatValType loss, dloss;
-        FeatValType y_hat;
-        FeatValType xnorm;
+        FeatValType xnorm, wnorm;
+        FeatValType y_hat, loss, dloss;
         FeatValType bias_update = 0.0;
         FeatValType grad_correction = 0.0;
-        std::vector<FeatValType> loss_history;
-        loss_history.reserve(num_samples * this->max_iters_);
+        this->loss_history_.reserve(num_samples * this->max_iters_);
         std::vector<FeatValType> prev_weight(num_features, 0.0);
         std::vector<FeatValType> weight_update(num_features, 0.0);
 
@@ -138,7 +135,7 @@ public:
             for (std::size_t i = 0; i < num_samples; ++i) {
                 // check if we have to shuffle the samples
                 if (this->shuffle_) {
-                    sample_index = this->random_state_.sample<std::size_t>(X_data_index);
+                    sample_index = this->random_state_.sample<std::size_t>(this->X_data_index_);
                 }
                 else {
                     sample_index = i;
@@ -148,6 +145,7 @@ public:
                 if (seen[sample_index] == 0) {
                     ++num_seens;
                     seen[sample_index] = 1;
+                    inv_num_seens = 1.0 / static_cast<FeatValType>(num_seens);
                 }
 
                 // update weights
@@ -161,7 +159,7 @@ public:
                         }
                         update_history[j] = counter;
                     }
-                    if (sgdlib::detail::isinf<FeatValType>(w0)) {
+                    if (sgdlib::detail::hasinf<FeatValType>(w0)) {
                         is_infinity = true;
                         break;
                     }
@@ -169,9 +167,12 @@ public:
 
                 loss = 0.0;
                 // compute loss value and its derivative (gradient) of this sample
-                y_hat = std::inner_product(&X[sample_index * num_features],
-                                           &X[(sample_index + 1) * num_features],
-                                           w0.begin(), 0.0);
+                y_hat = sgdlib::detail::vecdot<FeatValType>(
+                    X.data() + sample_index * num_features,
+                    X.data() + (sample_index + 1) * num_features,
+                    w0.data()
+                );
+
                 y_hat = y_hat * wscale + b0;
                 loss  = this->loss_fn_->evaluate(y_hat, y[sample_index]);
                 dloss = this->loss_fn_->derivate(y_hat, y[sample_index]);
@@ -180,9 +181,11 @@ public:
                 // detail see section 4.6 of Schmidt, M., Roux, N., & Bach, F. (2013).
                 // "Minimizing finite sums with the stochastic average gradient".
                 if (search_policy_ == "BasicLineSearch") {
-                    xnorm = std::inner_product(&X[sample_index * num_features],
-                                               &X[(sample_index + 1) * num_features],
-                                               &X[sample_index * num_features], 0.0);
+                    xnorm = sgdlib::detail::vecnorm2<FeatValType>(
+                        X.data() + (sample_index * num_features),
+                        X.data() + ((sample_index + 1) * num_features),
+                        true
+                    );
                     search_status = stepsize_search->search(y_hat, y[sample_index], dloss, xnorm, i, step_size);
                     if (search_status == -1) {
                         break;
@@ -191,27 +194,29 @@ public:
 
                 // make the weight update to grad_sum
                 // update = x * grad,
-                sgdlib::detail::dot<FeatValType>(&X[sample_index * num_features],
-                                                   &X[(sample_index + 1) * num_features],
-                                                   dloss,
-                                                   weight_update);
+                sgdlib::detail::vecscale<FeatValType>(
+                    X.data() + (sample_index * num_features),
+                    X.data() + ((sample_index + 1) * num_features),
+                    dloss,
+                    weight_update
+                );
                 for (std::size_t j = 0; j < num_features; ++j) {
                     grad_correction = weight_update[j] - (grad_history[sample_index] * X[sample_index * num_features + j]);
                     grad_sum[j] += grad_correction;
                     if (this->is_saga_) {
-                        w0[j] -= (grad_correction * step_size * (1.0 - 1.0 / static_cast<FeatValType>(num_seens)) / wscale);
+                        w0[j] -= (grad_correction * step_size * (1.0 - inv_num_seens) / wscale);
                     }
                 }
 
                 // fit intercept
                 grad_correction = dloss - grad_history[sample_index];
                 bias_update += grad_correction;
-                grad_correction *= step_size * (1.0 - 1.0 / static_cast<FeatValType>(num_seens));
+                grad_correction *= step_size * (1.0 - inv_num_seens);
                 if (this->is_saga_) {
-                    b0 -= (step_size * bias_update / static_cast<FeatValType>(num_seens)) + grad_correction;
+                    b0 -= (step_size * bias_update * inv_num_seens) + grad_correction;
                 }
                 else {
-                    b0 -= step_size * bias_update / static_cast<FeatValType>(num_seens);
+                    b0 -= step_size * bias_update * inv_num_seens;
                 }
                 if (sgdlib::detail::isinf<FeatValType>(b0)) {
                     is_infinity = true;
@@ -240,10 +245,10 @@ public:
                         update_history[j] = counter + 1;
                     }
                     cumulative_sum[counter] = 0.0;
-                    sgdlib::detail::dot<FeatValType>(w0, wscale);
+                    sgdlib::detail::vecscale<FeatValType>(w0, wscale, w0);
                     wscale = 1.0;
 
-                    if (sgdlib::detail::isinf<FeatValType>(w0)) {
+                    if (sgdlib::detail::hasinf<FeatValType>(w0)) {
                         is_infinity = true;
                         break;
                     }
@@ -253,11 +258,12 @@ public:
                 // scale weight for L2 penalty
                 if (this->alpha_ > 0.0) {
                     wscale *= 1.0 - this->alpha_ * step_size;
-                    loss += this->alpha_ * std::inner_product(w0.begin(), w0.end(), w0.begin(), 0.0);
+                    wnorm = sgdlib::detail::vecnorm2(w0, true);
+                    loss += this->alpha_ * wnorm;
                 }
 
                 // store loss value into loss_history
-                loss_history.push_back(loss);
+                this->loss_history_.push_back(loss);
             }
 
             // break if raise an error in inner loop
@@ -274,12 +280,13 @@ public:
                     w0[j] -= (cumulative_sum[counter - 1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                 }
             }
-            sgdlib::detail::dot<FeatValType>(w0, wscale);
+            sgdlib::detail::vecscale<FeatValType>(w0, wscale, w0);
 
-            // calc loss info
-            FeatValType sum_loss = std::accumulate(loss_history.begin() + (iter * num_samples),
-                                                   loss_history.begin() + ((iter + 1) * num_samples),
-                                                   decltype(loss_history)::value_type(0));
+            // compute loss info
+            FeatValType sum_loss = sgdlib::detail::vecaccumul<FeatValType>(
+                this->loss_history_.data() + (iter * num_samples),
+                this->loss_history_.data() + ((iter + 1) * num_samples)
+            );
             // check if convergence test is reached
             FeatValType max_change = 0.0, max_weight = 0.0;
             for (std::size_t j = 0; j < num_features; j++) {
@@ -297,18 +304,18 @@ public:
             else {
                 if (this->verbose_) {
                     PRINT_RUNTIME_INFO(2, "Epoch = ", iter + 1,
-                                       ", xnorm = ", sgdlib::detail::sqnorm2<FeatValType>(w0, true),
+                                       ", xnorm = ", sgdlib::detail::vecnorm2<FeatValType>(w0, true),
                                        ", loss = ", sum_loss / static_cast<FeatValType>(num_samples),
                                        ", change = ", max_change / max_weight);
                 }
             }
         }
         // shrink the loss_history
-        loss_history.shrink_to_fit();
+        this->loss_history_.shrink_to_fit();
 
         // call callback function
         if (callback_) {
-            callback_(loss_history);
+            callback_(this->loss_history_);
         }
 
         if (is_infinity) {
