@@ -106,7 +106,9 @@ public:
             callback_(nullptr) {
         init_random_state();
         init_loss_params();
-
+#if defined(USE_OPENMP)
+        init_omp_num_threads();
+#endif
         if (loss_ == "LogLoss") {
             rho_ = 0.25;
         }
@@ -268,6 +270,13 @@ protected:
         lr_decay_params_["gamma"] = gamma_;
         lr_decay_ = sgdlib::detail::LRDecayRegistry()->Create(lr_policy_, lr_decay_params_);
     }
+
+#if defined(USE_OPENMP)
+    void init_omp_num_threads() {
+        omp_set_num_threads(NUM_THREADS);
+    }
+#endif
+
 };
 
 } // namespace sgdlib
