@@ -64,15 +64,15 @@ public:
     void optimize(const std::vector<FeatValType>& X,
                   const std::vector<LabelValType>& y) override {
 
-        std::size_t num_samples = y.size();
-        std::size_t num_features = this->w0_.size();
+        const std::size_t num_samples = y.size();
+        const std::size_t num_features = this->w0_.size();
+        const FeatValType inv_num_samples = 1.0 / static_cast<FeatValType>(num_samples);
 
         // initialize w0 (weight)
         std::vector<FeatValType> w0 = this->w0_;
 
         // initialize loss, loss_history, weight_update,
-        std::vector<FeatValType> loss_history;
-        loss_history.reserve(this->max_iters_);
+        this->loss_history_.reserve(this->max_iters_);
         std::vector<FeatValType> y_hat(num_samples, 0.0);
         FeatValType weight_update, grad, loss, dloss;
 
@@ -111,10 +111,13 @@ public:
 
                 // compute gradient for target feature X[:, feature_index]
                 dloss = 0.0;
+                #if defined(USE_OPENMP)
+                #pragma omp parallel for reduction(+:dloss)
+                #endif
                 for (std::size_t i = 0; i < num_samples; ++i) {
                     dloss += this->loss_fn_->derivate(y_hat[i], y[i]) * X[i * num_features + feature_index];
                 }
-                grad = dloss / static_cast<FeatValType>(num_samples);
+                grad = dloss * inv_num_samples;
 
                 // soft-thresholding function
                 if ((w0[feature_index] - grad / this->rho_) > (this->alpha_ / this->rho_)) {
@@ -160,18 +163,25 @@ public:
             max_weight_update = std::fmax(max_weight_update, std::abs(w0[feature_index] - prev_weight));
 
             // update inner product y_hat
+            #if defined(USE_OPENMP)
+            #pragma omp parallel for
+            #endif
             for (std::size_t i = 0; i < num_samples; ++i) {
                 y_hat[i] += weight_update * X[i * num_features + feature_index];
             }
 
             // compute loss
             loss = 0.0;
+            #if defined(USE_OPENMP)
+            #pragma omp parallel for reduction(+:loss)
+            #endif
             for (std::size_t i = 0; i < num_samples; ++i) {
                 loss += this->loss_fn_->evaluate(y_hat[i], y[i]);
             }
-            loss /= static_cast<FeatValType>(num_samples);
+
+            loss *= inv_num_samples;
             // store loss value into loss_history
-            loss_history.push_back(loss);
+            this->loss_history_.push_back(loss);
 
             // print info
             if (this->verbose_) {
@@ -193,11 +203,11 @@ public:
             }
         }
         // shrink the loss_history
-        loss_history.shrink_to_fit();
+        this->loss_history_.shrink_to_fit();
 
         // call callback function
         if (callback_) {
-            callback_(loss_history);
+            callback_(this->loss_history_);
         }
 
         if (!is_converged) {
