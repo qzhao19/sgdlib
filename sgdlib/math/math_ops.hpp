@@ -11,6 +11,49 @@ namespace sgdlib {
 namespace detail {
 
 /**
+ * @brief Allocates memory for a vector with automatic lifetime management
+ *
+ * @tparam T Element type of the vector
+ * @param n Number of elements to allocate
+ *
+ * @return std::unique_ptr<T[], void(*)(void*)>
+ *         Smart pointer managing the allocated memory block with custom deleter
+ *
+ * @throws std::bad_alloc If memory allocation fails
+ *
+ * @note Key features:
+ * - Provides exception-safe memory allocation
+ * - Automatic memory deallocation via free()
+ * - Zero-initializes allocated memory
+ * - Memory alignment matches underlying SIMD implementation when enabled
+ * - Custom deleter handles proper memory release
+ *
+ * @usage
+ * auto buffer = vecalloc<float>(1024); // Allocates 1024 aligned floats
+ */
+template<typename T>
+inline std::unique_ptr<T[], void(*)(void*)> vecalloc(std::size_t n) {
+    void* ptr;
+#if defined(USE_SSE) || defined(USE_AVX)
+    std::size_t bytes = n * sizeof(T);
+    if (bytes % MEMORY_ALIGNMENT != 0) {
+        bytes += MEMORY_ALIGNMENT - (bytes % MEMORY_ALIGNMENT);
+    }
+    ptr = std::aligned_alloc(MEMORY_ALIGNMENT, bytes);
+#else
+    ptr = std::malloc(n * sizeof(T));
+#endif
+    if (!ptr) {
+        throw std::bad_alloc();
+    }
+    std::memset(ptr, 0, n * sizeof(T));
+    return std::unique_ptr<T[], void(*)(void*)>(
+        static_cast<T*>(ptr),
+        [](void* p) { free(p); }
+    );
+};
+
+/**
  * @brief Sets all elements of a vector to a constant value with hardware acceleration
  *
  * @tparam T Element type (float/double)
