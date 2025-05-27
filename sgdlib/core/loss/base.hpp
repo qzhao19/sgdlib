@@ -49,6 +49,23 @@ public:
     virtual FeatValType derivate(const FeatValType& y_pred,
                                  const LabelValType& y_true) const = 0;
 
+
+    /**
+     * Computes both loss value and gradient vector in a single pass
+     *
+     * @param X Feature matrix stored as a flattened 1D array (row-major order)
+     * @param y Label vector corresponding to the feature matrix
+     * @param w Model parameter vector to evaluate
+     * @param[out] grad Gradient vector (must be pre-allocated with correct size)
+     *
+     * @return FeatValType Computed loss value
+     */
+    virtual FeatValType evaluate_with_gradient(
+        const std::vector<FeatValType>& X,
+        const std::vector<LabelValType>& y,
+        const std::vector<FeatValType>& w,
+        std::vector<FeatValType>& grad) const = 0;
+
     /**
      * @brief Sets a parameter for the loss function.
      *

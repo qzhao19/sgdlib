@@ -6,9 +6,9 @@
 namespace sgdlib {
 namespace detail {
 
-/** 
+/**
  * @file huber_loss.hpp
- * 
+ *
  * @brief Huber loss function
 */
 class HuberLoss final: public LossFunction {
@@ -16,16 +16,23 @@ public:
     HuberLoss(LossParamType loss_param): LossFunction(loss_param) {};
     ~HuberLoss() = default;
 
-    FeatValType evaluate(const FeatValType& y_pred, 
+    FeatValType evaluate(const FeatValType& y_pred,
                          const LabelValType& y_true) const override {
         return 0.0;
     }
 
-    FeatValType derivate(const FeatValType& y_pred, 
+    FeatValType derivate(const FeatValType& y_pred,
                          const LabelValType& y_true) const override {
         return 0.0;
     }
-    
+
+    FeatValType evaluate_with_gradient(const std::vector<FeatValType>& X,
+        const std::vector<LabelValType>& y,
+        const std::vector<FeatValType>& w,
+        std::vector<FeatValType>& grad) const override {
+        return 0.0;
+    }
+
 };
 
 } // namespace detail
