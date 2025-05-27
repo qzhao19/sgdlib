@@ -120,21 +120,21 @@ namespace detail {
 #if defined(USE_SSE) || defined(USE_AVX)
 // --------------- compiler compatibility check---------------
 #if !defined(__GNUC__) || defined(__clang__)
-    #error "SIMD optimization requires GCC compiler (clang not supported yet)"
+#error "SIMD optimization requires GCC compiler (clang not supported yet)"
 #endif
 
 // --------------- if both defined ---------------
 #if defined(USE_SSE) && defined(USE_AVX)
-    #error "USE_SSE and USE_AVX cannot be defined simultaneously"
+#error "USE_SSE and USE_AVX cannot be defined simultaneously"
 #endif
 
 // --------------- compiler flag check ---------------
 #if defined(USE_SSE) && !defined(__SSE4_2__)
-    #error "USE_SSE defined but SSE4.2 not enabled. Compile with -msse4.2"
+#error "USE_SSE defined but SSE4.2 not enabled. Compile with -msse4.2"
 #endif
 
 #if defined(USE_AVX) && !defined(__AVX2__)
-    #error "USE_AVX defined but AVX2 not enabled. Compile with -mavx2"
+#error "USE_AVX defined but AVX2 not enabled. Compile with -mavx2"
 #endif
 #endif
 
@@ -150,6 +150,7 @@ constexpr std::size_t DTYPE_ELEMS_PER_REGISTER = 2; // nums of double stored in 
 constexpr std::size_t DTYPE_UNROLLING_FACTOR = 2;   // double-precision expansion factor
 constexpr std::size_t DTYPE_UNROLLING_SIZE =
     DTYPE_ELEMS_PER_REGISTER * DTYPE_UNROLLING_FACTOR;
+constexpr std::size_t MEMORY_ALIGNMENT = 16;
 #elif defined(USE_AVX)
 #include <immintrin.h> // AVX2
 // float type
@@ -163,13 +164,14 @@ constexpr std::size_t DTYPE_ELEMS_PER_REGISTER = 4; // nums of double stored in 
 constexpr std::size_t DTYPE_UNROLLING_FACTOR = 4;   // double-precision expansion factor
 constexpr std::size_t DTYPE_UNROLLING_SIZE =
     DTYPE_ELEMS_PER_REGISTER * DTYPE_UNROLLING_FACTOR; // 16
+constexpr std::size_t MEMORY_ALIGNMENT = 32;
 #else
 #pragma message("Running in scalar mode (define USE_SSE or USE_AVX for SIMD acceleration)")
 #endif
 
 #if defined(USE_OPENMP)
 #include <omp.h>
-constexpr std::size_t NUM_THREADS = 6;
+constexpr std::size_t NUM_THREADS = 4;
 #endif
 
 // at main or init phase to call this function
