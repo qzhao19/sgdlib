@@ -126,6 +126,16 @@ inline void vecadd_sse(const T* x, const T* y, const T c, std::size_t n, std::si
 };
 
 template <typename T>
+inline void vecadd_sse(const T* x, const T c, std::size_t n, T* out) {
+    if constexpr (std::is_same_v<T, float>) {
+        vecadd_sse_float(x, c, n, out);
+    }
+    else if constexpr (std::is_same_v<T, double>) {
+        vecadd_sse_double(x, c, n, out);
+    }
+};
+
+template <typename T>
 inline void vecdiff_sse(const T* x, const T* y, std::size_t n, std::size_t m, T* out) {
     if constexpr (std::is_same_v<T, float>) {
         vecdiff_sse_float(x, y, n, m, out);
@@ -157,7 +167,7 @@ inline T vecdot_sse(const T* x, const T* y, std::size_t n, std::size_t m) {
     return prod;
 };
 
-template<typename T>
+template <typename T>
 inline void vecmul_sse(const T* x, const T* y, std::size_t n, std::size_t m, T* out) {
     if constexpr (std::is_same_v<T, float>) {
         vecmul_sse_float(x, y, n, m, out);
