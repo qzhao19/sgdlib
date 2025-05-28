@@ -1045,6 +1045,104 @@ TYPED_TEST(MathOpsAVXTest, VecAddWithConstCAVXTest) {
 
 }
 
+// // ****************************vecadd 2*******************************//
+TYPED_TEST(MathOpsAVXTest, VecAdd1InputWithConstCAVXTest) {
+    using T = typename TestFixture::Type;
+
+    T c = 2.35;
+    // large size n = 1025
+    std::vector<T> x_large(1025);
+    std::vector<T> y_large(1025);
+    std::vector<T> out1025_1(1025);
+    std::vector<T> out1025_2(1025);
+    x_large = this->generate_test_data(1025, false);
+    y_large = this->generate_test_data(1025, false);
+
+    sgdlib::detail::vecadd_avx<T>(x_large.data(), c, 1025, out1025_1.data());
+    sgdlib::detail::vecadd_ansi<T>(x_large, c, out1025_2);
+    for (std::size_t i = 0; i < 1025; ++i) {
+        EXPECT_FLOAT_EQ(out1025_1[i], out1025_2[i]);
+    }
+
+    // aligned memory case
+    std::size_t size6 = 1024;
+    std::vector<T> aligned_mem_vec_copy = this->generate_test_data(size6, false);
+    // std::vector<T> aligned_mem_vec_copy2 = this->generate_test_data(size6, false);
+    std::memcpy(this->aligned_mem_vec, aligned_mem_vec_copy.data(), size6 * sizeof(T));
+    // std::memcpy(this->aligned_mem_vec2, aligned_mem_vec_copy2.data(), size6 * sizeof(T));
+    std::vector<T> aligned_mem_vec_out(size6), aligned_mem_vec_copy_out(size6);
+
+    sgdlib::detail::vecadd_avx<T>(this->aligned_mem_vec, c, size6, aligned_mem_vec_out.data());
+    sgdlib::detail::vecadd_ansi<T>(aligned_mem_vec_copy, c, aligned_mem_vec_copy_out);
+    for (size_t i = 0; i < size6; ++i) {
+        EXPECT_FLOAT_EQ(aligned_mem_vec_out[i], aligned_mem_vec_copy_out[i]);
+    }
+
+    // unaligned memory case
+    size6 = 1021;
+    std::vector<T> unaligned_mem_vec_copy = this->generate_test_data(size6, false);
+    // std::vector<T> unaligned_mem_vec_copy2 = this->generate_test_data(size6, false);
+    std::memcpy(this->unaligned_mem_vec, unaligned_mem_vec_copy.data(), size6 * sizeof(T));
+    // std::memcpy(this->unaligned_mem_vec2, unaligned_mem_vec_copy2.data(), size6 * sizeof(T));
+    std::vector<T> unaligned_mem_vec_out(size6), unaligned_mem_vec_copy_out(size6);
+
+    sgdlib::detail::vecadd_avx<T>(this->unaligned_mem_vec, c, size6, unaligned_mem_vec_out.data());
+    sgdlib::detail::vecadd_ansi<T>(unaligned_mem_vec_copy, c, unaligned_mem_vec_copy_out);
+    for (size_t i = 0; i < size6; ++i) {
+        EXPECT_FLOAT_EQ(unaligned_mem_vec_out[i], unaligned_mem_vec_copy_out[i]);
+    }
+
+    // overlapped memory case
+    std::size_t size71 = 1000000;
+    std::vector<T> x71 = this->generate_test_data(size71, false, 10.0, -10.0);
+    std::vector<std::size_t> chunk_sizes = {16, 25, 100, 250, 750};
+    for (auto chunk_size : chunk_sizes) {
+        std::size_t processed = 0;
+        while (processed < size71) {
+            const std::size_t current_chunk = std::min(chunk_size, size71 - processed);
+            std::vector<T> out1(current_chunk);
+            std::vector<T> out2(current_chunk);
+            std::vector<T> chunk(
+                x71.begin() + processed,
+                x71.begin() + processed + current_chunk
+            );
+            sgdlib::detail::vecadd_ansi<T>(chunk, c, out1);
+            sgdlib::detail::vecadd_avx<T>(x71.data() + processed, c, current_chunk, out2.data());
+            // EXPECT_NEAR(expected7, actual7, 1e-3);
+            for (size_t i = 0; i < current_chunk; ++i) {
+                EXPECT_FLOAT_EQ(out1[i], out2[i]);
+            }
+            processed += current_chunk;
+        }
+    }
+
+    // performance test with huge size n = 1 << 20
+    const std::size_t huge_size = 1 << 20;
+    std::vector<T> x_huge(huge_size);
+    // std::vector<T> y_huge(huge_size);
+    std::vector<T> out_huge1(huge_size);
+    std::vector<T> out_huge2(huge_size);
+    x_huge = this->generate_test_data(huge_size, false);
+    // y_huge = this->generate_test_data(huge_size, false);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    sgdlib::detail::vecadd_avx<T>(x_huge.data(), c, huge_size, out_huge1.data());
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed1 = end - start;
+    std::cout << "vecadd with constant C SIMD execution time: " << elapsed1.count() << " seconds\n";
+
+    start = std::chrono::high_resolution_clock::now();
+    sgdlib::detail::vecadd_ansi<T>(x_huge, c, out_huge2);
+    end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed2 = end - start;
+    std::cout << "vecadd with constant C ANSI execution time: " << elapsed2.count() << " seconds\n";
+    std::cout << "Speedup: " << elapsed2.count() / elapsed1.count() << "x\n";
+
+    for (std::size_t i = 0; i < huge_size; ++i) {
+        EXPECT_FLOAT_EQ(out_huge1[i], out_huge2[i]);
+    }
+}
+
 // ****************************vecdiff**********************************//
 TYPED_TEST(MathOpsAVXTest, VecDiffAVXTest) {
     using T = typename TestFixture::Type;
@@ -1607,5 +1705,4 @@ TYPED_TEST(MathOpsAVXTest, VecAccumulAVXTest) {
     std::cout << "Speedup: " << elapsed2.count() / elapsed1.count() << "x\n";
 
     EXPECT_NEAR(out1, out2, 1e+2);;
-
 }
