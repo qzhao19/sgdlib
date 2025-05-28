@@ -7,6 +7,55 @@
 // include private header file
 #include "sgdlib/math/math_ops.hpp"
 
+struct MyStruct {
+    int a;
+    double b;
+};
+
+TEST(MathOpsTest, VecAllocTest) {
+
+#if defined(USE_SSE)
+    std::size_t n = 16;
+    auto arr = sgdlib::detail::vecalloc<MyStruct>(n);
+    ASSERT_NE(arr, nullptr);
+    // check 16 bytes alignment
+    EXPECT_EQ(reinterpret_cast<uintptr_t>(arr.get()) % 16, 0u);
+    arr[0].a = 42;
+    arr[0].b = 3.14;
+    EXPECT_EQ(arr[0].a, 42);
+    EXPECT_DOUBLE_EQ(arr[0].b, 3.14);
+#elif defined(USE_AVX)
+    std::size_t n = 32;
+    auto arr = sgdlib::detail::vecalloc<MyStruct>(n);
+    ASSERT_NE(arr, nullptr);
+    // check 32 bytes alignment
+    EXPECT_EQ(reinterpret_cast<uintptr_t>(arr.get()) % 32, 0u);
+    arr[0].a = 42;
+    arr[0].b = 3.14;
+    EXPECT_EQ(arr[0].a, 42);
+    EXPECT_DOUBLE_EQ(arr[0].b, 3.14);
+#else
+    std::size_t n = 16;
+    auto arr = sgdlib::detail::vecalloc<MyStruct>(n);
+    ASSERT_NE(arr, nullptr);
+    for (std::size_t i = 0; i < n; ++i) {
+        arr[i].a = static_cast<int>(i);
+        arr[i].b = i * 0.5;
+    }
+    for (std::size_t i = 0; i < n; ++i) {
+        EXPECT_EQ(arr[i].a, static_cast<int>(i));
+        EXPECT_DOUBLE_EQ(arr[i].b, i * 0.5);
+    }
+#endif
+    n = 8;
+    auto arr2 = sgdlib::detail::vecalloc<MyStruct>(n);
+    ASSERT_NE(arr2, nullptr);
+    arr2[0].a = 123;
+    arr2[0].b = 456.0;
+    EXPECT_EQ(arr2[0].a, 123);
+    EXPECT_DOUBLE_EQ(arr2[0].b, 456.0);
+}
+
 
 TEST(MathOpsTest, VecSetTest) {
     std::vector<double> data(20, 0);
@@ -82,11 +131,6 @@ TEST(MathOpsTest, VecscalePointersTest) {
                              0.5, 1.5, 2.5, 0.5, 1.5, 2.5,
                              0.5, 1.5, 2.5, 0.5, 1.5, 2.5}, out(18);
     sgdlib::detail::vecscale<double>(&data[0], &data[18], 3.0, out);
-    // for (auto c : out) {
-    //     std::cout << c << " ";
-    // }
-    // std::cout << std::endl;
-    // std::cout << out[18] << " " << std::endl;
     EXPECT_DOUBLE_EQ(out[0], 1.5);
 }
 
@@ -110,6 +154,15 @@ TEST(MathOpsTest, VecaddScaledTest) {
                         0.5, 1.5, 2.5, 0.5, 1.5, 2.5}, out(18);
     sgdlib::detail::vecadd<float>(a, b, 0.5, out);
     EXPECT_DOUBLE_EQ(out[0], 2.5);  // 1 + 0.5*2 = 2
+}
+
+TEST(MathOpsTest, Vecadd1InputScaledTest) {
+    std::vector<float> a{1.0, 1.5, 2.5, 0.5, 1.5, 2.5,
+                        0.5, 1.5, 2.5, 0.5, 1.5, 2.5,
+                        0.5, 1.5, 2.5, 0.5, 1.5, 2.5};
+    std::vector<float> out(18);
+    sgdlib::detail::vecadd<float>(a, 0.5, out);
+    EXPECT_DOUBLE_EQ(out[1], 0.75);  // 1 + 0.5*2 = 2
 }
 
 TEST(MathOpsTest, VecdiffTest) {
