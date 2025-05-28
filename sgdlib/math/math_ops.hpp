@@ -118,6 +118,7 @@ inline void veccpy(const std::vector<T>& x, std::vector<T>& out) {
 
 /**
  * @brief Copies and negates vector elements with hardware acceleration
+ *        out[i] = -x[i]
  *
  * @tparam T Element type (float/double)
  * @param[in] x Source vector to copy from
@@ -238,7 +239,7 @@ inline bool hasinf(const std::vector<T>& x) {
 
 /**
  * @brief Computes L2 norm of a vector with hardware acceleration
- *
+ *        norm2 = Σx²
  * @tparam T Floating-point type (float/double)
  *
  * @param[in] x Input vector to compute norm from
@@ -275,10 +276,33 @@ inline T vecnorm2(const std::vector<T>& x, bool squared = false) {
 }
 
 /**
+ * @brief Computes L2 norm of a memory range [xbegin, xend] with hardware acceleration
  *
+ * @tparam T Floating-point type (float/double)
+ * @param xbegin Pointer to the first element in the range
+ * @param xend Pointer past the last element in the range
+ * @param squared When true returns squared norm (skip sqrt)
+ *
+ * @return T Computed norm value (sqrt(Σx²) when squared=false, Σx² when squared=true)
+ *
+ * @throws std::invalid_argument For:
+ * - Null pointer inputs (xbegin or xend is nullptr)
+ * - Invalid range (xbegin >= xend)
+ * - Empty input range (xend - xbegin == 0)
+ *
+ * @note Key implementation details:
+ * - Optimized with SSE/AVX vectorization when enabled
+ * - Memory range [xbegin, xend) must be contiguous
+ * - For best performance with SIMD, ensure memory is 16/32-byte aligned
+ *
+ * @example
+ * float data[] = {1.0f, 2.0f, 3.0f};
+ * float norm = vecnorm2(data, data+3, false); // sqrt(14) ≈ 3.7417
  */
 template<typename T>
-inline T vecnorm2(const T* xbegin, const T* xend, bool squared = false) {
+inline T vecnorm2(const T* xbegin,
+                  const T* xend,
+                  bool squared = false) {
     static_assert(std::is_floating_point_v<T>,
         "vecnorm2 requires floating-point types (e.g. float, double)"
     );
@@ -312,6 +336,7 @@ inline T vecnorm2(const T* xbegin, const T* xend, bool squared = false) {
 
 /**
  * @brief Computes L1 norm of a vector with hardware acceleration
+ *        norm1 = Σabs(x)
  *
  * @tparam T Floating-point type (float/double)
  *
@@ -350,6 +375,7 @@ inline T vecnorm1(const std::vector<T>& x) {
 
 /**
  * @brief Scales vector elements by a constant with hardware acceleration
+ *        out[i] = x[i] * c
  *
  * @tparam T Floating-point type (float/double)
  *
@@ -393,7 +419,7 @@ inline void vecscale(const std::vector<T>& x,
 
 /**
  * @brief Scales vector elements in a range [xbegin, xend) by a constant with hardware acceleration
- *        out[i] = x[i] * c
+ *        out[i] = x[i] * c, i = [begin, end]
  *
  * @tparam T Floating-point type (float/double)
  *
@@ -452,6 +478,7 @@ inline void vecscale(const T* xbegin,
 
 /**
  * @brief Performs vector addition with hardware acceleration
+ *        out[i] = x[i] + y[i]
  *
  * @tparam T Floating-point type (float/double)
  *
@@ -502,7 +529,7 @@ inline void vecadd(const std::vector<T>& x,
 
 /**
  * @brief Performs scaled vector addition with hardware acceleration
- *        x*c + y
+ *        out[i] = x[i] * c + y[i]
  * @tparam T Floating-point type (float/double)
  *
  * @param[in] x First input vector
@@ -553,8 +580,62 @@ inline void vecadd(const std::vector<T>& x,
 }
 
 /**
+ * @brief Performs scaled vector accumulation with hardware acceleration
+ *
+ * Computes the operation: out[i] += x[i] * c for all elements
+ *
+ * @tparam T Floating-point type (float/double)
+ * @param[in] x Input vector to scale and accumulate
+ * @param[in] c Scaling factor applied to input elements
+ * @param[in,out] out Output vector to accumulate into (must be pre-allocated)
+ *
+ * @throws std::invalid_argument For:
+ * - Empty input/output vectors
+ * - Size mismatch between input and output vectors
+ *
+ * @note Implementation characteristics:
+ * - Uses SSE/AVX vectorization when enabled (processes 4/16 elements per cycle)
+ * - Memory alignment recommended for optimal performance
+ * - Non-atomic operation (not thread-safe for parallel writes)
+ *
+ * @example
+ * std::vector<float> x = {1.0f, 2.0f, 3.0f};
+ * std::vector<float> out(3, 0.5f);
+ * vecadd(x, 0.5f, out);  // out becomes [1.0f, 1.5f, 2.0f]
+ */
+template<typename T>
+inline void vecadd(const std::vector<T>& x,
+                   const T& c,
+                   std::vector<T>& out) {
+
+    static_assert(std::is_floating_point_v<T>,
+        "vecadd requires floating-point types (e.g. float, double)");
+
+    if (x.empty()) {
+        THROW_INVALID_ERROR("vecadd: input x, y vector cannot be empty");
+    }
+
+    if (out.empty()) {
+        THROW_INVALID_ERROR("vecadd: output vector cannot be empty");
+    }
+
+    std::size_t n = x.size();
+    if (n != out.size()) {
+        THROW_INVALID_ERROR("vecadd: requires x.size() == out.size()");
+    }
+
+#if defined(USE_SSE)
+    vecadd_sse<T>(x.data(), c, n, out.data());
+#elif defined(USE_AVX)
+    vecadd_avx<T>(x.data(), c, n, out.data());
+#else
+    vecadd_ansi<T>(x, c, out);
+#endif
+}
+
+/**
  * @brief Performs vector subtraction with hardware acceleration
- *        x - y
+ *        out[i] = x[i] - y[i]
  *
  * @tparam T Floating-point type (float/double)
  *
@@ -606,7 +687,7 @@ inline void vecdiff(const std::vector<T>& x,
 
 /**
  * @brief Performs scaled vector subtraction with hardware acceleration
- *        out[i] = c * x[i] - y[i]
+ *        out[i] = x[i] - y[i] * c
  *
  * @tparam T Floating-point type (float/double)
  *
@@ -660,6 +741,7 @@ inline void vecdiff(const std::vector<T>& x,
 
 /**
  * @brief Computes dot product of two vectors with hardware acceleration
+ *        scalar += x[i] * y[i]
  *
  * @tparam T Floating-point type (float/double)
  * @param[in] x First input vector
@@ -702,7 +784,9 @@ inline T vecdot(const std::vector<T>& x,
     return prod;
 }
 
-
+/**
+ *
+ */
 template<typename T>
 inline T vecdot(const T* xbegin,
                 const T* xend,
@@ -743,6 +827,7 @@ inline T vecdot(const T* xbegin,
 
 /**
  * @brief Performs element-wise vector multiplication with hardware acceleration
+ *        out[i] = x[i] * y[i]
  *
  * @tparam T Floating-point type (float/double)
  *
