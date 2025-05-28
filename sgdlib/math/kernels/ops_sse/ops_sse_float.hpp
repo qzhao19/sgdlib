@@ -371,6 +371,41 @@ inline void vecadd_sse_float(const float* x,
 };
 
 /**
+ * out[i] += c * x[i]
+ */
+inline void vecadd_sse_float(const float* x,
+                             const float c,
+                             const std::size_t n,
+                             float* out) noexcept {
+    // define xptr and yptr point to x and y
+    float* outptr = out;
+    const float* xptr = x;
+    const float* end = x + n;
+
+    // define aligned bound of input x
+    const float* aligned_end = xptr + ((end - xptr) & ~3ULL);
+
+    // load constant c into register
+    const __m128 scalar = _mm_set1_ps(c);
+
+    // start SIMD loop
+    for (; xptr < aligned_end; xptr += 4, outptr += 4) {
+        __m128 xvec = _mm_loadu_ps(xptr);
+        __m128 outvec = _mm_loadu_ps(outptr);
+        _mm_storeu_ps(outptr, _mm_add_ps(_mm_mul_ps(xvec, scalar), outvec));
+    }
+
+    // handle remaining elements
+    const std::size_t remainder = end - xptr;
+    switch (remainder) {
+        case 3: outptr[2] += xptr[2] * c; [[fallthrough]];
+        case 2: outptr[1] += xptr[1] * c; [[fallthrough]];
+        case 1: outptr[0] += xptr[0] * c;
+        default: break;
+    }
+}
+
+/**
  * @brief Performs SIMD-accelerated element-wise subtraction of two single-precision
  *        floating-point arrays. Computes out[i] = x[i] - y[i] for each
  *        element using SSE4.2 instructions.
@@ -442,8 +477,6 @@ inline void vecdiff_sse_float(const float* x,
         default: break;
     }
 };
-
-
 
 /**
  * @brief Computes the dot product of two single-precision floating-point vectors
