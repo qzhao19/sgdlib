@@ -548,6 +548,54 @@ inline void vecadd_avx_float(const float* x,
 };
 
 /**
+ * @brief Performs float vector addition with scaling
+ *        out[i] += c * x[i]
+ */
+inline void vecadd_avx_float(const float* x,
+                             const float c,
+                             const std::size_t n,
+                             float* out) noexcept {
+    // define xptr and yptr point to x and y
+    float* outptr = out;
+    const float* xptr = x;
+    const float* end = x + n;
+
+    // loop unrolling
+    const std::size_t num_unrolls = n / FTYPE_UNROLLING_SIZE;
+
+    // load constant c into register
+    const __m256 scalar = _mm256_set1_ps(c);
+    for (std::size_t i = 0; i < num_unrolls; ++i) {
+        __m256 xvec0 = _mm256_loadu_ps(xptr);
+        __m256 xvec1 = _mm256_loadu_ps(xptr + 8);
+        __m256 outvec0 = _mm256_loadu_ps(outptr);
+        __m256 outvec1 = _mm256_loadu_ps(outptr + 8);
+        _mm256_storeu_ps(outptr, _mm256_fmadd_ps(xvec0, scalar, outvec0));
+        _mm256_storeu_ps(outptr + 8, _mm256_fmadd_ps(xvec1, scalar, outvec1));
+        xptr += FTYPE_UNROLLING_SIZE;
+        outptr += FTYPE_UNROLLING_SIZE;
+    }
+
+    // handle teh last 8 - 15 elements
+    std::size_t remainder = end - xptr;
+    if (remainder >= FTYPE_ELEMS_PER_REGISTER) {
+        __m256 xvec = _mm256_loadu_ps(xptr);
+        __m256 outvec = _mm256_loadu_ps(outptr);
+        _mm256_storeu_ps(outptr, _mm256_fmadd_ps(xvec, scalar, outvec));
+        xptr += FTYPE_ELEMS_PER_REGISTER;
+        outptr += FTYPE_ELEMS_PER_REGISTER;
+    }
+
+    // handle remaining elements
+    if (end > xptr) {
+        const std::size_t tails = end - xptr;
+        for (std::size_t i = 0; i < tails; ++i) {
+            outptr[i] += c * xptr[i];
+        }
+    }
+};
+
+/**
  * @brief Computes element-wise difference between two float arrays using AVX2 vectorization
  */
 inline void vecdiff_avx_float(const float* x,
