@@ -522,7 +522,7 @@ inline void vecscale_avx_double(const double* xbegin,
 };
 
 /**
- *
+ * out[i] = x[i] + y[i]
  */
 inline void vecadd_avx_double(const double* x,
                               const double* y,
@@ -582,7 +582,8 @@ inline void vecadd_avx_double(const double* x,
 };
 
 /**
- * @brief Performs vector addition with scaling: out = c * x + y
+ * @brief Performs vector addition with scaling
+ *        out[i] = c * x[i] + y[i]
  */
 inline void vecadd_avx_double(const double* x,
                               const double* y,
@@ -646,7 +647,68 @@ inline void vecadd_avx_double(const double* x,
 };
 
 /**
- * @brief Computes element-wise difference between two double arrays using AVX vectorization
+ * out[i] += x[i] * c
+ */
+inline void vecadd_avx_double(const double* x,
+                              const double c,
+                              const std::size_t n,
+                              double* out) noexcept {
+    // define ptr points to x and aligned end
+    double* outptr = out;
+    const double* xptr = x;
+    const double* end = x + n;
+
+    // loop unrolling
+    const std::size_t num_unrolls = n / DTYPE_UNROLLING_SIZE;
+
+    // load constant c into register
+    const __m256d scalar = _mm256_set1_pd(c);
+    for (std::size_t i = 0; i < num_unrolls; ++i) {
+        __m256d xvec0 = _mm256_loadu_pd(xptr);
+        __m256d xvec1 = _mm256_loadu_pd(xptr + 4);
+        __m256d xvec2 = _mm256_loadu_pd(xptr + 8);
+        __m256d xvec3 = _mm256_loadu_pd(xptr + 12);
+
+        __m256d outvec0 = _mm256_loadu_pd(outptr);
+        __m256d outvec1 = _mm256_loadu_pd(outptr + 4);
+        __m256d outvec2 = _mm256_loadu_pd(outptr + 8);
+        __m256d outvec3 = _mm256_loadu_pd(outptr + 12);
+        // _mm256_storeu_pd(outptr, _mm256_add_pd(_mm256_mul_pd(xvec, scalar), yvec));
+        _mm256_storeu_pd(outptr, _mm256_fmadd_pd(xvec0, scalar, outvec0));
+        _mm256_storeu_pd(outptr + 4, _mm256_fmadd_pd(xvec1, scalar, outvec1));
+        _mm256_storeu_pd(outptr + 8, _mm256_fmadd_pd(xvec2, scalar, outvec2));
+        _mm256_storeu_pd(outptr + 12, _mm256_fmadd_pd(xvec3, scalar, outvec3));
+        xptr += DTYPE_UNROLLING_SIZE;
+        outptr += DTYPE_UNROLLING_SIZE;
+    }
+
+    // handle the last 4 - 15 elements
+    const std::size_t remainder = end - xptr;
+    if (remainder >= DTYPE_ELEMS_PER_REGISTER) {
+        const std::size_t num_blocks = remainder / DTYPE_ELEMS_PER_REGISTER;
+        for (std::size_t i = 0; i < num_blocks; ++i) {
+            __m256d xvec = _mm256_loadu_pd(xptr);
+            __m256d outvec = _mm256_loadu_pd(outptr);
+            // _mm256_storeu_pd(outptr, _mm256_add_pd(xvec, yvec));
+            _mm256_storeu_pd(outptr, _mm256_fmadd_pd(xvec, scalar, outvec));
+            xptr += DTYPE_ELEMS_PER_REGISTER;
+            outptr += DTYPE_ELEMS_PER_REGISTER;
+        }
+    }
+
+    // handle remaining elements
+    const std::size_t tails = end - xptr;
+    switch (tails) {
+        case 3: outptr[2] += c * xptr[2]; [[fallthrough]];
+        case 2: outptr[1] += c * xptr[1]; [[fallthrough]];
+        case 1: outptr[0] += c * xptr[0];
+        default: break;
+    }
+};
+
+/**
+ * @brief Computes element-wise difference between two double arrays
+ *        out[i] = x[i] - y[i]
  */
 inline void vecdiff_avx_double(const double* x,
                                const double* y,
@@ -704,7 +766,7 @@ inline void vecdiff_avx_double(const double* x,
 };
 
 /**
- *
+ * out[i] = x[i] - c * y[i]
  */
 inline void vecdiff_avx_double(const double* x,
                                const double* y,
