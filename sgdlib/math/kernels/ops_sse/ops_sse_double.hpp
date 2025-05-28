@@ -458,6 +458,49 @@ inline void vecadd_sse_double(const double* x,
 };
 
 /**
+ * out[i] += c * x[i]
+ */
+inline void vecadd_sse_double(const double* x,
+                              const double c,
+                              const std::size_t n,
+                              double* out) noexcept {
+    // define ptr points to x and aligned end
+    double* outptr = out;
+    const double* xptr = x;
+    const double* end = x + n;
+
+    // loop unrolling
+    const std::size_t num_unrolls = n / DTYPE_UNROLLING_SIZE;
+
+    // init sum0 and sum1 to 0, load constant c into register
+    const __m128d scalar = _mm_set1_pd(c);
+    for (std::size_t i = 0; i < num_unrolls; ++i) {
+        // load xvec and yvec to 2 register
+        __m128d xvec0 = _mm_loadu_pd(xptr);
+        __m128d xvec1 = _mm_loadu_pd(xptr + 2);
+        __m128d outvec0 = _mm_loadu_pd(outptr);
+        __m128d outvec1 = _mm_loadu_pd(outptr + 2);
+        // compute x * c + y
+        outvec0 = _mm_add_pd(outvec0, _mm_mul_pd(xvec0, scalar));
+        outvec1 = _mm_add_pd(outvec1, _mm_mul_pd(xvec1, scalar));
+        // put result back to out pointer
+        _mm_storeu_pd(outptr, outvec0);
+        _mm_storeu_pd(outptr + 2, outvec1);
+        // increment
+        xptr += DTYPE_UNROLLING_SIZE;
+        outptr += DTYPE_UNROLLING_SIZE;
+    }
+    // handle remaining elements
+    const std::size_t remainder = end - xptr;
+    switch (remainder) {
+        case 3: outptr[2] += xptr[2] * c; [[fallthrough]];
+        case 2: outptr[1] += xptr[1] * c; [[fallthrough]];
+        case 1: outptr[0] += xptr[0] * c;
+        default: break;
+    }
+};
+
+/**
  * @brief Performs SIMD-accelerated element-wise subtraction of two double-precision
  *        floating-point arrays. Computes out[i] = x[i] - y[i] for each element
  *        using SSE4.2 instructions.
