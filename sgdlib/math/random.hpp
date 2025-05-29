@@ -18,7 +18,7 @@ public:
      * This ensures that each instance of RandomState created at different times
      * will likely produce different sequences of random numbers.
      */
-    RandomState(): engine_(static_cast<unsigned long>(time(nullptr))) {};
+    RandomState(): engine_(static_cast<unsigned long>(std::random_device{}())) {};
 
     /**
      * Create and initialize random number generator with a specified seed.
@@ -29,6 +29,9 @@ public:
      *             Using the same seed will result in the same sequence of random numbers.
      */
     RandomState(unsigned long seed): engine_(seed) {};
+
+    RandomState(const RandomState&) = delete;
+    RandomState& operator=(const RandomState&) = delete;
 
     ~RandomState() = default;
 
@@ -42,7 +45,7 @@ public:
                         double high) {
         std::uniform_real_distribution<double> dist(low, high);
         return dist(engine_);
-    };
+    }
 
     /**
      * Provide a long random number from a uniform distribution between [low, high).
@@ -55,26 +58,26 @@ public:
 
         std::uniform_int_distribution<long> dist(low, high - 1);
         return dist(engine_);
-    };
+    }
 
     /**
      * Shuffles the elements of a vector randomly.
      *
      * @param x A reference to the vector of type `Type` to be shuffled.
     */
-    template<typename Type>
-    void shuffle(std::vector<Type>& x) {
+    template<typename T>
+    void shuffle(std::vector<T>& x) {
         std::shuffle(std::begin(x), std::end(x), engine_);
-    };
+    }
 
     /**
      * Randomly extract one element from x without repetition.
     */
-    template<typename Type>
-    Type sample(std::vector<Type>& x) {
+    template<typename T>
+    const T& sample(std::vector<T>& x) {
 
         std::size_t size = x.size();
-        std::uniform_int_distribution<long> dist(0, size - 1);
+        std::uniform_int_distribution<std::size_t> dist(0, size - 1);
 
         // randomly generate an index of x
         std::size_t index = dist(engine_);
