@@ -3,9 +3,8 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+// include private header file
 #include "sgdlib/core/loss.hpp"
-
-namespace sgdlib {
 
 #define EXPECT_DOUBLES_EQUAL(expected, actual) \
     EXPECT_LE(std::abs(expected - actual), 1e-6)
@@ -14,14 +13,12 @@ using ::testing::DoubleLE;
 
 class LossTest : public ::testing::Test {
 public:
-    virtual void SetUp(std::string loss) {
+    void SetUp(std::string loss) {
         LossParamType loss_params = {{"alpha", 0.0}};
-        loss_fn = LossFunctionRegistry()->Create(loss, loss_params);
+        loss_fn = sgdlib::detail::LossFunctionRegistry()->Create(loss, loss_params);
     }
 
-    virtual void TearDown() {}
-
-    std::shared_ptr<sgdlib::LossFunction> loss_fn; 
+    std::shared_ptr<sgdlib::detail::LossFunction> loss_fn;
 };
 
 TEST_F(LossTest, LogLossTest) {
@@ -31,11 +28,11 @@ TEST_F(LossTest, LogLossTest) {
     std::vector<double> w = {1.0, 1.0, 1.0, 1.0};
 
     double y1_pred, y2_pred;
-    y1_pred = std::inner_product(x1.begin(), 
-                                 x1.end(), 
+    y1_pred = std::inner_product(x1.begin(),
+                                 x1.end(),
                                  w.begin(), 0.0);
-    y2_pred = std::inner_product(x2.begin(), 
-                                 x2.end(), 
+    y2_pred = std::inner_product(x2.begin(),
+                                 x2.end(),
                                  w.begin(), 0.0);
 
     SetUp("LogLoss");
@@ -62,11 +59,24 @@ TEST_F(LossTest, LogLossTest) {
     }
 
     double tol = 1e-6;
-    std::vector<double> expect_g = {-1.18196268e-04, -7.49848596e-05, 
+    std::vector<double> expect_g = {-1.18196268e-04, -7.49848596e-05,
                                     -2.73777758e-05, -6.85518909e-06};
     for (std::size_t i = 0; i < g.size(); ++i) {
         EXPECT_NEAR(g[i], expect_g[i], tol);
     }
+
+    std::vector<double> x = {5.2, 3.3, 1.2, 0.3,
+                             6.4, 3.1, 5.5, 1.8};
+    std::vector<long> y = {1, 1};
+    std::vector<double> grad(4);
+
+    double loss_total = loss_fn->evaluate_with_gradient(x, y, w, grad);
+
+    EXPECT_DOUBLES_EQUAL(loss_total, 2.272473226451872e-05);
+    for (std::size_t i = 0; i < g.size(); ++i) {
+        EXPECT_NEAR(grad[i], expect_g[i], tol);
+    }
+
 };
 
 
@@ -115,11 +125,11 @@ TEST_F(LossTest, LogLossAllDataTest) {
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1, 
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-    
+
     std::vector<double> w = {1.0, 1.0, 1.0, 1.0};
     std::size_t num_samples = y_train.size();
     std::size_t num_features = w.size();
@@ -128,10 +138,10 @@ TEST_F(LossTest, LogLossAllDataTest) {
     double loss = 0.0;
     std::vector<double> grad(num_features);
     for (std::size_t i = 0; i < num_samples; ++i) {
-        y_hat = std::inner_product(&X_train[i * num_features], 
-                                   &X_train[(i + 1) * num_features], 
+        y_hat = std::inner_product(&X_train[i * num_features],
+                                   &X_train[(i + 1) * num_features],
                                    w.begin(), 0.0);
-        
+
         loss += loss_fn->evaluate(y_hat, y_train[i]);
         for (std::size_t j = 0; j < num_features; ++j) {
             grad[j] += loss_fn->derivate(y_hat, y_train[i]) * X_train[i * num_features + j];
@@ -139,8 +149,8 @@ TEST_F(LossTest, LogLossAllDataTest) {
     }
     loss /= static_cast<FeatValType>(num_samples);
     std::transform(grad.begin(), grad.end(), grad.begin(),
-                  [num_samples](FeatValType val) { 
-                    return val / static_cast<FeatValType>(num_samples); 
+                  [num_samples](FeatValType val) {
+                    return val / static_cast<FeatValType>(num_samples);
                 });
     double tolerance = 1e-5;
     std::vector<double> expect_grad = {2.75991, 1.64394, 1.26731, 0.324662};
@@ -148,7 +158,15 @@ TEST_F(LossTest, LogLossAllDataTest) {
     EXPECT_NEAR(loss, 5.99602, tolerance);
     for (std::size_t i = 0; i < grad.size(); ++i) {
         EXPECT_NEAR(grad[i], expect_grad[i], tolerance);
-    } 
-}
+    }
+
+    tolerance = 1e-3;
+    std::vector<double> grad_total(num_features);
+    double loss_total = loss_fn->evaluate_with_gradient(X_train, y_train, w, grad_total);
+    EXPECT_NEAR(loss_total, 5.99602, tolerance);
+    for (std::size_t i = 0; i < grad.size(); ++i) {
+        EXPECT_NEAR(grad_total[i], expect_grad[i], tolerance);
+    }
 
 }
+
