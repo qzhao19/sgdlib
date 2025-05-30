@@ -3,14 +3,15 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+// include private header file
 #include "sgdlib/core/loss.hpp"
 #include "sgdlib/core/stepsize_search.hpp"
+#include "sgdlib/common/constants.hpp"
 
-namespace sgdlib {
 
 class StepSizeSearchTest : public ::testing::Test {
 public:
-    virtual void SetUp(std::string search_policy) {
+    void SetUp(std::string search_policy) {
         std::vector<double> X = {
             5.1, 3.5, 1.4, 0.2,4.9, 3. , 1.4, 0.2,4.7, 3.2, 1.3, 0.2,4.6, 3.1, 1.5, 0.2,
             5. , 3.6, 1.4, 0.2,5.4, 3.9, 1.7, 0.4,4.6, 3.4, 1.4, 0.3,5. , 3.4, 1.5, 0.2,
@@ -54,15 +55,15 @@ public:
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1, 
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
         LossParamType loss_params = {{"alpha", 0.0}};
         StepSizeSearchParamType* stepsize_search_params = &DEFAULT_STEPSIZE_SEARCH_PARAMS;
-        loss_fn_ = LossFunctionRegistry()->Create("LogLoss", loss_params);
+        loss_fn_ = sgdlib::detail::LossFunctionRegistry()->Create("LogLoss", loss_params);
         if (search_policy == "Constant") {
-            stepsize_search_ = std::make_unique<sgdlib::ConstantSearch<sgdlib::LossFunction>>(
+            stepsize_search_ = std::make_unique<sgdlib::detail::ConstantSearch<sgdlib::detail::LossFunction>>(
                 X, y, loss_fn_, stepsize_search_params
             );
         }
@@ -71,21 +72,21 @@ public:
             stepsize_search_params->eta0 = 0.01;
             stepsize_search_params->max_searches = 10;
             stepsize_search_params->max_iters = 20;
-            stepsize_search_ = std::make_unique<sgdlib::BasicLineSearch<sgdlib::LossFunction>>(
+            stepsize_search_ = std::make_unique<sgdlib::detail::BasicLineSearch<sgdlib::detail::LossFunction>>(
                 X, y, loss_fn_, stepsize_search_params
             );
         }
         else if (search_policy == "BacktrackingLineSearch" || search_policy == "BracketingLineSearch") {
             stepsize_search_params->max_searches = 40;
             stepsize_search_params->condition = "WOLFE";
-            stepsize_search_ = std::make_unique<sgdlib::BacktrackingLineSearch<sgdlib::LossFunction>>(
+            stepsize_search_ = std::make_unique<sgdlib::detail::BacktrackingLineSearch<sgdlib::detail::LossFunction>>(
                 X, y, loss_fn_, stepsize_search_params
             );
         }
     }
-    
-    std::shared_ptr<sgdlib::LossFunction> loss_fn_; 
-    std::unique_ptr<sgdlib::StepSizeSearch<sgdlib::LossFunction>> stepsize_search_;
+
+    std::shared_ptr<sgdlib::detail::LossFunction> loss_fn_;
+    std::unique_ptr<sgdlib::detail::StepSizeSearch<sgdlib::detail::LossFunction>> stepsize_search_;
 };
 
 TEST_F(StepSizeSearchTest, ConstantSearchTest) {
@@ -107,19 +108,19 @@ TEST_F(StepSizeSearchTest, BasicLineSearchTest) {
 TEST_F(StepSizeSearchTest, BacktrackingLineSearchTest) {
     SetUp("BacktrackingLineSearch");
     double tolerance = 1e-5;
-    std::vector<std::vector<double>> x = {{1., 1., 1., 1.}, 
+    std::vector<std::vector<double>> x = {{1., 1., 1., 1.},
                                            {-0.67094175, 0.00470329, 0.23273091, 0.80343884}};
     std::vector<double> fx = {5.996018216462658, 0.9177489446446626};
-    std::vector<std::vector<double>> g = {{2.75991281, 1.64394249, 1.26730677, 0.32466222}, 
+    std::vector<std::vector<double>> g = {{2.75991281, 1.64394249, 1.26730677, 0.32466222},
                                            {-2.32159527, -1.03857245, -1.92900394, -0.68107431}};
-    std::vector<std::vector<double>> d {{-2.75991281, -1.64394249, -1.26730677, -0.32466222}, 
+    std::vector<std::vector<double>> d {{-2.75991281, -1.64394249, -1.26730677, -0.32466222},
                                          {0.7449502,  0.38705061, 0.48413709, 0.154796}};
     std::vector<std::vector<double>> xp = x;
     double stepsize = 0.2883013346297236;
 
-    std::vector<std::vector<double>> expect_x = {{-0.67094175,  0.00470329,  0.23273091,  0.80343884}, 
+    std::vector<std::vector<double>> expect_x = {{-0.67094175,  0.00470329,  0.23273091,  0.80343884},
                                                  {-0.21992446,  0.23903643,  0.52584339,  0.89715742}};
-    std::vector<std::vector<double>> expect_g = {{-2.32159528, -1.03857245, -1.92900395, -0.68107431}, 
+    std::vector<std::vector<double>> expect_g = {{-2.32159528, -1.03857245, -1.92900395, -0.68107431},
                                                  {2.04742451, 1.19381727, 0.98833884, 0.26008274}};
     std::vector<double> expect_fx = {0.9177489530218861, 0.9059209513061773};
     std::vector<double> expect_stepsize = {0.6054328027224196, 0.6054328027224196};
@@ -133,26 +134,26 @@ TEST_F(StepSizeSearchTest, BacktrackingLineSearchTest) {
         for (std::size_t j = 0; j < x[i].size(); ++j) {
             EXPECT_NEAR(x[i][j], expect_x[i][j], tolerance);
             EXPECT_NEAR(g[i][j], expect_g[i][j], tolerance);
-        }  
+        }
     }
 }
 
 TEST_F(StepSizeSearchTest, BracketingLineSearchTest) {
     SetUp("BracketingLineSearch");
     double tolerance = 1e-5;
-    std::vector<std::vector<double>> x = {{1., 1., 1., 1.}, 
+    std::vector<std::vector<double>> x = {{1., 1., 1., 1.},
                                            {-0.67094175, 0.00470329, 0.23273091, 0.80343884}};
     std::vector<double> fx = {5.996018216462658, 0.9177489446446626};
-    std::vector<std::vector<double>> g = {{2.75991281, 1.64394249, 1.26730677, 0.32466222}, 
+    std::vector<std::vector<double>> g = {{2.75991281, 1.64394249, 1.26730677, 0.32466222},
                                            {-2.32159527, -1.03857245, -1.92900394, -0.68107431}};
-    std::vector<std::vector<double>> d {{-2.75991281, -1.64394249, -1.26730677, -0.32466222}, 
+    std::vector<std::vector<double>> d {{-2.75991281, -1.64394249, -1.26730677, -0.32466222},
                                          {0.7449502,  0.38705061, 0.48413709, 0.154796}};
     std::vector<std::vector<double>> xp = x;
     double stepsize = 0.2883013346297236;
 
-    std::vector<std::vector<double>> expect_x = {{-0.67094175,  0.00470329,  0.23273091,  0.80343884}, 
+    std::vector<std::vector<double>> expect_x = {{-0.67094175,  0.00470329,  0.23273091,  0.80343884},
                                                  {-0.21992446,  0.23903643,  0.52584339,  0.89715742}};
-    std::vector<std::vector<double>> expect_g = {{-2.32159528, -1.03857245, -1.92900395, -0.68107431}, 
+    std::vector<std::vector<double>> expect_g = {{-2.32159528, -1.03857245, -1.92900395, -0.68107431},
                                                  {2.04742451, 1.19381727, 0.98833884, 0.26008274}};
     std::vector<double> expect_fx = {0.9177489530218861, 0.9059209513061773};
     std::vector<double> expect_stepsize = {0.6054328027224196, 0.6054328027224196};
@@ -166,10 +167,7 @@ TEST_F(StepSizeSearchTest, BracketingLineSearchTest) {
         for (std::size_t j = 0; j < x[i].size(); ++j) {
             EXPECT_NEAR(x[i][j], expect_x[i][j], tolerance);
             EXPECT_NEAR(g[i][j], expect_g[i][j], tolerance);
-        }  
+        }
     }
-}
-
-
 }
 
