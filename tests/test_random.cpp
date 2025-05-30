@@ -1,23 +1,22 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+// include private header file
 #include "sgdlib/math/random.hpp"
-
-namespace sgdlib {
 
 class RandomStateTest : public ::testing::Test {
 public:
     virtual void SetUp(unsigned long seed) {
         if (seed == -1) {
-            random_state = std::make_unique<sgdlib::internal::RandomState>();
+            random_state = std::make_unique<sgdlib::detail::RandomState>();
         }
         else {
-            random_state = std::make_unique<sgdlib::internal::RandomState>(seed);
+            random_state = std::make_unique<sgdlib::detail::RandomState>(seed);
         }
     }
 
     virtual void TearDown() {}
-    std::unique_ptr<sgdlib::internal::RandomState> random_state; 
+    std::unique_ptr<sgdlib::detail::RandomState> random_state;
 };
 
 TEST_F(RandomStateTest, UniformRealTest) {
@@ -25,16 +24,16 @@ TEST_F(RandomStateTest, UniformRealTest) {
     double lower_bound = 0.0, upper_bound = 1.0;
     double x = random_state->uniform_real(lower_bound, upper_bound);
 
-    ASSERT_LE(lower_bound, x) << "x should be greater than upper_bound";
+    ASSERT_GE(x, lower_bound) << "x should be greater than lower_bound";
     ASSERT_LT(x, upper_bound) << "x should be strickly less than upper_bound";
 };
 
 TEST_F(RandomStateTest, UniformIntTest) {
     SetUp(-1);
     long lower_bound = 0, upper_bound = 5;
-    long x = random_state->uniform_real(lower_bound, upper_bound);
+    long x = random_state->uniform_int(lower_bound, upper_bound);
 
-    ASSERT_LE(lower_bound, x) << "x should be greater than upper_bound";
+    ASSERT_GE(x, lower_bound) << "x should be greater than lower_bound";
     ASSERT_LT(x, upper_bound) << "x should be strickly less than upper_bound";
 };
 
@@ -72,8 +71,7 @@ TEST_F(RandomStateTest, RandomIndexTest) {
     std::size_t lower_bound = 0, upper_bound = 5;
     std::size_t x = random_state->random_index(lower_bound, upper_bound);
 
-    ASSERT_LE(lower_bound, x) << "x should be greater than upper_bound";
+    ASSERT_GE(x, lower_bound) << "x should be greater than lower_bound";
     ASSERT_LT(x, upper_bound) << "x should be strickly less than upper_bound";
 };
 
-}
