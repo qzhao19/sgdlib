@@ -103,16 +103,10 @@ public:
         std::vector<FeatValType> gp(num_features);
         std::vector<FeatValType> d(num_features);
 
-        // initialize the limited memory variables
+        // initialize the limited memory data
         // mem_s: storing changes of parameters in the past
         // mem_y: storing changes of gradient in the past
         // mem_ys: storing value of y_T_k @ s_k
-        // std::vector<FeatValType> mem_s(num_features * this->mem_size_, 0.0);
-        // std::vector<FeatValType> mem_y(num_features * this->mem_size_, 0.0);
-        // std::vector<FeatValType> mem_ys(this->mem_size_, 0.0);
-        // std::vector<FeatValType> mem_alpha(this->mem_size_, 0.0);
-
-        // initialize the limited memory data
         auto limited_mem_data = sgdlib::detail::vecalloc<LimitedMemoryDataType>(this->mem_size_);
         for (std::size_t i = 0; i < this->mem_size_; ++i) {
             limited_mem_data[i].mem_y.resize(num_features, 0.0);
@@ -120,7 +114,6 @@ public:
             limited_mem_data[i].mem_ys = 0.0;
             limited_mem_data[i].mem_alpha = 0.0;
         }
-
 
         // vector for storing previous values of the objective function
         std::vector<FeatValType> pfx(std::max(static_cast<std::size_t>(1), this->past_));
@@ -141,21 +134,7 @@ public:
             THROW_INVALID_ERROR("LBFGS optimizer supports 'backtracking' or 'bracketing' policy only.");
         }
 
-        // compute intial loss value and gradeint
-        // for (std::size_t n = 0; n < num_samples; ++n) {
-        //     y_hat = std::inner_product(&X[n * num_features],
-        //                                &X[(n + 1) * num_features],
-        //                                x.begin(), 0.0);
-        //     fx += this->loss_fn_->evaluate(y_hat, y[n]);
-        //     for (std::size_t m = 0; m < num_features; ++m) {
-        //         g[m] += this->loss_fn_->derivate(y_hat, y[n]) * X[n * num_features + m];
-        //     }
-        // }
-        // fx /= static_cast<FeatValType>(num_samples);
-        // std::transform(g.begin(), g.end(), g.begin(),
-        //               [num_samples](FeatValType val) {
-        //                 return val / static_cast<FeatValType>(num_samples);
-        //               });
+        // compute intial loss value and gradeint with full data X
         fx = this->loss_fn_->evaluate_with_gradient(X, y, x, g);
 
         // store the initial value of the cost function fx
@@ -237,11 +216,6 @@ public:
             // Update vectors s and y:
             // s_{k+1} = x_{k+1} - x_{k} = step * d_{k}.
             // y_{k+1} = g_{k+1} - g_{k}.
-            // for (std::size_t n = 0; n < num_features; ++n) {
-            //     mem_s[n * this->mem_size_ + end] = x[n] - xp[n];
-            //     mem_y[n * this->mem_size_ + end] = g[n] - gp[n];
-            // }
-
             sgdlib::detail::vecdiff<FeatValType>(x, xp, limited_mem_data[end].mem_s);
             sgdlib::detail::vecdiff<FeatValType>(g, gp, limited_mem_data[end].mem_y);
 
@@ -249,18 +223,11 @@ public:
             // ys = y^t @ s, s = 1 / rho.
             // yy = y^t @ y.
             // Notice that yy is used for scaling the hessian matrix H_0 (Cholesky factor).
-            // for (std::size_t n = 0; n < num_features; ++n) {
-            //     ys += mem_y[n * this->mem_size_ + end] * mem_s[n * this->mem_size_ + end];
-            //     yy += mem_y[n * this->mem_size_ + end] * mem_y[n * this->mem_size_ + end];
-            // }
             ys = sgdlib::detail::vecdot<FeatValType>(limited_mem_data[end].mem_y, limited_mem_data[end].mem_s);
             yy = sgdlib::detail::vecdot<FeatValType>(limited_mem_data[end].mem_y, limited_mem_data[end].mem_y);
             limited_mem_data[end].mem_ys = ys;
 
             // compute negative of gradient: d = -g
-            // for (std::size_t n = 0; n < num_features; ++n) {
-            //     d[n] = -g[n];
-            // }
             sgdlib::detail::vecncpy<FeatValType>(g, d);
 
             // bound: number of currently available historical messages
@@ -280,45 +247,36 @@ public:
                 j = (j + this->mem_size_ - 1) % this->mem_size_;
 
                 // alpha_{j} = s^{T}_{j} @ d_{j} * rho_{j}, rho_{j} = 1/mem_ys
-                // FeatValType ds = 0.0;
-                // for (std::size_t n = 0; n < num_features; ++n) {
-                //     ds += mem_s[n * this->mem_size_ + j] * d[n];
-                // }
-                // mem_alpha[j] = ds / mem_ys[j];
-
-                limited_mem_data[j].mem_alpha = sgdlib::detail::vecdot<FeatValType>(limited_mem_data[j].mem_s, d);
-                limited_mem_data[j].mem_alpha /= limited_mem_data[j].mem_ys
+                limited_mem_data[j].mem_alpha = sgdlib::detail::vecdot<FeatValType>(
+                    limited_mem_data[j].mem_s, d
+                );
+                limited_mem_data[j].mem_alpha /= limited_mem_data[j].mem_ys;
 
                 // update d_{i} = d_{i+1} - (alpha_{i} * y_{i})
-                // for (std::size_t n = 0; n < num_features; ++n) {
-                //     d[n] += (-mem_alpha[j]) * mem_y[n * this->mem_size_ + j];
-                // }
-                sgdlib::detail::vecadd<FeatValType>(limited_mem_data[j].mem_y, -limited_mem_data[j].mem_alpha, d);
+                sgdlib::detail::vecadd<FeatValType>(
+                    limited_mem_data[j].mem_y,
+                    -limited_mem_data[j].mem_alpha, d
+                );
             }
 
-            // scale Hessian H_0
+            // scale Hessian H_0, dirctyion *= scale_ceoff;
             const FeatValType scale_ceoff = ys / yy;
-            // for (std::size_t n = 0; n < num_features; ++n) {
-            //     d[n] *= scale_ceoff;
-            // }
             sgdlib::detail::vecscale<FeatValType>(d, scale_ceoff, d);
 
             // loop2: backwards recursion
             for (i = 0; i < bound; ++i) {
                 // compute beta_j = rho_{j} * y_{T}_{j} @ d_{J}, rho_{j} = 1/mem_ys
-                // FeatValType yd = 0.0;
-                // for (std::size_t n = 0; n < num_features; ++n) {
-                //     yd += mem_y[n * this->mem_size_ + j] * d[n];
-                // }
-                // beta = yd / mem_ys[j];
-                beta = sgdlib::detail::vecdot<FeatValType>(limited_mem_data[j].mem_y, d);
+                beta = sgdlib::detail::vecdot<FeatValType>(
+                    limited_mem_data[j].mem_y, d
+                );
                 beta /= limited_mem_data[j].mem_ys;
 
                 // update gamm_{i+1} = gamm_{i} + (alpha_{j} - beta_{j}) * s_{j}
-                // for (std::size_t n = 0; n < num_features; ++n) {
-                //     d[n] += (mem_alpha[j] - beta) * mem_s[n * this->mem_size_ + j];
-                // }
-                sgdlib::detail::vecadd<FeatValType>(limited_mem_data[j].mem_s, limited_mem_data[j].mem_alpha - beta, d);
+                sgdlib::detail::vecadd<FeatValType>(
+                    limited_mem_data[j].mem_s,
+                    limited_mem_data[j].mem_alpha - beta,
+                    d
+                );
 
                 // starting the earliest history information to traverse backward
                 j = (j + 1) % this->mem_size_;
