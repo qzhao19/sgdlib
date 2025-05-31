@@ -70,12 +70,22 @@ public:
         FeatValType dloss, y_hat;
 
 #if defined(USE_OPENMP)
+        int num_threads = 1;
+        #pragma omp parallel
+        {
+            #pragma omp single
+            num_threads = omp_get_num_threads();
+        }
+
+        // define independant local_grad for each thread
+        std::vector<std::vector<FeatValType>> local_grad(
+            num_threads, std::vector<FeatValType>(num_features, 0.0)
+        );
+
         // OpenMP reduction for loss and manual reduction for grad
         #pragma omp parallel reduction(+:loss) private(dloss, y_hat)
         {
-            // define independant local_grad for each thread
-            std::vector<FeatValType> local_grad(num_features, 0.0);
-
+            int thread_id = omp_get_thread_num();
             #pragma omp for nowait
             for (std::size_t i = 0; i < num_samples; ++i) {
                 y_hat = sgdlib::detail::vecdot<FeatValType>(
@@ -86,18 +96,17 @@ public:
 
                 loss += evaluate(y_hat, y[i]);
                 dloss = derivate(y_hat, y[i]);
-                for (std::size_t j = 0; j < num_features; ++j) {
-                    local_grad[j] += dloss * X[i * num_features + j];
-                }
+                sgdlib::detail::vecadd<FeatValType>(
+                    X.data() + (i * num_features),
+                    X.data() + ((i + 1) * num_features),
+                    dloss,
+                    local_grad[thread_id]
+                );
             }
-
-            // reduction for grad and loss
-            #pragma omp critical
-            {
-                for (std::size_t j = 0; j < num_features; ++j) {
-                    grad[j] += local_grad[j];
-                }
-            }
+        }
+        // main thread reduction for grad
+        for (std::size_t t = 0; t < num_threads; ++t) {
+            sgdlib::detail::vecadd<FeatValType>(grad, local_grad[t], grad);
         }
 #else
         for (std::size_t i = 0; i < num_samples; ++i) {
@@ -110,9 +119,12 @@ public:
 
             loss += evaluate(y_hat, y[i]);
             dloss = derivate(y_hat, y[i]);
-            for (std::size_t j = 0; j < num_features; ++j) {
-                grad[j] += dloss * X[i * num_features + j];
-            }
+            sgdlib::detail::vecadd<FeatValType>(
+                X.data() + (i * num_features),
+                X.data() + ((i + 1) * num_features),
+                dloss,
+                grad
+            );
         }
 #endif
         loss *= inv_num_samples;
