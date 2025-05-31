@@ -57,36 +57,19 @@ public:
         FloatType stepsize_hi = INF;
         FloatType stepsize_lo = 0.0;
         // define loss and grad vector
-        FeatValType y_hat;
-        FeatValType loss = 0.0;
+        FeatValType loss;
         std::vector<FeatValType> grad(num_features_, 0.0);
 
         int count = 0;
         while (true) {
             // x_{k+1} = x_k + stepsize * d_k
-            std::transform(xp.begin(), xp.end(), d.begin(), x.begin(),
-               [stepsize](auto xval, auto dval) {
-                   return xval + stepsize * dval;
-               });
+            sgdlib::detail::vecadd<FeatValType>(d, xp, stepsize, x);
 
-            loss = 0.0;
+            // reset gradient vector for ecah loop
             std::memset(grad.data(), 0, grad.size() * sizeof(FeatValType));
 
             // compute the loss value and gradient vector
-            for (std::size_t i = 0; i < num_samples_; ++i) {
-                y_hat = std::inner_product(&this->X_[i * num_features_],
-                                           &this->X_[(i + 1) * num_features_],
-                                           x.begin(), 0.0);
-                loss += this->loss_fn_->evaluate(y_hat, this->y_[i]);
-                for (std::size_t j = 0; j < num_features_; ++j) {
-                    grad[j] += this->loss_fn_->derivate(y_hat, this->y_[i]) * this->X_[i * num_features_ + j];
-                }
-            }
-            loss /= static_cast<FeatValType>(num_samples_);
-            std::transform(grad.begin(), grad.end(), grad.begin(),
-                          [this](FeatValType val) {
-                            return val / static_cast<FeatValType>(num_samples_);
-                        });
+            loss = this->loss_fn_->evaluate_with_gradient(this->X_, this->y_, x, grad);
             fx = loss;
             g = grad;
 
