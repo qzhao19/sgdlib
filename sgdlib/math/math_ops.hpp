@@ -634,6 +634,44 @@ inline void vecadd(const std::vector<T>& x,
 }
 
 /**
+ *
+ */
+template<typename T>
+inline void vecadd(const T* xbegin,
+                   const T* xend,
+                   const T& c,
+                   std::vector<T>& out) {
+
+    static_assert(std::is_floating_point_v<T>,
+        "vecadd requires floating-point types (e.g. float, double)");
+
+    if (xbegin == nullptr || xend == nullptr) {
+        THROW_INVALID_ERROR("vecadd: input x, y vector cannot be empty");
+    }
+
+    if (xbegin >= xend) {
+        THROW_INVALID_ERROR("vecscale: invalid range [xbegin, xend) with size="
+                            + std::to_string(xend - xbegin));
+    }
+    const std::size_t n = static_cast<std::size_t>(xend - xbegin);
+    if (n == 0) {
+        THROW_INVALID_ERROR("vecscale: empty input range");
+    }
+
+    if (out.empty()) {
+        THROW_INVALID_ERROR("vecadd: output vector cannot be empty");
+    }
+
+#if defined(USE_SSE)
+    vecadd_sse<T>(xbegin, c, n, out.data());
+#elif defined(USE_AVX)
+    vecadd_avx<T>(xbegin, c, n, out.data());
+#else
+    vecadd_ansi<T>(xbegin, xend, c, out);
+#endif
+}
+
+/**
  * @brief Performs vector subtraction with hardware acceleration
  *        out[i] = x[i] - y[i]
  *
