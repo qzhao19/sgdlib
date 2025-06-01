@@ -153,7 +153,7 @@ TEST(MathOpsTest, VecaddScaledTest) {
                         0.5, 1.5, 2.5, 0.5, 1.5, 2.5,
                         0.5, 1.5, 2.5, 0.5, 1.5, 2.5}, out(18);
     sgdlib::detail::vecadd<float>(a, b, 0.5, out);
-    EXPECT_DOUBLE_EQ(out[0], 2.5);  // 1 + 0.5*2 = 2
+    EXPECT_FLOAT_EQ(out[0], 2.5);  // 1 + 0.5*2 = 2
 }
 
 TEST(MathOpsTest, Vecadd1InputScaledTest) {
@@ -162,7 +162,19 @@ TEST(MathOpsTest, Vecadd1InputScaledTest) {
                         0.5, 1.5, 2.5, 0.5, 1.5, 2.5};
     std::vector<float> out(18);
     sgdlib::detail::vecadd<float>(a, 0.5, out);
-    EXPECT_DOUBLE_EQ(out[1], 0.75);  // 1 + 0.5*2 = 2
+    EXPECT_FLOAT_EQ(out[1], 0.75);  // 1 + 0.5*2 = 2
+}
+
+TEST(MathOpsTest, VecaddRangeScaledTest) {
+    std::vector<float> a{1.0, 1.5, 2.5, 0.5, 1.5, 2.5,
+                        0.5, 1.5, 2.5, 0.5, 1.5, 2.5,
+                        0.5, 1.5, 2.5, 0.5, 1.5, 2.5};
+    std::vector<float> out(4, 1.26);
+    std::vector<float> expect = {1.76, 2.01, 2.51, 1.51, 2.01};
+    sgdlib::detail::vecadd<float>(a.data(), a.data() + 4, 0.5, out);
+    for (std::size_t i = 0; i < 4; ++i) {
+        EXPECT_FLOAT_EQ(out[i], expect[i]) << "at i = " << i;
+    }
 }
 
 TEST(MathOpsTest, VecdiffTest) {
