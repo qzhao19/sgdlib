@@ -30,9 +30,6 @@ public:
      */
     RandomState(unsigned long seed): engine_(seed) {};
 
-    RandomState(const RandomState&) = delete;
-    RandomState& operator=(const RandomState&) = delete;
-
     ~RandomState() = default;
 
     /**
@@ -75,7 +72,6 @@ public:
     */
     template<typename T>
     const T& sample(std::vector<T>& x) {
-
         std::size_t size = x.size();
         std::uniform_int_distribution<std::size_t> dist(0, size - 1);
 
