@@ -146,6 +146,21 @@ inline void vecadd_ansi(const std::vector<T>& x,
 }
 
 template <typename T>
+inline void vecadd_ansi(const T* xbegin,
+                        const T* xend,
+                        const T c,
+                        std::vector<T>& out) {
+    std::transform(
+        xbegin, xend,
+        out.begin(),
+        out.begin(),
+        [c](const T& xi, const T& outi) {
+            return outi + c * xi;  // out[i] += c * x[i]
+        }
+    );
+}
+
+template <typename T>
 inline void vecdiff_ansi(const std::vector<T>& x,
                         const std::vector<T>& y,
                         std::vector<T>& out) noexcept {
