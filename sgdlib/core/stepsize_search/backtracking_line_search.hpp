@@ -45,8 +45,7 @@ public:
 
         // initialize fx_init and compute init gradient in search direction
         FeatValType fx_init = fx;
-        FeatValType dg_init;
-        sgdlib::detail::dot<FeatValType>(d, g, dg_init);
+        FeatValType dg_init = sgdlib::detail::vecdot<FeatValType>(d, g);
 
         if (dg_init > 0.0) {
             // moving direction increases the objective function value
@@ -83,8 +82,7 @@ public:
                 if (this->stepsize_search_params_->condition == "ARMIJO") {
                     return count;
                 }
-                FloatType dg;
-                sgdlib::detail::dot<FloatType>(d, g, dg);
+                FloatType dg = sgdlib::detail::vecdot<FloatType>(d, g);
                 if (dg < this->stepsize_search_params_->wolfe * dg_init) {
                     width = inc_factor;
                 }
