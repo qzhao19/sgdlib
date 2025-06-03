@@ -47,14 +47,15 @@ public:
 
     FeatValType derivate(const FeatValType& y_pred,
                          const LabelValType& y_true) const override {
-        const FeatValType z = y_pred * static_cast<FeatValType>(y_true);
+        const FeatValType y_true_float = static_cast<FeatValType>(y_true);
+        const FeatValType z = y_pred * y_true_float ;
         if (z > 18.0) {
-            return std::exp(-z) * (-static_cast<FeatValType>(y_true));
+            return std::exp(-z) * (-y_true_float);
         }
         if (z < -18.0) {
-            return -static_cast<FeatValType>(y_true);
+            return -y_true_float;
         }
-        return -static_cast<FeatValType>(y_true) / (std::exp(z) + 1.0);
+        return -y_true_float / (std::exp(z) + 1.0);
     }
 
     FeatValType evaluate_with_gradient(
