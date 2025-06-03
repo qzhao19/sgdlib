@@ -186,7 +186,7 @@ public:
             // print info
             if (this->verbose_) {
                 PRINT_RUNTIME_INFO(5, "Epoch = ", iter + 1,
-                                   ", wnorm1 = ", sgdlib::detail::norm1<FeatValType>(w0) ,
+                                   ", wnorm1 = ", sgdlib::detail::vecnorm1<FeatValType>(w0) ,
                                    ", loss = ", loss);
             }
 
