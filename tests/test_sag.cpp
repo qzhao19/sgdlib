@@ -6,8 +6,6 @@
 #include "sgdlib/algorithm/base.hpp"
 #include "sgdlib/algorithm/sgd/sag.hpp"
 
-namespace sgdlib {
-
 class SAGTest : public ::testing::Test {
 public:
     void SetUp(bool is_saga) {
@@ -199,9 +197,3 @@ TEST_F(SAGTest, SAGAConvergenceSpeedTest) {
 
     EXPECT_GT(improvement_ratio, 0.3f) << "insufficient convergence rate";
 };
-
-}
-
-
-
-
