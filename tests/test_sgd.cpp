@@ -6,8 +6,6 @@
 #include "sgdlib/algorithm/base.hpp"
 #include "sgdlib/algorithm/sgd/sgd.hpp"
 
-namespace sgdlib {
-
 class SGDTest : public ::testing::Test {
 public:
     void SetUp() override {
@@ -70,7 +68,7 @@ public:
         std::size_t max_iters = 100; 
         std::size_t batch_size = 1;
         std::size_t num_iters_no_change = 5;
-        std::size_t random_seed = -1;
+        std::size_t random_seed = 0;
         bool shuffle = true;
         bool verbose = false;
 
@@ -139,9 +137,3 @@ TEST_F(SGDTest, ConvergenceSpeedTest) {
 
     EXPECT_GT(improvement_ratio, 0.3f) << "insufficient convergence rate";
 };
-    
-}
-
-
-
-
