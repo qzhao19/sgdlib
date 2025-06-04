@@ -6,7 +6,6 @@
 #include "sgdlib/algorithm/base.hpp"
 #include "sgdlib/algorithm/sgd/scd.hpp"
 
-namespace sgdlib {
 
 class SCDTest : public ::testing::Test {
 public:
@@ -47,27 +46,27 @@ public:
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1, 
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-    
-        w0 = {1.0, 1.0, 1.0, 1.0}; 
+
+        w0 = {1.0, 1.0, 1.0, 1.0};
         std::string loss = "LogLoss";
         double alpha = 0.01;
         double tol = 0.0001;
-        std::size_t max_iters = 1000; 
+        std::size_t max_iters = 500;
         std::size_t random_seed = -1;
         bool shuffle = true;
-        bool verbose = true;
+        bool verbose = false;
 
         optimizer = std::make_unique<sgdlib::SCD>(w0,
-            loss, 
-            alpha, 
-            tol, 
-            max_iters, 
+            loss,
+            alpha,
+            tol,
+            max_iters,
             random_seed,
-            shuffle, 
+            shuffle,
             verbose
         );
     }
@@ -80,12 +79,12 @@ public:
 TEST_F(SCDTest, BasicOptimizationTest) {
     optimizer->optimize(X_train, y_train);
     const auto& w_opt = optimizer->get_weights();
-    
+
     // check weight update
     EXPECT_EQ(w_opt.size(), 4);
     EXPECT_FALSE(w_opt[0] == w0[0]) << "Weights not updated";
     EXPECT_FALSE(w_opt[1] == w0[1]) << "Weights not updated";
-    
+
     // print coefficients
     std::cout << "coefficients = ";
     for (auto w : w_opt) {
@@ -116,9 +115,3 @@ TEST_F(SCDTest, ConvergenceSpeedTest) {
 
     // std::cout << "loss size = " << all_losses.size() << std::endl;
 };
-    
-}
-
-
-
-
