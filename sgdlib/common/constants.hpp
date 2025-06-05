@@ -93,17 +93,12 @@ static StepSizeSearchParamType DEFAULT_STEPSIZE_SEARCH_PARAMS = {
     20, 10, "WOLFE"
 };
 
-constexpr FloatType max_dloss = 1e+10;
-#define MAX_DLOSS max_dloss
-
-constexpr FloatType wscale_threshold = 1e-9;
-#define WSCALE_THRESHOLD wscale_threshold
-
-constexpr FloatType inf = std::numeric_limits<FloatType>::infinity();
-#define INF inf
+constexpr FloatType MAX_DLOSS = 1e+10;
+constexpr FloatType WSCALE_THRESHOLD = 1e-9;
+constexpr FloatType INF = std::numeric_limits<FloatType>::infinity();
 
 #ifndef M_PI
-    #define M_PI 3.141592653589793238462643383279
+#define M_PI 3.141592653589793238462643383279
 #endif
 
 const std::unordered_map<std::string, std::string> LOSS_FUNCTION = {{"log_loss", "LogLoss"}};
