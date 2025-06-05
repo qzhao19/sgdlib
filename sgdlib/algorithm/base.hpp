@@ -170,7 +170,6 @@ public:
             verbose_(verbose) {
         init_random_state();
         init_loss_params();
-        init_lr_params();
     };
 
     virtual ~BaseOptimizer() = default;
