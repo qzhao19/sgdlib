@@ -87,6 +87,11 @@ inline void vecset(std::vector<T>& x, const T c) {
 #endif
 };
 
+template<>
+inline void vecset(std::vector<std::size_t>& x, const std::size_t c) {
+    std::fill(x.begin(), x.end(), c);
+}
+
 /**
  * @brief Copies vector contents
  *
