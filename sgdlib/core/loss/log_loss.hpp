@@ -72,10 +72,11 @@ public:
 
 #if defined(USE_OPENMP)
         int num_threads = 1;
+        // get_num_threads could be risk
         #pragma omp parallel
         {
             #pragma omp single
-            num_threads = omp_get_num_threads();
+            num_threads = omp_get_max_threads();
         }
 
         // define independant local_grad for each thread
@@ -87,6 +88,7 @@ public:
         #pragma omp parallel reduction(+:loss) private(dloss, y_hat)
         {
             int thread_id = omp_get_thread_num();
+            std::vector<FeatValType>& thread_grad = local_grad[thread_id];
             #pragma omp for nowait
             for (std::size_t i = 0; i < num_samples; ++i) {
                 y_hat = sgdlib::detail::vecdot<FeatValType>(
@@ -101,7 +103,7 @@ public:
                     X.data() + (i * num_features),
                     X.data() + ((i + 1) * num_features),
                     dloss,
-                    local_grad[thread_id]
+                    thread_grad
                 );
             }
         }
