@@ -3,141 +3,214 @@
 #include <vector>
 #include "sgdlib/data/continuous_dataset.hpp"
 
-TEST(ArrayDatasetTest, ConstructorValidation) {
-    std::vector<double> X_data(6, 1.0f);
-    std::vector<long> y_data(2, 0);
+class ArrayDatasetTest : public ::testing::Test {
+public:
+    std::vector<double> X_data;
+    std::vector<long> y_data;
+    void SetUp() override {
+        X_data = {
+            5.1, 4.9, 4.7, 4.6, 5. , 5.4, 4.6, 5. , 4.4, 4.9, 5.4, 4.8, 4.8,
+            4.3, 5.8, 5.7, 5.4, 5.1, 5.7, 5.1, 5.4, 5.1, 4.6, 5.1, 4.8, 5. ,
+            5. , 5.2, 5.2, 4.7, 4.8, 5.4, 5.2, 5.5, 4.9, 5. , 5.5, 4.9, 4.4,
+            5.1, 5. , 4.5, 4.4, 5. , 5.1, 4.8, 5.1, 4.6, 5.3, 5. , 7. , 6.4,
+            6.9, 5.5, 6.5, 5.7, 6.3, 4.9, 6.6, 5.2, 5. , 5.9, 6. , 6.1, 5.6,
+            6.7, 5.6, 5.8, 6.2, 5.6, 5.9, 6.1, 6.3, 6.1, 6.4, 6.6, 6.8, 6.7,
+            6. , 5.7, 5.5, 5.5, 5.8, 6. , 5.4, 6. , 6.7, 6.3, 5.6, 5.5, 5.5,
+            6.1, 5.8, 5. , 5.6, 5.7, 5.7, 6.2, 5.1, 5.7, 6.3, 5.8, 7.1, 6.3,
+            6.5, 7.6, 4.9, 7.3, 6.7, 7.2, 6.5, 6.4, 6.8, 5.7, 5.8, 6.4, 6.5,
+            7.7, 7.7, 6. , 6.9, 5.6, 7.7, 6.3, 6.7, 7.2, 6.2, 6.1, 6.4, 7.2,
+            7.4, 7.9, 6.4, 6.3, 6.1, 7.7, 6.3, 6.4, 6. , 6.9, 6.7, 6.9, 5.8,
+            6.8, 6.7, 6.7, 6.3, 6.5, 6.2, 5.9,
+            3.5, 3. , 3.2, 3.1, 3.6, 3.9, 3.4, 3.4, 2.9, 3.1, 3.7, 3.4, 3. ,
+            3. , 4. , 4.4, 3.9, 3.5, 3.8, 3.8, 3.4, 3.7, 3.6, 3.3, 3.4, 3. ,
+            3.4, 3.5, 3.4, 3.2, 3.1, 3.4, 4.1, 4.2, 3.1, 3.2, 3.5, 3.6, 3. ,
+            3.4, 3.5, 2.3, 3.2, 3.5, 3.8, 3. , 3.8, 3.2, 3.7, 3.3, 3.2, 3.2,
+            3.1, 2.3, 2.8, 2.8, 3.3, 2.4, 2.9, 2.7, 2. , 3. , 2.2, 2.9, 2.9,
+            3.1, 3. , 2.7, 2.2, 2.5, 3.2, 2.8, 2.5, 2.8, 2.9, 3. , 2.8, 3. ,
+            2.9, 2.6, 2.4, 2.4, 2.7, 2.7, 3. , 3.4, 3.1, 2.3, 3. , 2.5, 2.6,
+            3. , 2.6, 2.3, 2.7, 3. , 2.9, 2.9, 2.5, 2.8, 3.3, 2.7, 3. , 2.9,
+            3. , 3. , 2.5, 2.9, 2.5, 3.6, 3.2, 2.7, 3. , 2.5, 2.8, 3.2, 3. ,
+            3.8, 2.6, 2.2, 3.2, 2.8, 2.8, 2.7, 3.3, 3.2, 2.8, 3. , 2.8, 3. ,
+            2.8, 3.8, 2.8, 2.8, 2.6, 3. , 3.4, 3.1, 3. , 3.1, 3.1, 3.1, 2.7,
+            3.2, 3.3, 3. , 2.5, 3. , 3.4, 3.,
+            1.4, 1.4, 1.3, 1.5, 1.4, 1.7, 1.4, 1.5, 1.4, 1.5, 1.5, 1.6, 1.4,
+            1.1, 1.2, 1.5, 1.3, 1.4, 1.7, 1.5, 1.7, 1.5, 1. , 1.7, 1.9, 1.6,
+            1.6, 1.5, 1.4, 1.6, 1.6, 1.5, 1.5, 1.4, 1.5, 1.2, 1.3, 1.4, 1.3,
+            1.5, 1.3, 1.3, 1.3, 1.6, 1.9, 1.4, 1.6, 1.4, 1.5, 1.4, 4.7, 4.5,
+            4.9, 4. , 4.6, 4.5, 4.7, 3.3, 4.6, 3.9, 3.5, 4.2, 4. , 4.7, 3.6,
+            4.4, 4.5, 4.1, 4.5, 3.9, 4.8, 4. , 4.9, 4.7, 4.3, 4.4, 4.8, 5. ,
+            4.5, 3.5, 3.8, 3.7, 3.9, 5.1, 4.5, 4.5, 4.7, 4.4, 4.1, 4. , 4.4,
+            4.6, 4. , 3.3, 4.2, 4.2, 4.2, 4.3, 3. , 4.1, 6. , 5.1, 5.9, 5.6,
+            5.8, 6.6, 4.5, 6.3, 5.8, 6.1, 5.1, 5.3, 5.5, 5. , 5.1, 5.3, 5.5,
+            6.7, 6.9, 5. , 5.7, 4.9, 6.7, 4.9, 5.7, 6. , 4.8, 4.9, 5.6, 5.8,
+            6.1, 6.4, 5.6, 5.1, 5.6, 6.1, 5.6, 5.5, 4.8, 5.4, 5.6, 5.1, 5.1,
+            5.9, 5.7, 5.2, 5. , 5.2, 5.4, 5.1,
+            0.2, 0.2, 0.2, 0.2, 0.2, 0.4, 0.3, 0.2, 0.2, 0.1, 0.2, 0.2, 0.1,
+            0.1, 0.2, 0.4, 0.4, 0.3, 0.3, 0.3, 0.2, 0.4, 0.2, 0.5, 0.2, 0.2,
+            0.4, 0.2, 0.2, 0.2, 0.2, 0.4, 0.1, 0.2, 0.2, 0.2, 0.2, 0.1, 0.2,
+            0.2, 0.3, 0.3, 0.2, 0.6, 0.4, 0.3, 0.2, 0.2, 0.2, 0.2, 1.4, 1.5,
+            1.5, 1.3, 1.5, 1.3, 1.6, 1. , 1.3, 1.4, 1. , 1.5, 1. , 1.4, 1.3,
+            1.4, 1.5, 1. , 1.5, 1.1, 1.8, 1.3, 1.5, 1.2, 1.3, 1.4, 1.4, 1.7,
+            1.5, 1. , 1.1, 1. , 1.2, 1.6, 1.5, 1.6, 1.5, 1.3, 1.3, 1.3, 1.2,
+            1.4, 1.2, 1. , 1.3, 1.2, 1.3, 1.3, 1.1, 1.3, 2.5, 1.9, 2.1, 1.8,
+            2.2, 2.1, 1.7, 1.8, 1.8, 2.5, 2. , 1.9, 2.1, 2. , 2.4, 2.3, 1.8,
+            2.2, 2.3, 1.5, 2.3, 2. , 2. , 1.8, 2.1, 1.8, 1.8, 1.8, 2.1, 1.6,
+            1.9, 2. , 2.2, 1.5, 1.4, 2.3, 2.4, 1.8, 1.8, 2.1, 2.4, 2.3, 1.9,
+            2.3, 2.5, 2.3, 1.9, 2. , 2.3, 1.8
+        };
+        y_data = {
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    }
+};
 
-    EXPECT_NO_THROW(sgdlib::detail::ArrayDataset(X_data, y_data, 2, 3));
-    EXPECT_THROW(sgdlib::detail::ArrayDataset(X_data, y_data, 3, 3), std::invalid_argument);
 
-    std::vector<long> small_y(1, 0);
-    EXPECT_THROW(sgdlib::detail::ArrayDataset(X_data, small_y, 2, 3), std::invalid_argument);
+TEST_F(ArrayDatasetTest, ConstructorValidation) {
+    EXPECT_EQ(X_data.size(), 600);
+    EXPECT_EQ(y_data.size(), 150);
+
+    EXPECT_NO_THROW(sgdlib::detail::ArrayDataset(X_data, y_data, 150, 4));
+    EXPECT_THROW(sgdlib::detail::ArrayDataset(X_data, y_data, 151, 4), std::invalid_argument);
+};
+
+TEST_F(ArrayDatasetTest, RowAccessWithoutCache) {
+    sgdlib::detail::ArrayDataset dataset(X_data, y_data, 150, 4, false);
+
+    std::vector<double> x_row(4);
+    long y_row;
+
+    dataset.X_row_data(0, x_row);
+    dataset.y_row_data(0, y_row);
+    ASSERT_EQ(x_row.size(), 4);
+    EXPECT_FLOAT_EQ(x_row[0], 5.1);
+    EXPECT_FLOAT_EQ(x_row[1], 3.5);
+    EXPECT_FLOAT_EQ(x_row[2], 1.4);
+    EXPECT_FLOAT_EQ(x_row[3], 0.2);
+    EXPECT_EQ(y_row, -1);
+
+    dataset.X_row_data(1, x_row);
+    dataset.y_row_data(1, y_row);
+    ASSERT_EQ(x_row.size(), 4);
+    EXPECT_FLOAT_EQ(x_row[0], 4.9);
+    EXPECT_FLOAT_EQ(x_row[1], 3.0);
+    EXPECT_FLOAT_EQ(x_row[2], 1.4);
+    EXPECT_FLOAT_EQ(x_row[3], 0.2);
+    EXPECT_EQ(y_row, -1);
+
+    EXPECT_EQ(dataset.nrows(), 150);
+    EXPECT_EQ(dataset.ncols(), 4);
+    EXPECT_FALSE(dataset.is_cache_enabled());
+
 }
 
-TEST(ArrayDatasetTest, RowAccessWithoutCache) {
-    std::vector<double> X_data = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f};
-    std::vector<long> y_data = {10, 20};
+TEST_F(ArrayDatasetTest, RowAccessWithCache) {
+    sgdlib::detail::ArrayDataset dataset(X_data, y_data, 150, 4);
 
-    sgdlib::detail::ArrayDataset dataset(X_data, y_data, 2, 3, false);
+    std::vector<double> x_row(4);
+    long y_row;
 
-    auto row0 = dataset.get_row_data(0);
-    ASSERT_EQ(row0.features.size(), 3);
-    EXPECT_FLOAT_EQ(row0.features[0], 1.0f);
-    EXPECT_FLOAT_EQ(row0.features[1], 3.0f);
-    EXPECT_FLOAT_EQ(row0.features[2], 5.0f);
-    EXPECT_EQ(row0.label, 10);
+    dataset.X_row_data(0, x_row);
+    dataset.y_row_data(0, y_row);
+    ASSERT_EQ(x_row.size(), 4);
+    EXPECT_FLOAT_EQ(x_row[0], 5.1);
+    EXPECT_FLOAT_EQ(x_row[1], 3.5);
+    EXPECT_FLOAT_EQ(x_row[2], 1.4);
+    EXPECT_FLOAT_EQ(x_row[3], 0.2);
+    EXPECT_EQ(y_row, -1);
 
-    auto row1 = dataset.get_row_data(1);
-    ASSERT_EQ(row1.features.size(), 3);
-    EXPECT_FLOAT_EQ(row1.features[0], 2.0f);
-    EXPECT_FLOAT_EQ(row1.features[1], 4.0f);
-    EXPECT_FLOAT_EQ(row1.features[2], 6.0f);
-    EXPECT_EQ(row1.label, 20);
+    dataset.X_row_data(1, x_row);
+    dataset.y_row_data(1, y_row);
+    ASSERT_EQ(x_row.size(), 4);
+    EXPECT_FLOAT_EQ(x_row[0], 4.9);
+    EXPECT_FLOAT_EQ(x_row[1], 3.0);
+    EXPECT_FLOAT_EQ(x_row[2], 1.4);
+    EXPECT_FLOAT_EQ(x_row[3], 0.2);
+    EXPECT_EQ(y_row, -1);
 
-    EXPECT_THROW(dataset.get_row_data(2), std::out_of_range);
-}
-
-TEST(ArrayDatasetTest, RowAccessWithCache) {
-    std::vector<double> X_data = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f};
-    std::vector<long> y_data = {10, 20};
-
-    sgdlib::detail::ArrayDataset dataset(X_data, y_data, 2, 3, true);
+    EXPECT_EQ(dataset.nrows(), 150);
+    EXPECT_EQ(dataset.ncols(), 4);
     EXPECT_TRUE(dataset.is_cache_enabled());
-
-    auto row0 = dataset.get_row_data(0);
-    ASSERT_EQ(row0.features.size(), 3);
-    EXPECT_FLOAT_EQ(row0.features[0], 1.0f);
-    EXPECT_FLOAT_EQ(row0.features[1], 3.0f);
-    EXPECT_FLOAT_EQ(row0.features[2], 5.0f);
-    EXPECT_EQ(row0.label, 10);
-
-    auto row1 = dataset.get_row_data(1);
-    ASSERT_EQ(row1.features.size(), 3);
-    EXPECT_FLOAT_EQ(row1.features[0], 2.0f);
-    EXPECT_FLOAT_EQ(row1.features[1], 4.0f);
-    EXPECT_FLOAT_EQ(row1.features[2], 6.0f);
-    EXPECT_EQ(row1.label, 20);
 }
 
-TEST(ArrayDatasetTest, ColumnAccess) {
-    std::vector<double> X_data = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f};
-    std::vector<long> y_data = {10, 20};
+TEST_F(ArrayDatasetTest, ColumnAccess) {
+    sgdlib::detail::ArrayDataset dataset(X_data, y_data, 150, 4);
 
-    sgdlib::detail::ArrayDataset dataset(X_data, y_data, 2, 3);
+    std::vector<double> x_column(150);
+    std::vector<long> y_column(150);
 
-    auto col0 = dataset.get_col_data(0);
-    ASSERT_EQ(col0.features.size(), 2);
-    ASSERT_EQ(col0.labels.size(), 2);
-    EXPECT_FLOAT_EQ(col0.features[0], 1.0f);
-    EXPECT_FLOAT_EQ(col0.features[1], 2.0f);
-    EXPECT_EQ(col0.labels[0], 10);
-    EXPECT_EQ(col0.labels[1], 20);
+    std::vector<double> expect_X = {
+        5.1, 4.9, 4.7, 4.6, 5. , 5.4, 4.6, 5. , 4.4, 4.9, 5.4, 4.8, 4.8,
+        4.3, 5.8, 5.7, 5.4, 5.1, 5.7, 5.1, 5.4, 5.1, 4.6, 5.1, 4.8, 5. ,
+        5. , 5.2, 5.2, 4.7, 4.8, 5.4, 5.2, 5.5, 4.9, 5. , 5.5, 4.9, 4.4,
+        5.1, 5. , 4.5, 4.4, 5. , 5.1, 4.8, 5.1, 4.6, 5.3, 5. , 7. , 6.4,
+        6.9, 5.5, 6.5, 5.7, 6.3, 4.9, 6.6, 5.2, 5. , 5.9, 6. , 6.1, 5.6,
+        6.7, 5.6, 5.8, 6.2, 5.6, 5.9, 6.1, 6.3, 6.1, 6.4, 6.6, 6.8, 6.7,
+        6. , 5.7, 5.5, 5.5, 5.8, 6. , 5.4, 6. , 6.7, 6.3, 5.6, 5.5, 5.5,
+        6.1, 5.8, 5. , 5.6, 5.7, 5.7, 6.2, 5.1, 5.7, 6.3, 5.8, 7.1, 6.3,
+        6.5, 7.6, 4.9, 7.3, 6.7, 7.2, 6.5, 6.4, 6.8, 5.7, 5.8, 6.4, 6.5,
+        7.7, 7.7, 6. , 6.9, 5.6, 7.7, 6.3, 6.7, 7.2, 6.2, 6.1, 6.4, 7.2,
+        7.4, 7.9, 6.4, 6.3, 6.1, 7.7, 6.3, 6.4, 6. , 6.9, 6.7, 6.9, 5.8,
+        6.8, 6.7, 6.7, 6.3, 6.5, 6.2, 5.9
+    };
 
-    auto col1 = dataset.get_col_data(1);
-    ASSERT_EQ(col1.features.size(), 2);
-    ASSERT_EQ(col1.labels.size(), 2);
-    EXPECT_FLOAT_EQ(col1.features[0], 3.0f);
-    EXPECT_FLOAT_EQ(col1.features[1], 4.0f);
-    EXPECT_EQ(col1.labels[0], 10);
-    EXPECT_EQ(col1.labels[1], 20);
+    std::vector<long> expect_y = {
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    };
 
-    auto col2 = dataset.get_col_data(2);
-    ASSERT_EQ(col2.features.size(), 2);
-    ASSERT_EQ(col2.labels.size(), 2);
-    EXPECT_FLOAT_EQ(col2.features[0], 5.0f);
-    EXPECT_FLOAT_EQ(col2.features[1], 6.0f);
-    EXPECT_EQ(col2.labels[0], 10);
-    EXPECT_EQ(col2.labels[1], 20);
+    dataset.X_column_data(0, x_column);
+    dataset.y_column_data(y_column);
 
-    EXPECT_THROW(dataset.get_col_data(3), std::out_of_range);
+    for (std::size_t i = 0; i < 150; ++i) {
+        EXPECT_FLOAT_EQ(expect_X[i], x_column[i]);
+        EXPECT_FLOAT_EQ(expect_y[i], y_column[i]);
+    }
 }
 
-TEST(ArrayDatasetTest, LargeDatasetPerformance) {
-    constexpr size_t nrows = 100000;
-    constexpr size_t ncols = 25;
-
-    std::vector<double> X_data(nrows * ncols, 1.0f);
+TEST_F(ArrayDatasetTest, RowAccessPerformance) {
+    std::size_t nrows = 150;
+    std::size_t ncols = 4;
+    std::size_t num_loops = 1000000;
+    std::vector<double> X_data(nrows * ncols, 1.0);
     std::vector<long> y_data(nrows, 0);
 
-    sgdlib::detail::ArrayDataset no_cache(X_data, y_data, nrows, ncols, false);
+    std::vector<double> x_row(4);
+    long y_row;
+    sgdlib::detail::ArrayDataset dataset_cached(X_data, y_data, nrows, ncols);
+    std::size_t index;
 
     auto start = std::chrono::high_resolution_clock::now();
-    for (size_t i = 0; i < nrows; i += nrows/100) {
-        auto row = no_cache.get_row_data(i);
+    for (std::size_t i = 0; i < num_loops; ++i) {
+        index = num_loops % nrows;
+        dataset_cached.X_row_data(index, x_row);
+        dataset_cached.y_row_data(index, y_row);
     }
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::high_resolution_clock::now() - start);
-    std::cout << "No cache row access: " << duration.count() << " ms\n";
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed1 = end - start;
+    std::cout << "Cached ArrayDataset execution time: " << elapsed1.count() << " seconds\n";
 
-    sgdlib::detail::ArrayDataset with_cache(X_data, y_data, nrows, ncols, true);
-
+    sgdlib::detail::ArrayDataset dataset_uncached(X_data, y_data, nrows, ncols, false);
     start = std::chrono::high_resolution_clock::now();
-    for (size_t i = 0; i < nrows; i += nrows/100) {
-        auto row = with_cache.get_row_data(i);
+    for (std::size_t i = 0; i < num_loops; ++i) {
+        index = num_loops % nrows;
+        dataset_uncached.X_row_data(index, x_row);
+        dataset_uncached.y_row_data(index, y_row);
     }
-    duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::high_resolution_clock::now() - start);
-    std::cout << "With cache row access: " << duration.count() << " ms\n";
-
-    start = std::chrono::high_resolution_clock::now();
-    for (size_t j = 0; j < ncols; j++) {
-        auto col = with_cache.get_col_data(j);
-    }
-    duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::high_resolution_clock::now() - start);
-    std::cout << "Column access: " << duration.count() << " ms\n";
+    end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed2 = end - start;
+    std::cout << "Uncached ArrayDataset execution time: " << elapsed1.count() << " seconds\n";
+    std::cout << "Speedup: " << elapsed2.count() / elapsed1.count() << "x\n";
 }
 
-TEST(ArrayDatasetTest, CacheMemoryManagement) {
-    std::vector<double> X_data(6, 1.0f);
-    std::vector<long> y_data(2, 0);
 
-    {
-        sgdlib::detail::ArrayDataset dataset(X_data, y_data, 2, 3, true);
-        EXPECT_TRUE(dataset.is_cache_enabled());
-
-        auto row = dataset.get_row_data(0);
-        EXPECT_FLOAT_EQ(row.features[0], 1.0f);
-    }
-}
 
