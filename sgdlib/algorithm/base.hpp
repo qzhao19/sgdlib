@@ -10,6 +10,7 @@
 #include "core/stepsize_search.hpp"
 #include "math/random.hpp"
 #include "math/math_ops.hpp"
+#include "data/continuous_dataset.hpp"
 
 namespace sgdlib {
 
@@ -17,40 +18,22 @@ class BaseOptimizer {
 public:
     // public callback type for optimizer
     using CallbackType = std::function<void(const std::vector<FeatValType>&)>;
+    using ArrayDataType = sgdlib::detail::ArrayDataset;
 
     BaseOptimizer() {};
 
-    // constructor for SGD optimizer
+    // base constructor
     BaseOptimizer(const std::vector<FeatValType>& w0,
-                  const FeatValType& b0,
-                  std::string loss,
-                  std::string lr_policy,
-                  FloatType alpha,
-                  FloatType eta0,
-                  FloatType tol,
-                  FloatType gamma,
-                  std::size_t max_iters,
-                  std::size_t batch_size,
-                  std::size_t num_iters_no_change,
-                  std::size_t random_seed,
-                  bool shuffle = true,
-                  bool verbose = true): w0_(w0), b0_(b0),
+        std::string loss,
+        FloatType tol,
+        std::size_t max_iters,
+        bool verbose = true): w0_(w0),
             loss_(loss),
-            lr_policy_(lr_policy),
-            alpha_(alpha),
-            eta0_(eta0),
             tol_(tol),
-            gamma_(gamma),
             max_iters_(max_iters),
-            batch_size_(batch_size),
-            num_iters_no_change_(num_iters_no_change),
-            random_seed_(random_seed),
-            shuffle_(shuffle),
             verbose_(verbose),
             callback_(nullptr) {
-        init_random_state();
-        init_loss_params();
-        init_lr_params();
+        this->init_loss_params();
     };
 
     // constructor for SAG/SAGA optimizer
