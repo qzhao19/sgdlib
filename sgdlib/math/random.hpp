@@ -86,7 +86,7 @@ public:
     }
 
     /**
-     * Randomlt generate an index from the range [low, high).
+     * Randomlt generate an index from the range [low, high].
     */
     std::size_t random_index(std::size_t low,
                              std::size_t high) {
