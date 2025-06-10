@@ -3,8 +3,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "sgdlib/algorithm/base.hpp"
-#include "sgdlib/algorithm/sgd/sgd.hpp"
+#include "sgdlib/algorithm/gd/sgd.hpp"
 
 class SGDTest : public ::testing::Test {
 public:
@@ -52,12 +51,12 @@ public:
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1, 
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-    
-        w0 = {1.0, 1.0, 1.0, 1.0}; 
+
+        w0 = {1.0, 1.0, 1.0, 1.0};
         b0 = 1.0;
         std::string loss = "LogLoss";
         std::string lr_policy = "Invscaling";
@@ -65,7 +64,7 @@ public:
         double eta0 = 0.01;
         double tol = 0.0001;
         double gamma = 0.5;
-        std::size_t max_iters = 100; 
+        std::size_t max_iters = 100;
         std::size_t batch_size = 1;
         std::size_t num_iters_no_change = 5;
         std::size_t random_seed = 0;
@@ -73,16 +72,16 @@ public:
         bool verbose = false;
 
         optimizer = std::make_unique<sgdlib::SGD>(w0, b0,
-            loss, 
-            lr_policy, 
-            alpha, eta0, 
-            tol, 
+            loss,
+            lr_policy,
+            alpha, eta0,
+            tol,
             gamma,
-            max_iters, 
-            batch_size, 
+            max_iters,
+            batch_size,
             num_iters_no_change,
             random_seed,
-            shuffle, 
+            shuffle,
             verbose
         );
     }
@@ -95,15 +94,15 @@ public:
 
 TEST_F(SGDTest, BasicOptimizationTest) {
     optimizer->optimize(X_train, y_train);
-    
+
     const auto& w_opt = optimizer->get_weights();
     const auto b_opt = optimizer->get_intercept();
-    
+
     // check weight update
     EXPECT_EQ(w_opt.size(), 4);
     EXPECT_FALSE(w_opt[0] == w0[0]) << "Weights not updated";
     EXPECT_FALSE(w_opt[1] == w0[1]) << "Weights not updated";
-    
+
     // check bias update
     EXPECT_FALSE(b_opt == b0) << "Bias not updated";
 
