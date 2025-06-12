@@ -247,17 +247,27 @@ TEST(MathOpsTest, ScalarIsinfTest){
 };
 
 TEST(MathOpsTest, RowNormsTest){
-    std::vector<double> x = {5.2, 3.3, 1.2, 0.3,
-                             6.4, 3.1, 5.5, 1.8,
-                             4.75, 3.1, 1.32, 0.1};
+    // std::vector<double> x = {5.2, 3.3, 1.2, 0.3,
+    //                          6.4, 3.1, 5.5, 1.8,
+    //                          4.75, 3.1, 1.32, 0.1};
+    std::vector<double> x = {
+        5.2 , 6.4 , 4.75,
+        3.3 , 3.1 , 3.1 ,
+        1.2 , 5.5 , 1.32,
+        0.3 , 1.8 , 0.1
+    };
+    std::vector<long> y = {1, 1, 1};
+    sgdlib::detail::ArrayDatasetType dataset(x, y, 3, 4);
     std::vector<double> out(3);
     bool sq = false;
-    sgdlib::detail::row_norms<double>(x, sq, out);
+    sgdlib::detail::row_norms<double>(dataset, sq, out);
     std::vector<double> expect = {6.28171951, 9.16842407, 5.82450856};
     double tolerance = 1e-8;
     for (std::size_t i = 0; i < out.size(); ++i) {
         EXPECT_NEAR(expect[i], out[i], tolerance);
+        // std::cout << out[i] << " ";
     }
+    // std::cout << std::endl;
 };
 
 TEST(MathOpsTest, ColNormsTest){
