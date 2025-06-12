@@ -59,7 +59,7 @@ public:
     /**
      * Computes both loss value and gradient vector in a single pass
      *
-     * @param X Feature matrix stored as a flattened 1D array (row-major order)
+     * @param ArrayDataset feature matrix (stored in column-major order) and corresponding label vector.
      * @param y Label vector corresponding to the feature matrix
      * @param w Model parameter vector to evaluate
      * @param[out] grad Gradient vector (must be pre-allocated with correct size)
