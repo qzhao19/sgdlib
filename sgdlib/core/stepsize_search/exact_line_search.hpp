@@ -7,29 +7,28 @@ namespace sgdlib {
 namespace detail {
 
 template <typename LossFuncType>
-class BasicLineSearch final: public StepSizeSearch<LossFuncType> {
+class ExactLineSearch final: public StepSizeSearch<LossFuncType> {
 public:
-    BasicLineSearch(const std::vector<FeatValType>& X, 
-                    const std::vector<LabelValType>& y,
-                    const std::shared_ptr<LossFuncType>& loss_fn,
-                    StepSizeSearchParamType* stepsize_search_params): StepSizeSearch<LossFuncType>(
-                        X, y, 
-                        loss_fn, 
+    ExactLineSearch(const sgdlib::detail::ArrayDatasetType &dataset,
+                    const std::shared_ptr<LossFuncType> &loss_fn,
+                    std::shared_ptr<StepSizeSearchParamType> stepsize_search_params): StepSizeSearch<LossFuncType>(
+                        dataset,
+                        loss_fn,
                         stepsize_search_params) {
-        std::size_t num_samples = y.size();
+        std::size_t num_samples = this->dataset_.nrows();
         this->lipschitz_ = 1.0 / this->stepsize_search_params_->eta0 - this->stepsize_search_params_->alpha;
         this->linesearch_scaling_ = std::pow(2.0, static_cast<FloatType>(this->stepsize_search_params_->max_searches) / num_samples);
     };
-    ~BasicLineSearch() = default;
+    ~ExactLineSearch() = default;
 
-    /** 
+    /**
      * Compute step size with basic line search and it is specifically used for the SAG optimizer.
     */
-    int search(const FeatValType& y_pred, 
-               const LabelValType& y_true, 
-               const FeatValType& grad,
-               const FeatValType& xnorm, 
-               const std::size_t& step,
+    int search(const FeatValType &y_pred,
+               const LabelValType &y_true,
+               const FeatValType &grad,
+               const FeatValType &xnorm,
+               const std::size_t &step,
                FloatType& stepsize) override {
         bool is_valid;
         FeatValType a, b;
@@ -38,7 +37,7 @@ public:
             for (std::size_t i = 0; i < this->stepsize_search_params_->max_iters; ++i) {
                 a = this->loss_fn_->evaluate(y_pred - grad * xnorm / this->lipschitz_, y_true);
                 b = this->loss_fn_->evaluate(y_pred, y_true) - 0.5 * grad * grad * xnorm / this->lipschitz_;
-                
+
                 if (a <= b) {
                     this->lipschitz_ /= this->linesearch_scaling_;
                     is_valid = true;
