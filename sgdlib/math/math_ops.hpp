@@ -6,6 +6,7 @@
 #include "math/kernels/ops_ansi.hpp"
 #include "math/kernels/ops_avx.hpp"
 #include "math/kernels/ops_sse.hpp"
+#include "data/continuous_dataset.hpp"
 
 namespace sgdlib {
 namespace detail {
@@ -1013,8 +1014,8 @@ inline bool isinf(const Type& x) {
  * This function calculates the norms of each row in a given vector `x`,
  * The result can be squared or not, based on the `squared` flag.
  *
- * @tparam Type A floating-point or arithmetic type that supports necessary operations.
- * @param x A constant reference to the input vector
+ * @tparam T A floating-point or arithmetic type that supports necessary operations.
+ * @param x A constant reference to the input ArrayDatasetType vector
  * @param squared A boolean flag that determines whether to compute the squared norms.
  *                - If true, the function computes the squared Euclidean norm:
  *                  \( \sum_{i=1}^{n} x_i^2 \)
@@ -1025,25 +1026,30 @@ inline bool isinf(const Type& x) {
  * @note The function assumes that `x` represents a matrix with its size is ncols * nrows.
  *
 */
-template<typename Type>
-void row_norms(const std::vector<Type>& x,
+template<typename T>
+void row_norms(const sgdlib::detail::ArrayDatasetType &dataset,
                bool squared,
-               std::vector<Type>& out) {
+               std::vector<T> &out) {
 
-    std::size_t num_elems = x.size();
-    std::size_t nrows = out.size();
-    std::size_t ncols = num_elems / nrows;
-    std::vector<Type> elem_prod(num_elems);
+    std::size_t nrows = dataset.nrows();
+    std::size_t ncols = dataset.ncols();
+    std::size_t num_elems = nrows * ncols;
+    std::vector<T> xnorm(num_elems);
 
     // compute x * x
-    std::transform(x.begin(), x.end(), elem_prod.begin(),
-                    [](const Type& value) {
-                        return value * value;
-                    });
+    std::transform(dataset.Xt_data_ptr(),
+        dataset.Xt_data_ptr() + num_elems,
+        xnorm.begin(), [](const T& x) {
+            return x * x;
+        }
+    );
 
-    // compute prefix sum of elem_prod
-    std::vector<Type> prefix_sum(num_elems);
-    std::partial_sum(elem_prod.begin(), elem_prod.end(), prefix_sum.begin());
+    // compute prefix sum of xnorm
+    std::vector<T> prefix_sum(num_elems);
+    std::partial_sum(xnorm.begin(),
+        xnorm.end(),
+        prefix_sum.begin()
+    );
 
     // compute the sum of every nth element
     std::size_t count = 0;
@@ -1058,10 +1064,12 @@ void row_norms(const std::vector<Type>& x,
     }
 
     if (!squared) {
-        std::transform(out.begin(), out.end(), out.begin(),
-                    [](const Type& value) {
-                        return std::sqrt(value);
-                    });
+        std::transform(out.begin(),
+            out.end(), out.begin(),
+            [](const T& x) {
+                return std::sqrt(x);
+            }
+        );
     }
 };
 
