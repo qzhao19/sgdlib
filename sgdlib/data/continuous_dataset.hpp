@@ -15,7 +15,6 @@ private:
     std::unique_ptr<FeatValType[]> X_row_cache_;
     std::shared_ptr<const FeatValType[]> X_data_ptr_;
     std::shared_ptr<const LabelValType[]> y_data_ptr_;
-
     std::size_t nrows_, ncols_;
     bool enable_cache_;
 
@@ -74,9 +73,37 @@ public:
         }
     };
 
+    ArrayDataset(const ArrayDataset& other) :
+        nrows_(other.nrows_),
+        ncols_(other.ncols_),
+        enable_cache_(other.enable_cache_) {
+            // deep copy X data
+            auto X_data_buffer = std::make_unique<FeatValType[]>(nrows_ * ncols_);
+            std::memcpy(X_data_buffer.get(),
+                other.X_data_ptr_.get(),
+                nrows_ * ncols_ * sizeof(FeatValType)
+            );
+            X_data_ptr_ = std::shared_ptr<const FeatValType[]>(X_data_buffer.release());
+            // deep copy y data
+            auto y_data_buffer = std::make_unique<LabelValType[]>(nrows_);
+            std::memcpy(y_data_buffer.get(),
+                other.y_data_ptr_.get(),
+                nrows_ * sizeof(LabelValType)
+            );
+            y_data_ptr_ = std::shared_ptr<const LabelValType[]>(y_data_buffer.release());
+
+            if (enable_cache_) {
+                X_row_cache_ = std::make_unique<FeatValType[]>(nrows_ * ncols_);
+                std::memcpy(X_row_cache_.get(),
+                    other.X_row_cache_.get(),
+                    nrows_ * ncols_ * sizeof(FeatValType)
+                );
+            }
+    };
+
     ~ArrayDataset() = default;
 
-    void X_row_data(const std::size_t i, std::vector<FeatValType>& row) {
+    void X_row_data(const std::size_t i, std::vector<FeatValType>& row) const {
         if (i >= nrows_) {
             THROW_OUT_RANGE_ERROR("Row index out of range");
         }
@@ -93,14 +120,14 @@ public:
         }
     }
 
-    void y_row_data(const std::size_t i, LabelValType& row) {
+    void y_row_data(const std::size_t i, LabelValType& row) const {
         if (i >= nrows_) {
             THROW_OUT_RANGE_ERROR("Row index out of range");
         }
         row = y_data_ptr_[i];
     }
 
-    void X_column_data(const std::size_t j, std::vector<FeatValType>& column) {
+    void X_column_data(const std::size_t j, std::vector<FeatValType>& column) const {
         if (j >= ncols_) {
             THROW_OUT_RANGE_ERROR("Column index out of range");
         }
@@ -109,7 +136,7 @@ public:
             nrows_ * sizeof(FeatValType));
     }
 
-    void y_column_data(std::vector<LabelValType>& column) {
+    void y_column_data(std::vector<LabelValType>& column) const {
         std::memcpy(column.data(), y_data_ptr_.get(), nrows_ * sizeof(LabelValType));
     }
 
@@ -118,13 +145,16 @@ public:
     const LabelValType* y_data_ptr() const { return y_data_ptr_.get(); }
 
     // read-only row cache
-    const FeatValType* row_cache() const { return X_row_cache_.get(); }
+    const FeatValType* Xt_data_ptr() const { return X_row_cache_.get(); }
 
     std::size_t nrows() const { return nrows_; }
     std::size_t ncols() const { return ncols_; }
     bool is_cache_enabled() const { return enable_cache_; }
 
 };
+
+//
+using ArrayDatasetType = ArrayDataset;
 
 }
 }
