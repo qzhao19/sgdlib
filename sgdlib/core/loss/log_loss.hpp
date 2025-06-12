@@ -7,10 +7,6 @@ namespace sgdlib {
 namespace detail {
 
 /**
- * @file log_loss.hpp
- *
- * @class LogLoss
- *
  * @brief logistic regression loss function for binary classification
  * with y in {-1, 1}. An approximation is used to simplify calculations,
  * specifically avoiding the computation of a logarithm, it can help
@@ -32,8 +28,8 @@ public:
     LogLoss(LossParamType loss_param): LossFunction(loss_param) {};
     ~LogLoss() = default;
 
-    FeatValType evaluate(const FeatValType& y_pred,
-                         const LabelValType& y_true) const override {
+    FeatValType evaluate(const FeatValType &y_pred,
+                         const LabelValType &y_true) const override {
         const FeatValType z = y_pred * static_cast<FeatValType>(y_true);
         if (z > 18.0) {
             return std::exp(-z);
@@ -45,8 +41,8 @@ public:
         return std::log1p(std::exp(-z));
     }
 
-    FeatValType derivate(const FeatValType& y_pred,
-                         const LabelValType& y_true) const override {
+    FeatValType derivate(const FeatValType &y_pred,
+                         const LabelValType &y_true) const override {
         const FeatValType y_true_float = static_cast<FeatValType>(y_true);
         const FeatValType z = y_pred * y_true_float ;
         if (z > 18.0) {
@@ -58,17 +54,16 @@ public:
         return -y_true_float / (std::exp(z) + 1.0);
     }
 
-    FeatValType evaluate_with_gradient(
-        const std::vector<FeatValType>& X,
-        const std::vector<LabelValType>& y,
-        const std::vector<FeatValType>& w,
-        std::vector<FeatValType>& grad) const override {
-
-        const std::size_t num_samples = y.size();
-        const std::size_t num_features = X.size() / num_samples;
+    FeatValType evaluate_with_gradient(const sgdlib::detail::ArrayDatasetType &dataset,
+                                       const std::vector<FeatValType> &w,
+                                       std::vector<FeatValType> &grad) const override {
+        // get num samples and features
+        const std::size_t num_samples = dataset.nrows();
+        const std::size_t num_features = dataset.ncols();
         const FeatValType inv_num_samples = 1.0 / static_cast<FeatValType>(num_samples);
         FeatValType loss = 0.0;
         FeatValType dloss, y_hat;
+        this->dloss_history_.resize(num_samples);
 
 #if defined(USE_OPENMP)
         int num_threads = 1;
@@ -89,22 +84,19 @@ public:
         {
             int thread_id = omp_get_thread_num();
             std::vector<FeatValType>& thread_grad = local_grad[thread_id];
+
+            LabelValType y;
+            std::vector<FeatValType> x(num_features);
             #pragma omp for nowait
             for (std::size_t i = 0; i < num_samples; ++i) {
-                y_hat = sgdlib::detail::vecdot<FeatValType>(
-                    X.data() + (i * num_features),
-                    X.data() + ((i + 1) * num_features),
-                    w.data()
-                );
-
-                loss += evaluate(y_hat, y[i]);
-                dloss = derivate(y_hat, y[i]);
-                sgdlib::detail::vecadd<FeatValType>(
-                    X.data() + (i * num_features),
-                    X.data() + ((i + 1) * num_features),
-                    dloss,
-                    thread_grad
-                );
+                // get x_i, y_i
+                dataset.X_row_data(i, x);
+                dataset.y_row_data(i, y);
+                y_hat = sgdlib::detail::vecdot<FeatValType>(x, w);
+                loss += evaluate(y_hat, y);
+                dloss = derivate(y_hat, y);
+                this->dloss_history_[i] = dloss;
+                sgdlib::detail::vecadd<FeatValType>(x, dloss, thread_grad);
             }
         }
         // main thread reduction for grad
@@ -112,27 +104,26 @@ public:
             sgdlib::detail::vecadd<FeatValType>(grad, local_grad[t], grad);
         }
 #else
+        LabelValType y;
+        std::vector<FeatValType> x(num_features);
         for (std::size_t i = 0; i < num_samples; ++i) {
+            // get x_i, y_i
+            dataset.X_row_data(i, x);
+            dataset.y_row_data(i, y);
             // compute W * X
-            y_hat = sgdlib::detail::vecdot<FeatValType>(
-                X.data() + (i * num_features),
-                X.data() + ((i + 1) * num_features),
-                w.data()
-            );
-
-            loss += evaluate(y_hat, y[i]);
-            dloss = derivate(y_hat, y[i]);
-            sgdlib::detail::vecadd<FeatValType>(
-                X.data() + (i * num_features),
-                X.data() + ((i + 1) * num_features),
-                dloss,
-                grad
-            );
+            y_hat = sgdlib::detail::vecdot<FeatValType>(x, w);
+            loss += evaluate(y_hat, y);
+            dloss = derivate(y_hat, y);
+            this->dloss_history_[i] = dloss;
+            sgdlib::detail::vecadd<FeatValType>(x, dloss, grad);
         }
 #endif
         loss *= inv_num_samples;
         sgdlib::detail::vecscale<FeatValType>(grad, inv_num_samples, grad);
 
+        if (callback_) {
+            callback_(this->dloss_history_);
+        }
         return loss;
     }
 };
