@@ -9,23 +9,22 @@ namespace detail {
 template <typename LossFuncType>
 class ConstantSearch final: public StepSizeSearch<LossFuncType>{
 public:
-    ConstantSearch(const std::vector<FeatValType>& X, 
-                   const std::vector<LabelValType>& y,
-                   const std::shared_ptr<LossFuncType>& loss_fn,
-                   StepSizeSearchParamType* stepsize_search_params): StepSizeSearch<LossFuncType>(
-                        X, y, 
-                        loss_fn, 
+    ConstantSearch(const sgdlib::detail::ArrayDatasetType &dataset,
+                   const std::shared_ptr<LossFuncType> &loss_fn,
+                   std::shared_ptr<StepSizeSearchParamType> stepsize_search_params): StepSizeSearch<LossFuncType>(
+                        dataset,
+                        loss_fn,
                         stepsize_search_params) {};
     ~ConstantSearch() = default;
 
-    /** 
+    /**
      * Compute step size and it is specifically used for the SAG optimizer.
     */
-    int search(bool is_saga, FloatType& step_size) override {
-        std::size_t num_samples = this->y_.size();
+    int search(bool is_saga, FloatType &step_size) override {
+        std::size_t num_samples = this->dataset_.nrows();
 
         std::vector<FeatValType> X_row_norm(num_samples);
-        sgdlib::detail::row_norms<FeatValType>(this->X_, true, X_row_norm);
+        sgdlib::detail::row_norms<FeatValType>(this->dataset_, true, X_row_norm);
 
         FeatValType max_sum = *std::max_element(X_row_norm.begin(), X_row_norm.end());
 
