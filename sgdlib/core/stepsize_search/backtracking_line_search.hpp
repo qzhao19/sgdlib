@@ -8,33 +8,25 @@ namespace detail {
 
 template <typename LossFuncType>
 class BacktrackingLineSearch final: public StepSizeSearch<LossFuncType> {
-protected:
-    std::size_t num_samples_;
-    std::size_t num_features_;
-
 public:
-    BacktrackingLineSearch(const std::vector<FeatValType>& X,
-                           const std::vector<LabelValType>& y,
-                           const std::shared_ptr<LossFuncType>& loss_fn,
-                           StepSizeSearchParamType* stepsize_search_params): StepSizeSearch<LossFuncType>(
-                                X, y,
+    BacktrackingLineSearch(const sgdlib::detail::ArrayDatasetType &dataset,
+                           const std::shared_ptr<LossFuncType> &loss_fn,
+                           std::shared_ptr<StepSizeSearchParamType> stepsize_search_params): StepSizeSearch<LossFuncType>(
+                                dataset,
                                 loss_fn,
-                                stepsize_search_params) {
-        num_samples_ = y.size();
-    };
+                                stepsize_search_params) { };
     ~BacktrackingLineSearch() = default;
 
-    int search(const std::vector<FeatValType>& xp,
-               const std::vector<FeatValType>& gp,
-               const std::vector<FeatValType>& d,
-               std::vector<FeatValType>& x,
-               std::vector<FeatValType>& g,
-               FeatValType& fx,
-               FloatType& stepsize) override {
+    int search(const std::vector<FeatValType> &xp,
+               const std::vector<FeatValType> &gp,
+               const std::vector<FeatValType> &d,
+               std::vector<FeatValType> &x,
+               std::vector<FeatValType> &g,
+               FeatValType &fx,
+               FloatType &stepsize) override {
 
-        num_features_ = x.size();
-        const FeatValType inv_num_samples = 1.0 / static_cast<FeatValType>(num_samples_);
-
+        std::size_t num_samples = this->dataset_.nrows();
+        std::size_t num_features = this->dataset_.ncols();
         FloatType dec_factor = this->stepsize_search_params_->dec_factor;
         FloatType inc_factor = this->stepsize_search_params_->inc_factor;
 
@@ -56,7 +48,7 @@ public:
         FloatType width;
         // define loss and grad vector
         FeatValType loss;
-        std::vector<FeatValType> grad(num_features_);
+        std::vector<FeatValType> grad(num_features);
 
         int count = 0;
         while (true) {
@@ -64,10 +56,11 @@ public:
             sgdlib::detail::vecadd<FeatValType>(d, xp, stepsize, x);
 
             // reset gradient vector for ecah loop
-            std::memset(grad.data(), 0, grad.size() * sizeof(FeatValType));
+            std::memset(grad.data(), 0, num_features * sizeof(FeatValType));
 
             // compute the loss value and gradient vector
-            loss = this->loss_fn_->evaluate_with_gradient(this->X_, this->y_, x, grad);
+            loss = this->loss_fn_->evaluate_with_gradient(this->dataset_, x, grad);
+
             fx = loss;
             g = grad;
 
