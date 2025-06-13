@@ -25,16 +25,14 @@ protected:
     FloatType lipschitz_;
     FloatType linesearch_scaling_;
     std::shared_ptr<LossFuncType> loss_fn_;
-
-    std::vector<FeatValType> X_;
-    std::vector<LabelValType> y_;
-    StepSizeSearchParamType *stepsize_search_params_;
+    sgdlib::detail::ArrayDatasetType dataset_;
+    std::shared_ptr<StepSizeSearchParamType> stepsize_search_params_;
 
 public:
-    StepSizeSearch(const std::vector<FeatValType>& X,
-                   const std::vector<LabelValType>& y,
+    StepSizeSearch(const sgdlib::detail::ArrayDatasetType &dataset,
                    const std::shared_ptr<LossFuncType>& loss_fn,
-                   StepSizeSearchParamType *stepsize_search_params): X_(X), y_(y),
+                   std::shared_ptr<StepSizeSearchParamType> stepsize_search_params):
+                        dataset_(dataset),
                         loss_fn_(loss_fn),
                         stepsize_search_params_(stepsize_search_params){};
 
