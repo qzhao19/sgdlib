@@ -5,46 +5,8 @@
 
 namespace sgdlib {
 
-/**
- * @file sgd.hpp
- *
- * @class SGD
- *
- * @brief Implements the Stochastic Gradient Descent (SGD) optimization algorithm.
- *
- * This class inherits from `BaseOptimizer` and provides functionality for optimizing
- * machine learning models using the Stochastic Gradient Descent (SGD) algorithm.
- * SGD is a widely used optimization technique that updates model parameters iteratively
- * using gradients computed on small batches of data.
- *
-*/
 class SGD: public BaseOptimizer {
 public:
-    /**
-     * @brief Constructor for the SGD optimizer.
-     *
-     * Initializes the SGD optimizer with the given parameters and passes them to the
-     * base class `BaseOptimizer`.
-     *
-     * @param w0 Initial weight vector for the model.
-     * @param b0 Initial bias term for the model.
-     * @param loss The loss function to be minimized.
-     * @param lr_policy The learning rate policy (e.g., constant, adaptive).
-     * @param alpha L2 regularization parameter.
-     * @param eta0 Initial learning rate.
-     * @param tol Tolerance for convergence.
-     * @param gamma Decay factor for the learning rate (used in some learning rate policies).
-     * @param max_iters Maximum number of iterations for optimization.
-     * @param batch_size Size of the mini-batch used for gradient computation.
-     * @param num_iters_no_change Number of iterations with no improvement to wait before stopping.
-     * @param random_seed Seed for the random number generator.
-     * @param shuffle If true, shuffles the data before each epoch (default: true).
-     * @param verbose If true, enables logging of optimization progress (default: true).
-     *
-     * @note This constructor calls the constructor of the base class `BaseOptimizer` to
-     *       complete the initialization of the optimizer.
-     * @see BaseOptimizer
-     */
     SGD(const std::vector<FeatValType>& w0,
         const FeatValType& b0,
         std::string loss,
@@ -58,32 +20,29 @@ public:
         std::size_t num_iters_no_change,
         std::size_t random_seed,
         bool shuffle = true,
-        bool verbose = true): BaseOptimizer(w0, b0,
-            loss, lr_policy,
-            alpha, eta0,
-            tol,
-            gamma,
-            max_iters,
-            batch_size,
-            num_iters_no_change,
-            random_seed,
-            shuffle,
-            verbose) {};
+        bool verbose = true): BaseOptimizer(w0, loss, tol, max_iters, verbose) {
+            this->b0_ = b0;
+            this->lr_policy_ = lr_policy;
+            this->alpha_ = alpha;
+            this->eta0_ = eta0;
+            this->gamma_ = gamma;
+            this->batch_size_ = batch_size;
+            this->num_iters_no_change_ = num_iters_no_change;
+            this->random_seed_ = random_seed;
+            this->shuffle_ = shuffle;
+            this->init_random_state();
+            this->init_lr_params();
+        };
 
-    /**
-     * Default destructor.
-     */
     ~SGD() = default;
 
-    void optimize(const std::vector<FeatValType>& X,
-                  const std::vector<LabelValType>& y) override {
+    void optimize(const ArrayDataType& dataset) override {
+        const std::size_t num_samples = dataset.nrows();
+        const std::size_t num_features = dataset.ncols();
 
-        const std::size_t num_samples = y.size();
-        const std::size_t num_features = this->w0_.size();
         const std::size_t step_per_iter = num_samples / this->batch_size_;
         const FeatValType inv_num_samples = 1.0 / static_cast<FeatValType>(num_samples);
         const FeatValType inv_batch_size = 1.0 / static_cast<FeatValType>(this->batch_size_);
-
 
         std::size_t no_improvement_count = 0;
         std::size_t iter = 0;
@@ -96,6 +55,10 @@ public:
         // initialize a lookup table for training X, y
         this->X_data_index_.resize(num_samples);
         std::iota(this->X_data_index_.begin(), this->X_data_index_.end(), 0);
+
+        // init x_i, y_i
+        LabelValType y;
+        std::vector<FeatValType> x(num_features);
 
         // initialize loss, this->loss_history_, gradient,
         FeatValType l2_penalty;
@@ -131,18 +94,16 @@ public:
                 // iterate all rows of batch
                 for (std::size_t j = batch_start; j < batch_end; ++j) {
                     std::size_t x_row_index = this->X_data_index_[j];
+                    dataset.X_row_data(x_row_index, x);
+                    dataset.y_row_data(x_row_index, y);
 
                     // compute predicted label proba XW + b
-                    y_hat = sgdlib::detail::vecdot<FeatValType>(
-                        X.data() + x_row_index * num_features,
-                        X.data() + (x_row_index + 1) * num_features,
-                        w0.data()
-                    );
+                    y_hat = sgdlib::detail::vecdot<FeatValType>(x, w0);
                     y_hat = y_hat * wscale + b0;
 
                     // evaluate the loss on one row of X, and calculate the derivatives of the loss
-                    loss += this->loss_fn_->evaluate(y_hat, y[x_row_index]);
-                    dloss += this->loss_fn_->derivate(y_hat, y[x_row_index]);
+                    loss += this->loss_fn_->evaluate(y_hat, y);
+                    dloss += this->loss_fn_->derivate(y_hat, y);
 
                     // clip dloss with large values
                     sgdlib::detail::clip<FeatValType>(dloss, -MAX_DLOSS, MAX_DLOSS);
@@ -152,26 +113,17 @@ public:
                         // deflation of the sample feature values, adding to weights
                         // means that this scaled sample directly affects the final output
                         dloss /= wscale;
-                        sgdlib::detail::vecscale<FeatValType>(
-                            X.data() + x_row_index * num_features,
-                            X.data() + (x_row_index + 1) * num_features,
-                            dloss,
-                            weight_update
-                        );
-                        sgdlib::detail::vecscale<FeatValType>(
-                            weight_update,
-                            2.0,
-                            weight_update
-                        );
+                        sgdlib::detail::vecscale<FeatValType>(x, dloss, weight_update);
+                        sgdlib::detail::vecscale<FeatValType>(weight_update, 2.0, weight_update);
                         bias_update += dloss;
                     }
+                }
 
-                    // scale weight vector by a scalar factor
-                    wscale *= std::max(0.0, 1.0 - (eta_alpha));
-                    if (wscale < WSCALE_THRESHOLD) {
-                        sgdlib::detail::vecscale<FeatValType>(w0, wscale, w0);
-                        wscale = 1.0;
-                    }
+                // scale weight vector by a scalar factor
+                wscale *= std::max(0.0, 1.0 - (eta_alpha));
+                if (wscale < WSCALE_THRESHOLD) {
+                    sgdlib::detail::vecscale<FeatValType>(w0, wscale, w0);
+                    wscale = 1.0;
                 }
 
                 // compute loss/weight_gradient/bias_gradient for one batch data point
@@ -180,9 +132,7 @@ public:
                 if (this->batch_size_ > 1) {
                     loss *= inv_batch_size;
                     sgdlib::detail::vecscale<FeatValType>(
-                        weight_update,
-                        inv_batch_size,
-                        weight_update
+                        weight_update, inv_batch_size, weight_update
                     );
                     bias_update *= inv_batch_size;
                 }
@@ -193,8 +143,7 @@ public:
                         sgdlib::detail::vecnorm2<FeatValType>(w0, true) * inv_num_samples;
                     loss += l2_penalty;
                     sgdlib::detail::vecadd<FeatValType>(
-                        w0,
-                        weight_update,
+                        w0, weight_update,
                         2.0 * this->alpha_ * inv_num_samples,
                         weight_update
                     );
