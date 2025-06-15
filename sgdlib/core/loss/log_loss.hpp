@@ -25,12 +25,12 @@ namespace detail {
 */
 class LogLoss final: public LossFunction {
 public:
-    LogLoss(LossParamType loss_param): LossFunction(loss_param) {};
+    LogLoss(sgdlib::LossParamType loss_param): LossFunction(loss_param) {};
     ~LogLoss() = default;
 
-    FeatValType evaluate(const FeatValType &y_pred,
-                         const LabelValType &y_true) const override {
-        const FeatValType z = y_pred * static_cast<FeatValType>(y_true);
+    sgdlib::FeatureType evaluate(const sgdlib::FeatureType &y_pred,
+                                 const sgdlib::LabelType &y_true) const override {
+        const sgdlib::FeatureType z = y_pred * static_cast<sgdlib::FeatureType>(y_true);
         if (z > 18.0) {
             return std::exp(-z);
         }
@@ -41,10 +41,10 @@ public:
         return std::log1p(std::exp(-z));
     }
 
-    FeatValType derivate(const FeatValType &y_pred,
-                         const LabelValType &y_true) const override {
-        const FeatValType y_true_float = static_cast<FeatValType>(y_true);
-        const FeatValType z = y_pred * y_true_float ;
+    sgdlib::FeatureType derivate(const sgdlib::FeatureType &y_pred,
+                                 const sgdlib::LabelType &y_true) const override {
+        const sgdlib::FeatureType y_true_float = static_cast<sgdlib::FeatureType>(y_true);
+        const sgdlib::FeatureType z = y_pred * y_true_float ;
         if (z > 18.0) {
             return std::exp(-z) * (-y_true_float);
         }
@@ -54,15 +54,15 @@ public:
         return -y_true_float / (std::exp(z) + 1.0);
     }
 
-    FeatValType evaluate_with_gradient(const sgdlib::detail::ArrayDatasetType &dataset,
-                                       const std::vector<FeatValType> &w,
-                                       std::vector<FeatValType> &grad) const override {
+    sgdlib::FeatureType evaluate_with_gradient(const sgdlib::ArrayDatasetType &dataset,
+                                               const std::vector<sgdlib::FeatureType> &w,
+                                               std::vector<sgdlib::FeatureType> &grad) const override {
         // get num samples and features
         const std::size_t num_samples = dataset.nrows();
         const std::size_t num_features = dataset.ncols();
-        const FeatValType inv_num_samples = 1.0 / static_cast<FeatValType>(num_samples);
-        FeatValType loss = 0.0;
-        FeatValType dloss, y_hat;
+        const sgdlib::FeatureType inv_num_samples = 1.0 / static_cast<sgdlib::FeatureType>(num_samples);
+        sgdlib::FeatureType loss = 0.0;
+        sgdlib::FeatureType dloss, y_hat;
         this->dloss_history_.resize(num_samples);
 
 #if defined(USE_OPENMP)
@@ -75,51 +75,51 @@ public:
         }
 
         // define independant local_grad for each thread
-        std::vector<std::vector<FeatValType>> local_grad(
-            num_threads, std::vector<FeatValType>(num_features, 0.0)
+        std::vector<std::vector<sgdlib::FeatureType>> local_grad(
+            num_threads, std::vector<sgdlib::FeatureType>(num_features, 0.0)
         );
 
         // OpenMP reduction for loss and manual reduction for grad
         #pragma omp parallel reduction(+:loss) private(dloss, y_hat)
         {
             int thread_id = omp_get_thread_num();
-            std::vector<FeatValType>& thread_grad = local_grad[thread_id];
+            std::vector<sgdlib::FeatureType>& thread_grad = local_grad[thread_id];
 
-            LabelValType y;
-            std::vector<FeatValType> x(num_features);
+            sgdlib::LabelType y;
+            std::vector<sgdlib::FeatureType> x(num_features);
             #pragma omp for nowait
             for (std::size_t i = 0; i < num_samples; ++i) {
                 // get x_i, y_i
                 dataset.X_row_data(i, x);
                 dataset.y_row_data(i, y);
-                y_hat = sgdlib::detail::vecdot<FeatValType>(x, w);
+                y_hat = sgdlib::detail::vecdot<sgdlib::FeatureType>(x, w);
                 loss += evaluate(y_hat, y);
                 dloss = derivate(y_hat, y);
                 this->dloss_history_[i] = dloss;
-                sgdlib::detail::vecadd<FeatValType>(x, dloss, thread_grad);
+                sgdlib::detail::vecadd<sgdlib::FeatureType>(x, dloss, thread_grad);
             }
         }
         // main thread reduction for grad
         for (std::size_t t = 0; t < num_threads; ++t) {
-            sgdlib::detail::vecadd<FeatValType>(grad, local_grad[t], grad);
+            sgdlib::detail::vecadd<sgdlib::FeatureType>(grad, local_grad[t], grad);
         }
 #else
-        LabelValType y;
-        std::vector<FeatValType> x(num_features);
+        sgdlib::LabelType y;
+        std::vector<sgdlib::FeatureType> x(num_features);
         for (std::size_t i = 0; i < num_samples; ++i) {
             // get x_i, y_i
             dataset.X_row_data(i, x);
             dataset.y_row_data(i, y);
             // compute W * X
-            y_hat = sgdlib::detail::vecdot<FeatValType>(x, w);
+            y_hat = sgdlib::detail::vecdot<sgdlib::FeatureType>(x, w);
             loss += evaluate(y_hat, y);
             dloss = derivate(y_hat, y);
             this->dloss_history_[i] = dloss;
-            sgdlib::detail::vecadd<FeatValType>(x, dloss, grad);
+            sgdlib::detail::vecadd<sgdlib::FeatureType>(x, dloss, grad);
         }
 #endif
         loss *= inv_num_samples;
-        sgdlib::detail::vecscale<FeatValType>(grad, inv_num_samples, grad);
+        sgdlib::detail::vecscale<sgdlib::FeatureType>(grad, inv_num_samples, grad);
 
         if (callback_) {
             callback_(this->dloss_history_);
