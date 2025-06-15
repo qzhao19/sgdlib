@@ -11,22 +11,22 @@ namespace detail {
 */
 class HuberLoss final: public LossFunction {
 public:
-    HuberLoss(LossParamType loss_param): LossFunction(loss_param) {};
+    HuberLoss(sgdlib::LossParamType loss_param): LossFunction(loss_param) {};
     ~HuberLoss() = default;
 
-    FeatValType evaluate(const FeatValType &y_pred,
-                         const LabelValType &y_true) const override {
+    sgdlib::FeatureType evaluate(const sgdlib::FeatureType &y_pred,
+                                 const sgdlib::LabelType &y_true) const override {
         return 0.0;
     }
 
-    FeatValType derivate(const FeatValType &y_pred,
-                         const LabelValType &y_true) const override {
+    sgdlib::FeatureType derivate(const sgdlib::FeatureType &y_pred,
+                                 const sgdlib::LabelType &y_true) const override {
         return 0.0;
     }
 
-    FeatValType evaluate_with_gradient(const sgdlib::detail::ArrayDatasetType &dataset,
-                                       const std::vector<FeatValType> &w,
-                                       std::vector<FeatValType> &grad) const override {
+    sgdlib::FeatureType evaluate_with_gradient(const sgdlib::ArrayDatasetType &dataset,
+                                               const std::vector<sgdlib::FeatureType> &w,
+                                               std::vector<sgdlib::FeatureType> &grad) const override {
         return 0.0;
     }
 
