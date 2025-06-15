@@ -17,13 +17,13 @@ namespace detail {
 */
 class LossFunction {
 protected:
-    using CallbackType = std::function<void(const std::vector<FeatValType>&)>;
-    LossParamType loss_param_;
+    using CallbackType = std::function<void(const std::vector<sgdlib::FeatureType>&)>;
+    sgdlib::LossParamType loss_param_;
     CallbackType callback_;
-    mutable std::vector<FeatValType> dloss_history_;
+    mutable std::vector<sgdlib::FeatureType> dloss_history_;
 
 public:
-    LossFunction(LossParamType loss_param): loss_param_(loss_param),
+    LossFunction(sgdlib::LossParamType loss_param): loss_param_(loss_param),
         callback_(nullptr) {};
 
     virtual ~LossFunction() = default;
@@ -35,26 +35,26 @@ public:
     /**
      * evaluate the loss value of loss function
      *
-     * @param y_pred FeatValType
+     * @param y_pred sgdlib::FeatureType
      *      The predicted output of a model given an input.
-     * @param y_true LabelValType
+     * @param y_true sgdlib::LabelType
      *      The true label value for the data point
      * @return A FloatType value for loss function value
     */
-    virtual FeatValType evaluate(const FeatValType &y_pred,
-                                 const LabelValType &y_true) const = 0;
+    virtual sgdlib::FeatureType evaluate(const sgdlib::FeatureType &y_pred,
+                                         const sgdlib::LabelType &y_true) const = 0;
 
     /**
      * compute the derivative of a loss function.
      *
-     * @param y_pred FeatValType
+     * @param y_pred sgdlib::FeatureType
      *      The predicted output of a model given an input.
-     * @param y_true LabelValType
+     * @param y_true sgdlib::LabelType
      *      The true label value for the data point
      * @return A FloatType value representing the derivative of the loss function
     */
-    virtual FeatValType derivate(const FeatValType &y_pred,
-                                 const LabelValType &y_true) const = 0;
+    virtual sgdlib::FeatureType derivate(const sgdlib::FeatureType &y_pred,
+                                         const sgdlib::LabelType &y_true) const = 0;
 
     /**
      * Computes both loss value and gradient vector in a single pass
@@ -64,11 +64,11 @@ public:
      * @param w Model parameter vector to evaluate
      * @param[out] grad Gradient vector (must be pre-allocated with correct size)
      *
-     * @return FeatValType Computed loss value
+     * @return sgdlib::FeatureType Computed loss value
      */
-    virtual FeatValType evaluate_with_gradient(const sgdlib::detail::ArrayDatasetType &dataset,
-                                               const std::vector<FeatValType> &w,
-                                               std::vector<FeatValType> &grad) const = 0;
+    virtual sgdlib::FeatureType evaluate_with_gradient(const sgdlib::ArrayDatasetType &dataset,
+                                                       const std::vector<sgdlib::FeatureType> &w,
+                                                       std::vector<sgdlib::FeatureType> &grad) const = 0;
 
     /**
      * @brief Sets a parameter for the loss function.
@@ -76,14 +76,16 @@ public:
      * @param name The name of the parameter as a string.
      * @param value The value of the parameter as a FloatType.
     */
-    void set_param(const std::string &name, const FloatType &value) {
+    void set_param(const std::string &name, const sgdlib::ScalarType &value) {
         loss_param_[name] = value;
     }
 };
 
+using LossFunctionType = LossFunction;
+
 // Create registries for base loss function
-DECLARE_SHARED_REGISTRY(LossFunctionRegistry, LossFunction, LossParamType);
-DEFINE_SHARED_REGISTRY(LossFunctionRegistry, LossFunction, LossParamType);
+DECLARE_SHARED_REGISTRY(LossFunctionRegistry, LossFunctionType, sgdlib::LossParamType);
+DEFINE_SHARED_REGISTRY(LossFunctionRegistry, LossFunctionType, sgdlib::LossParamType);
 
 } // namespace detail
 } // namespace sgdlib
