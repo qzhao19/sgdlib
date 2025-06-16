@@ -7,8 +7,8 @@
 namespace sgdlib {
 namespace detail {
 
-REGISTER_CLASS(LRDecayRegistry, Invscaling, Invscaling);
-REGISTER_CLASS(LRDecayRegistry, Exponential, Exponential);
+REGISTER_CLASS(LRDecayRegistry, Invscaling, sgdlib::detail::Invscaling);
+REGISTER_CLASS(LRDecayRegistry, Exponential, sgdlib::detail::Exponential);
 
 } // namespace detail
 } // namespace sgdlib
