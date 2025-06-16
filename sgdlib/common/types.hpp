@@ -18,8 +18,9 @@ using ScalarType = double;
 #error "sgdlib supports single (PRECISION_TYPE=32) and double (PRECISION_TYPE=64) precision floating-point formats exclusively."
 #endif
 
-using FeatureType = ScalarType;
-using LabelType = int;
+// FeatureScalarType / LabelScalarType
+using FeatureScalarType = ScalarType;
+using LabelScalarType = int;
 
 using LossParamType = std::unordered_map<std::string, ScalarType>;
 using LRDecayParamType = std::unordered_map<std::string, ScalarType>;
