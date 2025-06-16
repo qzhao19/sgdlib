@@ -6,7 +6,7 @@
 class ArrayDatasetTest : public ::testing::Test {
 public:
     std::vector<double> X_data;
-    std::vector<long> y_data;
+    std::vector<int> y_data;
     void SetUp() override {
         X_data = {
             5.1, 4.9, 4.7, 4.6, 5. , 5.4, 4.6, 5. , 4.4, 4.9, 5.4, 4.8, 4.8,
@@ -82,7 +82,7 @@ TEST_F(ArrayDatasetTest, RowAccessWithoutCache) {
     sgdlib::detail::ArrayDataset dataset(X_data, y_data, 150, 4, false);
 
     std::vector<double> x_row(4);
-    long y_row;
+    int y_row;
 
     dataset.X_row_data(0, x_row);
     dataset.y_row_data(0, y_row);
@@ -112,7 +112,7 @@ TEST_F(ArrayDatasetTest, RowAccessWithCache) {
     sgdlib::detail::ArrayDataset dataset(X_data, y_data, 150, 4);
 
     std::vector<double> x_row(4);
-    long y_row;
+    int y_row;
 
     dataset.X_row_data(0, x_row);
     dataset.y_row_data(0, y_row);
@@ -141,7 +141,7 @@ TEST_F(ArrayDatasetTest, ColumnAccess) {
     sgdlib::detail::ArrayDataset dataset(X_data, y_data, 150, 4);
 
     std::vector<double> x_column(150);
-    std::vector<long> y_column(150);
+    std::vector<int> y_column(150);
 
     std::vector<double> expect_X = {
         5.1, 4.9, 4.7, 4.6, 5. , 5.4, 4.6, 5. , 4.4, 4.9, 5.4, 4.8, 4.8,
@@ -158,7 +158,7 @@ TEST_F(ArrayDatasetTest, ColumnAccess) {
         6.8, 6.7, 6.7, 6.3, 6.5, 6.2, 5.9
     };
 
-    std::vector<long> expect_y = {
+    std::vector<int> expect_y = {
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -182,10 +182,10 @@ TEST_F(ArrayDatasetTest, RowAccessPerformance) {
     std::size_t ncols = 4;
     std::size_t num_loops = 1000000;
     std::vector<double> X_data(nrows * ncols, 1.0);
-    std::vector<long> y_data(nrows, 0);
+    std::vector<int> y_data(nrows, 0);
 
     std::vector<double> x_row(4);
-    long y_row;
+    int y_row;
     sgdlib::detail::ArrayDataset dataset_cached(X_data, y_data, nrows, ncols);
     std::size_t index;
 
