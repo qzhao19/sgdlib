@@ -10,11 +10,11 @@ class LRDecayTest : public ::testing::Test {
 public:
     void SetUp(std::string lr_decay_policy) {
         double eta0 = 0.0001, gamma = 0.0025;
-        LRDecayParamType lr_decay_param = {{"eta0", eta0}, {"gamma", gamma}};
+        sgdlib::LRDecayParamType lr_decay_param = {{"eta0", eta0}, {"gamma", gamma}};
         lr_decay = sgdlib::detail::LRDecayRegistry()->Create(lr_decay_policy, lr_decay_param);
     }
 
-    std::unique_ptr<sgdlib::detail::LRDecay> lr_decay; 
+    std::unique_ptr<sgdlib::detail::LRDecay> lr_decay;
 };
 
 TEST_F(LRDecayTest, InvscalingDecayTest) {
