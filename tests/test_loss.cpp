@@ -15,17 +15,17 @@ using ::testing::DoubleLE;
 class LossTest : public ::testing::Test {
 public:
     void SetUp(std::string loss) {
-        LossParamType loss_params = {{"alpha", 0.0}};
+        sgdlib::LossParamType loss_params = {{"alpha", 0.0}};
         loss_fn = sgdlib::detail::LossFunctionRegistry()->Create(loss, loss_params);
     }
 
-    std::shared_ptr<sgdlib::detail::LossFunction> loss_fn;
+    std::shared_ptr<sgdlib::detail::LossFunctionType> loss_fn;
 };
 
 TEST_F(LossTest, LogLossTest) {
     std::vector<double> x1 = {5.2, 3.3, 1.2, 0.3};
     std::vector<double> x2 = {6.4, 3.1, 5.5, 1.8};
-    long y1 = 1, y2 = 1;
+    int y1 = 1, y2 = 1;
     std::vector<double> w = {1.0, 1.0, 1.0, 1.0};
 
     double y1_pred, y2_pred;
@@ -71,10 +71,10 @@ TEST_F(LossTest, LogLossTest) {
         3.3, 3.1,
         1.2, 5.5,
         0.3, 1.8};
-    std::vector<long> y = {1, 1};
+    std::vector<int> y = {1, 1};
     std::vector<double> grad(4);
 
-    sgdlib::detail::ArrayDatasetType dataset(x, y, 2, 4);
+    sgdlib::ArrayDatasetType dataset(x, y, 2, 4);
 
     double loss_total = loss_fn->evaluate_with_gradient(dataset, w, grad);
 
@@ -138,7 +138,7 @@ TEST_F(LossTest, LogLossAllDataTest) {
         1.9, 2. , 2.2, 1.5, 1.4, 2.3, 2.4, 1.8, 1.8, 2.1, 2.4, 2.3, 1.9,
         2.3, 2.5, 2.3, 1.9, 2. , 2.3, 1.8
         };
-    std::vector<long> y_train = {
+    std::vector<int> y_train = {
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -150,10 +150,10 @@ TEST_F(LossTest, LogLossAllDataTest) {
     std::vector<double> w = {1.0, 1.0, 1.0, 1.0};
     std::size_t num_samples = y_train.size();
     std::size_t num_features = w.size();
-    sgdlib::detail::ArrayDatasetType dataset(X_train, y_train, 150, 4);
+    sgdlib::ArrayDatasetType dataset(X_train, y_train, 150, 4);
     double y_hat;
     double loss = 0.0;
-    long y;
+    int y;
     std::vector<double> x(4);
 
     std::vector<double> grad(num_features);
@@ -168,10 +168,10 @@ TEST_F(LossTest, LogLossAllDataTest) {
             grad[j] += loss_fn->derivate(y_hat, y) * x[j];
         }
     }
-    loss /= static_cast<FeatValType>(num_samples);
+    loss /= static_cast<double>(num_samples);
     std::transform(grad.begin(), grad.end(), grad.begin(),
-                  [num_samples](FeatValType val) {
-                    return val / static_cast<FeatValType>(num_samples);
+                  [num_samples](double val) {
+                    return val / static_cast<double>(num_samples);
                 });
     double tolerance = 1e-5;
     std::vector<double> expect_grad = {2.75991, 1.64394, 1.26731, 0.324662};
