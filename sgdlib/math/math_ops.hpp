@@ -1027,7 +1027,7 @@ inline bool isinf(const Type& x) {
  *
 */
 template<typename T>
-void row_norms(const sgdlib::detail::ArrayDatasetType &dataset,
+void row_norms(const sgdlib::ArrayDatasetType &dataset,
                bool squared,
                std::vector<T> &out) {
 
