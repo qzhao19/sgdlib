@@ -19,17 +19,19 @@ namespace detail {
 */
 class LRDecay {
 protected:
-    LRDecayParamType lr_decay_param_;
+    sgdlib::LRDecayParamType lr_decay_param_;
 
 public:
-    LRDecay(LRDecayParamType lr_decay_param): lr_decay_param_(lr_decay_param) {};
+    LRDecay(sgdlib::LRDecayParamType lr_decay_param): lr_decay_param_(lr_decay_param) {};
     virtual ~LRDecay() = default;
-    virtual FloatType compute(std::size_t epoch) = 0;
+    virtual sgdlib::ScalarType compute(std::size_t epoch) = 0;
 };
 
+using LRDecayType = LRDecay;
+
 // Create registries for base LR Decay function
-DECLARE_UNIQUE_REGISTRY(LRDecayRegistry, LRDecay, LRDecayParamType);
-DEFINE_UNIQUE_REGISTRY(LRDecayRegistry, LRDecay, LRDecayParamType);
+DECLARE_UNIQUE_REGISTRY(LRDecayRegistry, LRDecayType, sgdlib::LRDecayParamType);
+DEFINE_UNIQUE_REGISTRY(LRDecayRegistry, LRDecayType, sgdlib::LRDecayParamType);
 
 } // namespace detail
 } // namespace sgdlib
