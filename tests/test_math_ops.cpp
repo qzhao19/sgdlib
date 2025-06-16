@@ -241,7 +241,7 @@ TEST(MathOpsTest, ScalarClipTest){
 };
 
 TEST(MathOpsTest, ScalarIsinfTest){
-    double a = INF;
+    double a = sgdlib::detail::INF;
     bool is_inf = sgdlib::detail::isinf<double>(a);
     EXPECT_TRUE(is_inf);
 };
@@ -256,8 +256,8 @@ TEST(MathOpsTest, RowNormsTest){
         1.2 , 5.5 , 1.32,
         0.3 , 1.8 , 0.1
     };
-    std::vector<long> y = {1, 1, 1};
-    sgdlib::detail::ArrayDatasetType dataset(x, y, 3, 4);
+    std::vector<int> y = {1, 1, 1};
+    sgdlib::ArrayDatasetType dataset(x, y, 3, 4);
     std::vector<double> out(3);
     bool sq = false;
     sgdlib::detail::row_norms<double>(dataset, sq, out);
