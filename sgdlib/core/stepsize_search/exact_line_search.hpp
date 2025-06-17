@@ -6,32 +6,31 @@
 namespace sgdlib {
 namespace detail {
 
-template <typename LossFuncType>
-class ExactLineSearch final: public StepSizeSearch<LossFuncType> {
+class ExactLineSearch final: public StepSizeSearch {
 public:
-    ExactLineSearch(const sgdlib::detail::ArrayDatasetType &dataset,
-                    const std::shared_ptr<LossFuncType> &loss_fn,
-                    std::shared_ptr<StepSizeSearchParamType> stepsize_search_params): StepSizeSearch<LossFuncType>(
+    ExactLineSearch(const sgdlib::ArrayDatasetType &dataset,
+                    const std::shared_ptr<sgdlib::detail::LossFunctionType> &loss_fn,
+                    std::shared_ptr<StepSizeSearchParamType> stepsize_search_params): StepSizeSearch (
                         dataset,
                         loss_fn,
                         stepsize_search_params) {
         std::size_t num_samples = this->dataset_.nrows();
         this->lipschitz_ = 1.0 / this->stepsize_search_params_->eta0 - this->stepsize_search_params_->alpha;
-        this->linesearch_scaling_ = std::pow(2.0, static_cast<FloatType>(this->stepsize_search_params_->max_searches) / num_samples);
+        this->linesearch_scaling_ = std::pow(2.0, static_cast<sgdlib::ScalarType>(this->stepsize_search_params_->max_searches) / num_samples);
     };
     ~ExactLineSearch() = default;
 
     /**
      * Compute step size with basic line search and it is specifically used for the SAG optimizer.
     */
-    int search(const FeatValType &y_pred,
-               const LabelValType &y_true,
-               const FeatValType &grad,
-               const FeatValType &xnorm,
+    int search(const sgdlib::FeatureScalarType &y_pred,
+               const sgdlib::LabelScalarType &y_true,
+               const sgdlib::FeatureScalarType &grad,
+               const sgdlib::FeatureScalarType &xnorm,
                const std::size_t &step,
-               FloatType& stepsize) override {
+               sgdlib::ScalarType &stepsize) override {
         bool is_valid;
-        FeatValType a, b;
+        sgdlib::FeatureScalarType a, b;
 
         if ((step % this->stepsize_search_params_->max_searches == 0) && (std::abs(grad) > 1e-8)) {
             for (std::size_t i = 0; i < this->stepsize_search_params_->max_iters; ++i) {
