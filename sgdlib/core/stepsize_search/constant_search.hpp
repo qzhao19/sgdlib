@@ -6,12 +6,11 @@
 namespace sgdlib {
 namespace detail {
 
-template <typename LossFuncType>
-class ConstantSearch final: public StepSizeSearch<LossFuncType>{
+class ConstantSearch final: public StepSizeSearch {
 public:
-    ConstantSearch(const sgdlib::detail::ArrayDatasetType &dataset,
-                   const std::shared_ptr<LossFuncType> &loss_fn,
-                   std::shared_ptr<StepSizeSearchParamType> stepsize_search_params): StepSizeSearch<LossFuncType>(
+    ConstantSearch(const sgdlib::ArrayDatasetType &dataset,
+                   const std::shared_ptr<sgdlib::detail::LossFunctionType> &loss_fn,
+                   std::shared_ptr<sgdlib::StepSizeSearchParamType> stepsize_search_params): StepSizeSearch (
                         dataset,
                         loss_fn,
                         stepsize_search_params) {};
@@ -20,19 +19,19 @@ public:
     /**
      * Compute step size and it is specifically used for the SAG optimizer.
     */
-    int search(bool is_saga, FloatType &step_size) override {
+    int search(bool is_saga, sgdlib::ScalarType &step_size) override {
         std::size_t num_samples = this->dataset_.nrows();
 
-        std::vector<FeatValType> X_row_norm(num_samples);
-        sgdlib::detail::row_norms<FeatValType>(this->dataset_, true, X_row_norm);
+        std::vector<sgdlib::FeatureScalarType> X_row_norm(num_samples);
+        sgdlib::detail::row_norms<sgdlib::FeatureScalarType>(this->dataset_, true, X_row_norm);
 
-        FeatValType max_sum = *std::max_element(X_row_norm.begin(), X_row_norm.end());
+        sgdlib::FeatureScalarType max_sum = *std::max_element(X_row_norm.begin(), X_row_norm.end());
 
-        FloatType alpha_scaled = this->stepsize_search_params_->alpha / num_samples;
-        FloatType L = 0.25 * (max_sum + 1.0) + alpha_scaled;
+        sgdlib::ScalarType alpha_scaled = this->stepsize_search_params_->alpha / num_samples;
+        sgdlib::ScalarType L = 0.25 * (max_sum + 1.0) + alpha_scaled;
 
         if (is_saga) {
-            FloatType mu = std::min(2 * num_samples * alpha_scaled, L);
+            sgdlib::ScalarType mu = std::min(2 * num_samples * alpha_scaled, L);
             step_size = 1.0 / (2* L + mu);
         }
         else {
