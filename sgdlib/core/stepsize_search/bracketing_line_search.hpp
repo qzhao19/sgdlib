@@ -6,30 +6,29 @@
 namespace sgdlib {
 namespace detail {
 
-template <typename LossFuncType>
-class BracketingLineSearch final: public StepSizeSearch<LossFuncType> {
+class BracketingLineSearch final: public StepSizeSearch {
 public:
-    BracketingLineSearch(const sgdlib::detail::ArrayDatasetType &dataset,
-                         const std::shared_ptr<LossFuncType> &loss_fn,
-                         std::shared_ptr<StepSizeSearchParamType> stepsize_search_params): StepSizeSearch<LossFuncType>(
+    BracketingLineSearch(const sgdlib::ArrayDatasetType &dataset,
+                         const std::shared_ptr<sgdlib::detail::LossFunctionType> &loss_fn,
+                         std::shared_ptr<sgdlib::StepSizeSearchParamType> stepsize_search_params): StepSizeSearch(
                                 dataset,
                                 loss_fn,
                                 stepsize_search_params) { };
     ~BracketingLineSearch() = default;
 
-    int search(const std::vector<FeatValType> &xp,
-               const std::vector<FeatValType> &gp,
-               const std::vector<FeatValType> &d,
-               std::vector<FeatValType> &x,
-               std::vector<FeatValType> &g,
-               FeatValType &fx,
-               FloatType &stepsize) override {
+    int search(const std::vector<sgdlib::FeatureScalarType> &xp,
+               const std::vector<sgdlib::FeatureScalarType> &gp,
+               const std::vector<sgdlib::FeatureScalarType> &d,
+               std::vector<sgdlib::FeatureScalarType> &x,
+               std::vector<sgdlib::FeatureScalarType> &g,
+               sgdlib::FeatureScalarType &fx,
+               sgdlib::ScalarType &stepsize) override {
 
         // num_features_ = x.size();
         std::size_t num_features = this->dataset_.ncols();
 
-        FloatType dec_factor = this->stepsize_search_params_->dec_factor;
-        FloatType inc_factor = this->stepsize_search_params_->inc_factor;
+        sgdlib::ScalarType dec_factor = this->stepsize_search_params_->dec_factor;
+        sgdlib::ScalarType inc_factor = this->stepsize_search_params_->inc_factor;
 
         if (stepsize <= 0.0) {
             // step must be positive
@@ -37,28 +36,28 @@ public:
         }
 
         // initialize fx_init and compute init gradient in search direction
-        FeatValType fx_init = fx;
-        FeatValType dg_init = sgdlib::detail::vecdot<FeatValType>(d, g);
+        sgdlib::FeatureScalarType fx_init = fx;
+        sgdlib::FeatureScalarType dg_init = sgdlib::detail::vecdot<sgdlib::FeatureScalarType>(d, g);
 
         if (dg_init > 0.0) {
             // moving direction increases the objective function value
             return LBFGS_ERROR_INCREASE_GRADIENT;
         }
 
-        FloatType dg_test = this->stepsize_search_params_->ftol * dg_init;
-        FloatType stepsize_hi = INF;
-        FloatType stepsize_lo = 0.0;
+        sgdlib::ScalarType dg_test = this->stepsize_search_params_->ftol * dg_init;
+        sgdlib::ScalarType stepsize_hi = INF;
+        sgdlib::ScalarType stepsize_lo = 0.0;
         // define loss and grad vector
-        FeatValType loss;
-        std::vector<FeatValType> grad(num_features, 0.0);
+        sgdlib::FeatureScalarType loss;
+        std::vector<sgdlib::FeatureScalarType> grad(num_features, 0.0);
 
         int count = 0;
         while (true) {
             // x_{k+1} = x_k + stepsize * d_k
-            sgdlib::detail::vecadd<FeatValType>(d, xp, stepsize, x);
+            sgdlib::detail::vecadd<sgdlib::FeatureScalarType>(d, xp, stepsize, x);
 
             // reset gradient vector for ecah loop
-            std::memset(grad.data(), 0, num_features * sizeof(FeatValType));
+            std::memset(grad.data(), 0, num_features * sizeof(sgdlib::FeatureScalarType));
 
             // compute the loss value and gradient vector
             loss = this->loss_fn_->evaluate_with_gradient(this->dataset_, x, grad);
@@ -75,7 +74,7 @@ public:
                 if (this->stepsize_search_params_->condition == "ARMIJO") {
                     return count;
                 }
-                FloatType dg = sgdlib::detail::vecdot<FloatType>(d, g);
+                sgdlib::ScalarType dg = sgdlib::detail::vecdot<sgdlib::ScalarType>(d, g);
                 if (dg < this->stepsize_search_params_->wolfe * dg_init) {
                     stepsize_lo = stepsize;
                 }
