@@ -62,7 +62,7 @@ public:
             1.9, 2. , 2.2, 1.5, 1.4, 2.3, 2.4, 1.8, 1.8, 2.1, 2.4, 2.3, 1.9,
             2.3, 2.5, 2.3, 1.9, 2. , 2.3, 1.8
         };
-        std::vector<long> y = {
+        std::vector<int> y = {
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -70,14 +70,14 @@ public:
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-        sgdlib::detail::ArrayDatasetType dataset(Xt, y, 150, 4);
-        LossParamType loss_params = {{"alpha", 0.0}};
-        std::shared_ptr<StepSizeSearchParamType> stepsize_search_params = std::make_shared<StepSizeSearchParamType>(
-            DEFAULT_STEPSIZE_SEARCH_PARAMS
+        sgdlib::ArrayDatasetType dataset(Xt, y, 150, 4);
+        sgdlib::LossParamType loss_params = {{"alpha", 0.0}};
+        std::shared_ptr<sgdlib::StepSizeSearchParamType> stepsize_search_params = std::make_shared<sgdlib::StepSizeSearchParamType>(
+            sgdlib::detail::DEFAULT_STEPSIZE_SEARCH_PARAMS
         );
         loss_fn_ = sgdlib::detail::LossFunctionRegistry()->Create("LogLoss", loss_params);
         if (search_policy == "Constant") {
-            stepsize_search_ = std::make_unique<sgdlib::detail::ConstantSearch<sgdlib::detail::LossFunction>>(
+            stepsize_search_ = std::make_unique<sgdlib::detail::ConstantSearch>(
                 dataset,
                 loss_fn_,
                 stepsize_search_params
@@ -88,7 +88,7 @@ public:
             stepsize_search_params->eta0 = 0.01;
             stepsize_search_params->max_searches = 10;
             stepsize_search_params->max_iters = 20;
-            stepsize_search_ = std::make_unique<sgdlib::detail::ExactLineSearch<sgdlib::detail::LossFunction>>(
+            stepsize_search_ = std::make_unique<sgdlib::detail::ExactLineSearch>(
                 dataset,
                 loss_fn_,
                 stepsize_search_params
@@ -97,7 +97,7 @@ public:
         else if (search_policy == "BacktrackingLineSearch" || search_policy == "BracketingLineSearch") {
             stepsize_search_params->max_searches = 40;
             stepsize_search_params->condition = "WOLFE";
-            stepsize_search_ = std::make_unique<sgdlib::detail::BacktrackingLineSearch<sgdlib::detail::LossFunction>>(
+            stepsize_search_ = std::make_unique<sgdlib::detail::BacktrackingLineSearch>(
                 dataset,
                 loss_fn_,
                 stepsize_search_params
@@ -105,8 +105,8 @@ public:
         }
     }
 
-    std::shared_ptr<sgdlib::detail::LossFunction> loss_fn_;
-    std::unique_ptr<sgdlib::detail::StepSizeSearch<sgdlib::detail::LossFunction>> stepsize_search_;
+    std::shared_ptr<sgdlib::detail::LossFunctionType> loss_fn_;
+    std::unique_ptr<sgdlib::detail::StepSizeSearchType> stepsize_search_;
 };
 
 TEST_F(StepSizeSearchTest, ConstantSearchTest) {
@@ -118,7 +118,7 @@ TEST_F(StepSizeSearchTest, ConstantSearchTest) {
 
 TEST_F(StepSizeSearchTest, ExactLineSearchTest) {
     SetUp("ExactLineSearch");
-    FeatValType y_pred = 2.95782, y_true = 1, dloss = -0.049368, xnorm = 98.63;
+    double y_pred = 2.95782, y_true = 1, dloss = -0.049368, xnorm = 98.63;
     std::size_t index = 120;
     double stepsize = 0.0;
     stepsize_search_->search(y_pred, y_true, dloss, xnorm, index, stepsize);
