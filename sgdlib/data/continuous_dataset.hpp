@@ -53,8 +53,8 @@ public:
         }
     };
 
-    ArrayDataset(const std::vector<sgdlib::FeatureScalarType>& X_data,
-        const std::vector<sgdlib::LabelScalarType>& y_data,
+    ArrayDataset(const std::vector<sgdlib::FeatureScalarType> &X_data,
+        const std::vector<sgdlib::LabelScalarType> &y_data,
         std::size_t nrows,
         std::size_t ncols,
         bool enable_cache = true) : ArrayDataset(
@@ -73,7 +73,7 @@ public:
         }
     };
 
-    ArrayDataset(const ArrayDataset& other) :
+    ArrayDataset(const ArrayDataset &other) :
         nrows_(other.nrows_),
         ncols_(other.ncols_),
         enable_cache_(other.enable_cache_) {
@@ -103,7 +103,7 @@ public:
 
     ~ArrayDataset() = default;
 
-    void X_row_data(const std::size_t i, std::vector<sgdlib::FeatureScalarType>& row) const {
+    void X_row_data(const std::size_t i, std::vector<sgdlib::FeatureScalarType> &row) const {
         if (i >= nrows_) {
             THROW_OUT_RANGE_ERROR("Row index out of range");
         }
@@ -120,14 +120,14 @@ public:
         }
     }
 
-    void y_row_data(const std::size_t i, sgdlib::LabelScalarType& row) const {
+    void y_row_data(const std::size_t i, sgdlib::LabelScalarType &row) const {
         if (i >= nrows_) {
             THROW_OUT_RANGE_ERROR("Row index out of range");
         }
         row = y_data_ptr_[i];
     }
 
-    void X_column_data(const std::size_t j, std::vector<sgdlib::FeatureScalarType>& column) const {
+    void X_column_data(const std::size_t j, std::vector<sgdlib::FeatureScalarType> &column) const {
         if (j >= ncols_) {
             THROW_OUT_RANGE_ERROR("Column index out of range");
         }
@@ -136,7 +136,7 @@ public:
             nrows_ * sizeof(sgdlib::FeatureScalarType));
     }
 
-    void y_column_data(std::vector<sgdlib::LabelScalarType>& column) const {
+    void y_column_data(std::vector<sgdlib::LabelScalarType> &column) const {
         std::memcpy(column.data(), y_data_ptr_.get(), nrows_ * sizeof(sgdlib::LabelScalarType));
     }
 
