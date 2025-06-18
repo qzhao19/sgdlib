@@ -81,8 +81,7 @@ public:
         std::size_t random_seed = 0;
         bool shuffle = true;
         bool verbose = false;
-        // sgdlib::detail::ArrayDataset(X_data, y_data, 150, 4)
-        dataset = std::make_unique<sgdlib::BaseOptimizer::ArrayDataType>(
+        dataset = std::make_unique<sgdlib::ArrayDatasetType>(
             X_train, y_train, 150, 4
         );
         optimizer = std::make_unique<sgdlib::SGD>(w0, b0,
@@ -102,9 +101,9 @@ public:
     double b0;
     std::vector<double> w0;
     std::vector<double> X_train;
-    std::vector<long> y_train;
-    std::unique_ptr<sgdlib::BaseOptimizer> optimizer;
-    std::unique_ptr<sgdlib::BaseOptimizer::ArrayDataType> dataset;
+    std::vector<int> y_train;
+    std::unique_ptr<sgdlib::Optimizer> optimizer;
+    std::unique_ptr<sgdlib::ArrayDatasetType> dataset;
 };
 
 TEST_F(SGDTest, BasicOptimizationTest) {
