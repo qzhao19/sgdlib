@@ -5,84 +5,59 @@
 
 namespace sgdlib {
 
-/**
- * @file sag.hpp
- *
- * @class SAG
- *
- * @brief Implements the Stochastic Average Gradient (SAG) optimization algorithm.
- *
- * This class inherits from `BaseOptimizer` and provides functionality for optimizing
- * machine learning models using the SAG algorithm. It also supports the SAGA variant,
- * which extends SAG to handle non-smooth regularization terms.
- *
-*/
 class SAG: public BaseOptimizer {
 public:
-    /**
-     * @brief Constructor for the SAG optimizer.
-     *
-     * Initializes the SAG optimizer with the given parameters and passes them to the
-     * base class `BaseOptimizer`.
-     *
-     * @param w0 Initial weight vector for the model.
-     * @param b0 Initial bias term for the model.
-     * @param loss The loss function to be minimized.
-     * @param search_policy The policy for searching step size during optimization.
-     * @param alpha L2 regularization parameter.
-     * @param eta0 Initial learning rate.
-     * @param tol Tolerance for convergence.
-     * @param max_iters Maximum number of iterations for optimization.
-     * @param random_seed Seed for the random number generator.
-     * @param is_saga If true, enables the SAGA variant of the algorithm (default: false).
-     * @param shuffle If true, shuffles the data before each epoch (default: true).
-     * @param verbose If true, enables logging of optimization progress (default: true).
-     *
-     * @note This constructor calls the constructor of the base class `BaseOptimizer` to
-     *       complete the initialization of the optimizer.
-     * @see BaseOptimizer
-    */
-    SAG(const std::vector<FeatValType>& w0,
-        const FeatValType& b0,
+    SAG(const std::vector<sgdlib::FeatureScalarType>& w0,
+        const sgdlib::FeatureScalarType& b0,
         std::string loss,
         std::string search_policy,
-        FloatType alpha,
-        FloatType eta0,
-        FloatType tol,
+        sgdlib::ScalarType alpha,
+        sgdlib::ScalarType eta0,
+        sgdlib::ScalarType tol,
         std::size_t max_iters,
         std::size_t random_seed,
         bool is_saga = false,
         bool shuffle = true,
-        bool verbose = true): BaseOptimizer(w0, b0,
-            loss,
-            search_policy,
-            alpha,
-            eta0,
-            tol,
-            max_iters,
-            random_seed,
-            is_saga,
-            shuffle,
-            verbose) {};
-    /**
-     * Default destructor.
-     */
+        bool verbose = true): BaseOptimizer(w0, loss, tol, max_iters, verbose) {
+            this->b0_ = b0;
+            this->search_policy_ = search_policy;
+            this->alpha_ = alpha;
+            this->eta0_ = eta0;
+            this->random_seed_ = random_seed;
+            this->is_saga_ = is_saga;
+            this->shuffle_ = shuffle;
+            this->init_random_state();
+            // initialize stepsize search params;
+            this->stepsize_search_params_ = std::make_unique<sgdlib::StepSizeSearchParamType>(
+                DEFAULT_STEPSIZE_SEARCH_PARAMS
+            );
+            this->stepsize_search_params_->alpha = alpha_;
+            this->stepsize_search_params_->eta0 = eta0_;
+            this->stepsize_search_params_->max_searches = 10;
+            this->stepsize_search_params_->max_iters = 20;
+        };
+
     ~SAG() = default;
 
-    void optimize(const std::vector<FeatValType>& X,
-                  const std::vector<LabelValType>& y) override {
+    void optimize(const sgdlib::ArrayDatasetType& dataset) override {
 
-        const std::size_t num_samples = y.size();
-        const std::size_t num_features = this->w0_.size();
+        // const std::size_t num_samples = y.size();
+        // const std::size_t num_features = this->w0_.size();
+        const std::size_t num_samples = dataset.nrows();
+        const std::size_t num_features = dataset.ncols();
+
+        // init x_i, y_i
+        sgdlib::LabelScalarType y;
+        std::vector<sgdlib::FeatureScalarType> x(num_features);
 
         // initialize w0 (weight) and b0 (bias)
-        std::vector<FeatValType> w0 = this->w0_;
-        FeatValType b0 = this->b0_;
+        std::vector<sgdlib::FeatureScalarType> w0 = this->w0_;
+        sgdlib::FeatureScalarType b0 = this->b0_;
 
         // initialize gradient memory, the cumulative sums
-        std::vector<FeatValType> grad_sum(num_features, 0.0);
-        std::vector<FeatValType> grad_history(num_samples, 0.0);
-        std::vector<FeatValType> cumulative_sum(this->max_iters_ * num_samples, 0.0);
+        std::vector<sgdlib::FeatureScalarType> grad_sum(num_features, 0.0);
+        std::vector<sgdlib::FeatureScalarType> grad_history(num_samples, 0.0);
+        std::vector<sgdlib::FeatureScalarType> cumulative_sum(this->max_iters_ * num_samples, 0.0);
 
         // array for visited samples
         std::vector<std::size_t> seen(num_samples, 0);
@@ -91,42 +66,42 @@ public:
         std::size_t iter = 0;
         std::size_t num_seens = 0;
         std::size_t sample_index = 0;
-        FeatValType inv_num_seens = 0.0;
+        sgdlib::FeatureScalarType inv_num_seens = 0.0;
 
         bool is_converged = false;
         bool is_infinity = false;
         int search_status = 0;
-        FeatValType wscale = 1.0;
+        sgdlib::FeatureScalarType wscale = 1.0;
 
         // initialize a lookup table for training X, y
         this->X_data_index_.resize(num_samples);
         std::iota(this->X_data_index_.begin(), this->X_data_index_.end(), 0);
 
         // initialize loss, loss_history, gradient,
-        FeatValType xnorm, wnorm;
-        FeatValType y_hat, loss, dloss;
-        FeatValType bias_update = 0.0;
-        FeatValType grad_correction = 0.0;
+        sgdlib::FeatureScalarType xnorm, wnorm;
+        sgdlib::FeatureScalarType y_hat, loss, dloss;
+        sgdlib::FeatureScalarType bias_update = 0.0;
+        sgdlib::FeatureScalarType grad_correction = 0.0;
         this->loss_history_.reserve(num_samples * this->max_iters_);
-        std::vector<FeatValType> prev_weight(num_features, 0.0);
-        std::vector<FeatValType> weight_update(num_features, 0.0);
+        std::vector<sgdlib::FeatureScalarType> prev_weight(num_features, 0.0);
+        std::vector<sgdlib::FeatureScalarType> weight_update(num_features, 0.0);
 
         // compute step size
-        FloatType step_size = 0.0;
-        std::unique_ptr<sgdlib::detail::StepSizeSearch<sgdlib::detail::LossFunction>> stepsize_search;
+        sgdlib::ScalarType step_size = 0.0;
+        std::unique_ptr<sgdlib::detail::StepSizeSearchType> stepsize_search;
         if (this->search_policy_ == "Constant") {
-            stepsize_search = std::make_unique<sgdlib::detail::ConstantSearch<sgdlib::detail::LossFunction>>(
-                X, y, this->loss_fn_, this->stepsize_search_params_
+            stepsize_search = std::make_unique<sgdlib::detail::ConstantSearch>(
+                dataset, this->loss_fn_, this->stepsize_search_params_
             );
             search_status = stepsize_search->search(is_saga_, step_size);
         }
-        else if (this->search_policy_ == "BasicLineSearch") {
-            stepsize_search = std::make_unique<sgdlib::detail::BasicLineSearch<sgdlib::detail::LossFunction>>(
-                X, y, this->loss_fn_, this->stepsize_search_params_
+        else if (this->search_policy_ == "ExactLineSearch") {
+            stepsize_search = std::make_unique<sgdlib::detail::ExactLineSearch>(
+                dataset, this->loss_fn_, this->stepsize_search_params_
             );
         }
         else {
-            THROW_INVALID_ERROR("SAG optimizer supports 'Constant' or 'BasicLineSearch' policy only.");
+            THROW_INVALID_ERROR("SAG optimizer supports 'ConstantLineSearch' or 'ExactLineSearch' policy only.");
         }
 
         std::size_t counter = 0;
@@ -140,12 +115,14 @@ public:
                 else {
                     sample_index = i;
                 }
+                dataset.X_row_data(sample_index, x);
+                dataset.y_row_data(sample_index, y);
 
                 // update the number of X seen
                 if (seen[sample_index] == 0) {
                     ++num_seens;
                     seen[sample_index] = 1;
-                    inv_num_seens = 1.0 / static_cast<FeatValType>(num_seens);
+                    inv_num_seens = 1.0 / static_cast<sgdlib::FeatureScalarType>(num_seens);
                 }
 
                 // update weights
@@ -159,7 +136,7 @@ public:
                         }
                         update_history[j] = counter;
                     }
-                    if (sgdlib::detail::hasinf<FeatValType>(w0)) {
+                    if (sgdlib::detail::hasinf<sgdlib::FeatureScalarType>(w0)) {
                         is_infinity = true;
                         break;
                     }
@@ -167,7 +144,7 @@ public:
 
                 loss = 0.0;
                 // compute loss value and its derivative (gradient) of this sample
-                y_hat = sgdlib::detail::vecdot<FeatValType>(
+                y_hat = sgdlib::detail::vecdot<sgdlib::FeatureScalarType>(
                     X.data() + sample_index * num_features,
                     X.data() + (sample_index + 1) * num_features,
                     w0.data()
@@ -181,7 +158,7 @@ public:
                 // detail see section 4.6 of Schmidt, M., Roux, N., & Bach, F. (2013).
                 // "Minimizing finite sums with the stochastic average gradient".
                 if (search_policy_ == "BasicLineSearch") {
-                    xnorm = sgdlib::detail::vecnorm2<FeatValType>(
+                    xnorm = sgdlib::detail::vecnorm2<sgdlib::FeatureScalarType>(
                         X.data() + (sample_index * num_features),
                         X.data() + ((sample_index + 1) * num_features),
                         true
@@ -194,14 +171,9 @@ public:
 
                 // make the weight update to grad_sum
                 // update = x * grad,
-                sgdlib::detail::vecscale<FeatValType>(
-                    X.data() + (sample_index * num_features),
-                    X.data() + ((sample_index + 1) * num_features),
-                    dloss,
-                    weight_update
-                );
+                sgdlib::detail::vecscale<sgdlib::FeatureScalarType>(x, dloss, weight_update);
                 for (std::size_t j = 0; j < num_features; ++j) {
-                    grad_correction = weight_update[j] - (grad_history[sample_index] * X[sample_index * num_features + j]);
+                    grad_correction = weight_update[j] - (grad_history[sample_index] * x[j]);
                     grad_sum[j] += grad_correction;
                     if (this->is_saga_) {
                         w0[j] -= (grad_correction * step_size * (1.0 - inv_num_seens) / wscale);
@@ -218,7 +190,7 @@ public:
                 else {
                     b0 -= step_size * bias_update * inv_num_seens;
                 }
-                if (sgdlib::detail::isinf<FeatValType>(b0)) {
+                if (sgdlib::detail::isinf<sgdlib::FeatureScalarType>(b0)) {
                     is_infinity = true;
                     break;
                 }
@@ -234,7 +206,7 @@ public:
                 }
 
                 // if wscale is too small, need to reset
-                if (counter >= 1 && wscale < WSCALE_THRESHOLD) {
+                if (counter >= 1 && wscale < sgdlib::detail::WSCALE_THRESHOLD) {
                     for (std::size_t j = 0; j < num_features; ++j) {
                         if (update_history[j] == 0) {
                             w0[j] -= cumulative_sum[counter] * grad_sum[j];
@@ -245,10 +217,10 @@ public:
                         update_history[j] = counter + 1;
                     }
                     cumulative_sum[counter] = 0.0;
-                    sgdlib::detail::vecscale<FeatValType>(w0, wscale, w0);
+                    sgdlib::detail::vecscale<sgdlib::FeatureScalarType>(w0, wscale, w0);
                     wscale = 1.0;
 
-                    if (sgdlib::detail::hasinf<FeatValType>(w0)) {
+                    if (sgdlib::detail::hasinf<sgdlib::FeatureScalarType>(w0)) {
                         is_infinity = true;
                         break;
                     }
@@ -258,7 +230,7 @@ public:
                 // scale weight for L2 penalty
                 if (this->alpha_ > 0.0) {
                     wscale *= 1.0 - this->alpha_ * step_size;
-                    wnorm = sgdlib::detail::vecnorm2(w0, true);
+                    wnorm = sgdlib::detail::vecnorm2<sgdlib::FeatureScalarType>(w0, true);
                     loss += this->alpha_ * wnorm;
                 }
 
@@ -280,15 +252,15 @@ public:
                     w0[j] -= (cumulative_sum[counter - 1] - cumulative_sum[update_history[j] - 1]) * grad_sum[j];
                 }
             }
-            sgdlib::detail::vecscale<FeatValType>(w0, wscale, w0);
+            sgdlib::detail::vecscale<sgdlib::FeatureScalarType>(w0, wscale, w0);
 
             // compute loss info
-            FeatValType sum_loss = sgdlib::detail::vecaccumul<FeatValType>(
+            sgdlib::FeatureScalarType sum_loss = sgdlib::detail::vecaccumul<sgdlib::FeatureScalarType>(
                 this->loss_history_.data() + (iter * num_samples),
                 this->loss_history_.data() + ((iter + 1) * num_samples)
             );
             // check if convergence test is reached
-            FeatValType max_change = 0.0, max_weight = 0.0;
+            sgdlib::FeatureScalarType max_change = 0.0, max_weight = 0.0;
             for (std::size_t j = 0; j < num_features; j++) {
                 max_weight = std::max(max_weight, std::abs(w0[j]));
                 max_change = std::max(max_change, std::abs(w0[j] - prev_weight[j]));
@@ -304,8 +276,8 @@ public:
             else {
                 if (this->verbose_) {
                     PRINT_RUNTIME_INFO(2, "Epoch = ", iter + 1,
-                                       ", xnorm = ", sgdlib::detail::vecnorm2<FeatValType>(w0, true),
-                                       ", loss = ", sum_loss / static_cast<FeatValType>(num_samples),
+                                       ", xnorm = ", sgdlib::detail::vecnorm2<sgdlib::FeatureScalarType>(w0, true),
+                                       ", loss = ", sum_loss / static_cast<sgdlib::FeatureScalarType>(num_samples),
                                        ", change = ", max_change / max_weight);
                 }
             }
