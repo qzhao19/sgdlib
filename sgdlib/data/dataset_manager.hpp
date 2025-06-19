@@ -8,7 +8,7 @@
 
 namespace sgdlib {
 
-template <typename FeatType, typename LabelType>
+template <typename sgdlib::FeatureScalarType, typename sgdlib::LabelScalarType>
 class DatasetManager {
 public:
     static DatasetManager& get_instance(std::size_t num_features = 0) {
@@ -45,12 +45,12 @@ public:
 
         while (samples_loaded < max_samples_ && std::getline(file, line)) {
             std::istringstream iss(line);
-            LabelType label;
+            sgdlib::LabelScalarType label;
             if (!(iss >> label)) {
                 THROW_RUNTIME_ERROR("Invalid label in: ", line);
             }
 
-            std::vector<FeatType> sample(num_features_, 0.0);
+            std::vector<sgdlib::FeatureScalarType> sample(num_features_, 0.0);
             parse_features(iss, sample);
 
             labels_.push_back(std::move(label));
@@ -66,19 +66,19 @@ public:
     }
 
     // get labels vector (thread-safe)
-    std::vector<LabelType> get_labels() const {
+    std::vector<sgdlib::LabelScalarType> get_labels() const {
         std::lock_guard lock(mutex_);
         return labels_;
     }
 
     // get features vector (thread-safe)
-    std::vector<FeatType> get_features() const {
+    std::vector<sgdlib::FeatureScalarType> get_features() const {
         std::lock_guard lock(mutex_);
         return features_;
     }
 
     // get single sample (thread-safe)
-    std::vector<FeatType> get_row_sample(std::size_t index) const {
+    std::vector<sgdlib::FeatureScalarType> get_row_sample(std::size_t index) const {
         std::lock_guard lock(mutex_);
         validate_index(index);
         return {features_.begin() + index * num_features_,
@@ -118,7 +118,7 @@ private:
 
     ~DatasetManager() = default;
 
-    void parse_features(std::istringstream& iss, std::vector<FeatType>& sample) {
+    void parse_features(std::istringstream& iss, std::vector<sgdlib::FeatureScalarType>& sample) {
         std::string token;
         while (iss >> token) {
             const auto colon_pos = token.find(':');
@@ -128,15 +128,15 @@ private:
 
             try {
                 const std::size_t dim = std::stoul(token.substr(0, colon_pos));
-                const FeatType value = [&]{
-                    if constexpr (std::is_same_v<FeatType, float>) {
+                const sgdlib::FeatureScalarType value = [&]{
+                    if constexpr (std::is_same_v<sgdlib::FeatureScalarType, float>) {
                         return std::stof(token.substr(colon_pos + 1));
                     }
-                    else if constexpr (std::is_same_v<FeatType, double>) {
+                    else if constexpr (std::is_same_v<sgdlib::FeatureScalarType, double>) {
                         return std::stod(token.substr(colon_pos + 1));
                     }
                     else {
-                        return static_cast<FeatType>(std::stod(token.substr(colon_pos + 1)));
+                        return static_cast<sgdlib::FeatureScalarType>(std::stod(token.substr(colon_pos + 1)));
                     }
                 }();
 
@@ -172,8 +172,8 @@ private:
         loaded_ = false;
     }
 
-    std::vector<LabelType> labels_;
-    std::vector<FeatType> features_;
+    std::vector<sgdlib::LabelScalarType> labels_;
+    std::vector<sgdlib::FeatureScalarType> features_;
     const std::size_t num_features_;
     bool loaded_ = false;
     std::size_t max_samples_ = 0;
