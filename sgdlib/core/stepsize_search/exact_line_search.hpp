@@ -10,7 +10,7 @@ class ExactLineSearch final: public StepSizeSearch {
 public:
     ExactLineSearch(const sgdlib::ArrayDatasetType &dataset,
                     const std::shared_ptr<sgdlib::detail::LossFunctionType> &loss_fn,
-                    std::shared_ptr<StepSizeSearchParamType> stepsize_search_params): StepSizeSearch (
+                    std::shared_ptr<sgdlib::StepSizeSearchParamType> stepsize_search_params): StepSizeSearch (
                         dataset,
                         loss_fn,
                         stepsize_search_params) {
