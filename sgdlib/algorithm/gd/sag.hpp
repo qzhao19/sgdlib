@@ -5,7 +5,7 @@
 
 namespace sgdlib {
 
-class SAG: public BaseOptimizer {
+class SAG: public Optimizer {
 public:
     SAG(const std::vector<sgdlib::FeatureScalarType>& w0,
         const sgdlib::FeatureScalarType& b0,
@@ -18,7 +18,7 @@ public:
         std::size_t random_seed,
         bool is_saga = false,
         bool shuffle = true,
-        bool verbose = true): BaseOptimizer(w0, loss, tol, max_iters, verbose) {
+        bool verbose = true): Optimizer(w0, loss, tol, max_iters, verbose) {
             this->b0_ = b0;
             this->search_policy_ = search_policy;
             this->alpha_ = alpha;
@@ -28,8 +28,8 @@ public:
             this->shuffle_ = shuffle;
             this->init_random_state();
             // initialize stepsize search params;
-            this->stepsize_search_params_ = std::make_unique<sgdlib::StepSizeSearchParamType>(
-                DEFAULT_STEPSIZE_SEARCH_PARAMS
+            this->stepsize_search_params_ = std::make_shared<sgdlib::StepSizeSearchParamType>(
+                sgdlib::detail::DEFAULT_STEPSIZE_SEARCH_PARAMS
             );
             this->stepsize_search_params_->alpha = alpha_;
             this->stepsize_search_params_->eta0 = eta0_;
@@ -41,8 +41,6 @@ public:
 
     void optimize(const sgdlib::ArrayDatasetType& dataset) override {
 
-        // const std::size_t num_samples = y.size();
-        // const std::size_t num_features = this->w0_.size();
         const std::size_t num_samples = dataset.nrows();
         const std::size_t num_features = dataset.ncols();
 
@@ -89,7 +87,7 @@ public:
         // compute step size
         sgdlib::ScalarType step_size = 0.0;
         std::unique_ptr<sgdlib::detail::StepSizeSearchType> stepsize_search;
-        if (this->search_policy_ == "Constant") {
+        if (this->search_policy_ == "ConstantSearch") {
             stepsize_search = std::make_unique<sgdlib::detail::ConstantSearch>(
                 dataset, this->loss_fn_, this->stepsize_search_params_
             );
@@ -144,26 +142,17 @@ public:
 
                 loss = 0.0;
                 // compute loss value and its derivative (gradient) of this sample
-                y_hat = sgdlib::detail::vecdot<sgdlib::FeatureScalarType>(
-                    X.data() + sample_index * num_features,
-                    X.data() + (sample_index + 1) * num_features,
-                    w0.data()
-                );
-
+                y_hat = sgdlib::detail::vecdot<sgdlib::FeatureScalarType>(x, w0);
                 y_hat = y_hat * wscale + b0;
-                loss  = this->loss_fn_->evaluate(y_hat, y[sample_index]);
-                dloss = this->loss_fn_->derivate(y_hat, y[sample_index]);
+                loss  = this->loss_fn_->evaluate(y_hat, y);
+                dloss = this->loss_fn_->derivate(y_hat, y);
 
                 // stepsize-search step, apply basic line-search method
                 // detail see section 4.6 of Schmidt, M., Roux, N., & Bach, F. (2013).
                 // "Minimizing finite sums with the stochastic average gradient".
-                if (search_policy_ == "BasicLineSearch") {
-                    xnorm = sgdlib::detail::vecnorm2<sgdlib::FeatureScalarType>(
-                        X.data() + (sample_index * num_features),
-                        X.data() + ((sample_index + 1) * num_features),
-                        true
-                    );
-                    search_status = stepsize_search->search(y_hat, y[sample_index], dloss, xnorm, i, step_size);
+                if (search_policy_ == "ExactLineSearch") {
+                    xnorm = sgdlib::detail::vecnorm2<sgdlib::FeatureScalarType>(x, true);
+                    search_status = stepsize_search->search(y_hat, y, dloss, xnorm, i, step_size);
                     if (search_status == -1) {
                         break;
                     }
