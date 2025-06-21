@@ -1086,31 +1086,20 @@ void row_norms(const sgdlib::ArrayDatasetType &dataset,
  *
  * @note The function assumes that the size of 'x' is divisible by the size of 'out'.
  */
-template<typename Type>
-void col_norms(const std::vector<Type>& x,
+template<typename T>
+void col_norms(const sgdlib::ArrayDatasetType &dataset,
                bool squared,
-               std::vector<Type>& out) {
+               std::vector<T>& out) {
 
-    std::size_t num_elems = x.size();
-    std::size_t ncols = out.size();
-    std::size_t nrows = num_elems / ncols;
+    std::size_t nrows = dataset.nrows();
+    std::size_t ncols = dataset.ncols();
 
-    std::size_t j = 0;
-    while (j < ncols) {
-        Type sum_sq = 0.0;
-        for (std::size_t i = 0; i < nrows; ++i) {
-            Type val = x[j + i * ncols];
-            sum_sq += val * val;
-        }
-        out[j] = sum_sq;
-        ++j;
-    }
-
-    if (!squared) {
-        std::transform(out.begin(), out.end(), out.begin(),
-                    [](const Type& value) {
-                        return std::sqrt(value);
-                    });
+    T norm;
+    std::vector<T> col(ncols);
+    for (std::size_t j = 0; j < ncols; ++j) {
+        dataset.X_column_data(j, col);
+        norm = vecnorm2<T>(col, squared);
+        out[j] = norm;
     }
 };
 
