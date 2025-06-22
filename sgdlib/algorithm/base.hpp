@@ -85,7 +85,7 @@ protected:
 
     sgdlib::LossParamType loss_params_;
     sgdlib::LRDecayParamType lr_decay_params_;
-    std::unique_ptr<sgdlib::StepSizeSearchParamType> stepsize_search_params_;
+    std::shared_ptr<sgdlib::StepSizeSearchParamType> stepsize_search_params_;
 
     std::vector<std::size_t> X_data_index_;
     std::vector<sgdlib::FeatureScalarType> loss_history_;
