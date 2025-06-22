@@ -5,7 +5,7 @@
 
 namespace sgdlib {
 
-class SCD: public BaseOptimizer {
+class SCD: public Optimizer {
 public:
     SCD(const std::vector<sgdlib::FeatureScalarType>& w0,
         std::string loss,
@@ -18,6 +18,16 @@ public:
             this->alpha_ = alpha;
             this->random_seed_ = random_seed;
             this->shuffle_ = shuffle;
+            init_random_state();
+            init_loss_params();
+            this->rho_ = (loss_ == "LogLoss") ? 0.25 : 1.0;
+
+            // if (loss_ == "LogLoss") {
+            //     rho_ = 0.25;
+            // }
+            // else {
+            //     rho_ = 1.0;
+            // }
     }
 
     ~SCD() = default;
@@ -26,7 +36,7 @@ public:
         const std::size_t num_samples = dataset.nrows();
         const std::size_t num_features = dataset.ncols();
         const sgdlib::FeatureScalarType inv_num_samples = 1.0 / static_cast<sgdlib::FeatureScalarType>(num_samples);
-
+        std::cout << "num_samples = " << num_samples << "\n";
         // initialize w0 (weight)
         std::vector<sgdlib::FeatureScalarType> w0 = this->w0_;
 
@@ -39,7 +49,7 @@ public:
         bool is_converged = false;
 
         // init x_j, y_i
-        std::vector<sgdlib::LabelScalarType> y;
+        std::vector<sgdlib::LabelScalarType> y(num_samples);
         dataset.y_column_data(y);
         std::vector<sgdlib::FeatureScalarType> x_col(num_samples);
 
@@ -59,7 +69,7 @@ public:
             sgdlib::FeatureScalarType pred_descent;
 
             // cycle through all the features
-            for (feature_index = 0; feature_index < num_features; ++feature_index) {
+            for (int j = 0; j < num_features; ++j) {
                 // choose a feature index randomly
                 if(this->shuffle_) {
                     feature_index = this->random_state_.random_index(0, num_features);
