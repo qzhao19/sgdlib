@@ -131,9 +131,18 @@ public:
         if (j >= ncols_) {
             THROW_OUT_RANGE_ERROR("Column index out of range");
         }
-        std::memcpy(column.data(),
+
+        // std::cout << "column size = " << column.size() << "\n";
+        if (column.size() != nrows_) {
+            THROW_RUNTIME_ERROR("X_column_data: column vector size mismatch");
+        }
+
+        std::memcpy(
+            column.data(),
             X_data_ptr_.get() + j * nrows_,
-            nrows_ * sizeof(sgdlib::FeatureScalarType));
+            nrows_ * sizeof(sgdlib::FeatureScalarType)
+        );
+
     }
 
     void y_column_data(std::vector<sgdlib::LabelScalarType> &column) const {
