@@ -1095,7 +1095,7 @@ void col_norms(const sgdlib::ArrayDatasetType &dataset,
     std::size_t ncols = dataset.ncols();
 
     T norm;
-    std::vector<T> col(ncols);
+    std::vector<T> col(nrows);
     for (std::size_t j = 0; j < ncols; ++j) {
         dataset.X_column_data(j, col);
         norm = vecnorm2<T>(col, squared);
