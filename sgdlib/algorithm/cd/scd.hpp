@@ -21,13 +21,6 @@ public:
             init_random_state();
             init_loss_params();
             this->rho_ = (loss_ == "LogLoss") ? 0.25 : 1.0;
-
-            // if (loss_ == "LogLoss") {
-            //     rho_ = 0.25;
-            // }
-            // else {
-            //     rho_ = 1.0;
-            // }
     }
 
     ~SCD() = default;
@@ -36,7 +29,6 @@ public:
         const std::size_t num_samples = dataset.nrows();
         const std::size_t num_features = dataset.ncols();
         const sgdlib::FeatureScalarType inv_num_samples = 1.0 / static_cast<sgdlib::FeatureScalarType>(num_samples);
-        std::cout << "num_samples = " << num_samples << "\n";
         // initialize w0 (weight)
         std::vector<sgdlib::FeatureScalarType> w0 = this->w0_;
 
@@ -52,14 +44,13 @@ public:
         std::vector<sgdlib::LabelScalarType> y(num_samples);
         dataset.y_column_data(y);
         std::vector<sgdlib::FeatureScalarType> x_col(num_samples);
-
-        std::size_t iter = 0;
-        std::size_t feature_index;
+        std::size_t iter, feature_index;
 
         // compute column-wise norm2
         std::vector<sgdlib::FeatureScalarType> X_col_norm(num_features);
         sgdlib::detail::col_norms<sgdlib::FeatureScalarType>(dataset, false, X_col_norm);
 
+        // start to loop
         for (iter = 0; iter < this->max_iters_; ++iter) {
             max_weight = 0.0;
             max_weight_update = 0.0;
@@ -82,10 +73,10 @@ public:
 
                 // compute gradient for target feature X[:, feature_index]
                 dloss = 0.0;
+                dataset.X_column_data(feature_index, x_col);
                 #if defined(USE_OPENMP)
                 #pragma omp parallel for reduction(+:dloss)
                 #endif
-                dataset.X_column_data(feature_index, x_col);
                 for (std::size_t i = 0; i < num_samples; ++i) {
                     dloss += this->loss_fn_->derivate(y_hat[i], y[i]) * x_col[i];
                 }
@@ -108,7 +99,7 @@ public:
                 // -this->alpha_ * std::abs(w0[feature_index] + weight_update): L1 regularization term
                 //                                                              for weights after updated
                 // +this->alpha_ * std::abs(w0[feature_index]): L1 regularization term for current weight
-                pred_descent = -weight_update*grad
+                pred_descent = -weight_update * grad
                                - this->rho_ / 2.0 * weight_update * weight_update
                                - this->alpha_ * std::abs(w0[feature_index] + weight_update)
                                + this->alpha_ * std::abs(w0[feature_index]);
@@ -135,10 +126,7 @@ public:
             max_weight_update = std::fmax(max_weight_update, std::abs(w0[feature_index] - prev_weight));
 
             // update inner product y_hat
-            #if defined(USE_OPENMP)
-            #pragma omp parallel for
-            #endif
-            sgdlib::detail::vecadd(x_col, weight_update, y_hat);
+            sgdlib::detail::vecadd<sgdlib::FeatureScalarType>(x_col, weight_update, y_hat);
 
             // compute loss
             loss = 0.0;
@@ -146,6 +134,7 @@ public:
                 loss += this->loss_fn_->evaluate(y_hat[i], y[i]);
             }
             loss *= inv_num_samples;
+
             // store loss value into loss_history
             this->loss_history_.push_back(loss);
 
