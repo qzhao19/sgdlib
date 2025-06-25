@@ -18,8 +18,8 @@ public:
             this->alpha_ = alpha;
             this->random_seed_ = random_seed;
             this->shuffle_ = shuffle;
-            init_random_state();
-            init_loss_params();
+            this->init_random_state();
+            this->init_loss_params();
             this->rho_ = (loss_ == "LogLoss") ? 0.25 : 1.0;
     }
 
@@ -64,6 +64,9 @@ public:
                 // choose a feature index randomly
                 if(this->shuffle_) {
                     feature_index = this->random_state_.random_index(0, num_features);
+                }
+                else {
+                    feature_index = j % num_features;
                 }
 
                 // if norms of the columns of X is null
