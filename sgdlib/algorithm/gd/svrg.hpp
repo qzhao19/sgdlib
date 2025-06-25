@@ -5,90 +5,55 @@
 
 namespace sgdlib {
 
-/**
- * @file svrg.hpp
- *
- * @class SVRG
- *
- * @brief Implements the Stochastic Variance Reduced Gradient (SVRG) optimization algorithm.
- *
-*/
-class SVRG: public BaseOptimizer {
+class SVRG: public Optimizer {
 public:
-    /**
-     * @brief Constructor for the SVRG optimizer.
-     *
-     * Initializes the SVRG optimizer with the given parameters and passes them to the
-     * base class `BaseOptimizer`.
-     *
-     * @param w0 Initial weight vector for the model.
-     * @param loss The loss function to be minimized.
-     * @param lr_policy The learning rate policy (e.g., constant, adaptive).
-     * @param alpha L2 regularization parameter.
-     * @param eta0 Initial learning rate.
-     * @param tol Tolerance for convergence.
-     * @param gamma Decay factor for the learning rate (used in some learning rate policies).
-     * @param max_iters Maximum number of iterations for optimization.
-     * @param num_inner Size of the mini-batch used for gradient computation.
-     * @param random_seed Seed for the random number generator.
-     * @param shuffle If true, shuffles the data before each epoch (default: true).
-     * @param verbose If true, enables logging of optimization progress (default: true).
-     *
-     * @note This constructor calls the constructor of the base class `BaseOptimizer` to
-     *       complete the initialization of the optimizer.
-     * @see BaseOptimizer
-     */
-    SVRG(const std::vector<FeatValType>& w0,
+    SVRG(const std::vector<sgdlib::FeatureScalarType>& w0,
         std::string loss,
         std::string lr_policy,
-        FloatType alpha,
-        FloatType eta0,
-        FloatType tol,
-        FloatType gamma,
+        sgdlib::ScalarType alpha,
+        sgdlib::ScalarType eta0,
+        sgdlib::ScalarType tol,
+        sgdlib::ScalarType gamma,
         std::size_t max_iters,
         std::size_t num_inner,
         std::size_t random_seed,
         bool shuffle = true,
-        bool verbose = true): BaseOptimizer(w0,
-            loss,
-            lr_policy,
-            alpha,
-            eta0,
-            tol,
-            gamma,
-            max_iters,
-            num_inner,
-            random_seed,
-            shuffle,
-            verbose) {};
+        bool verbose = true): Optimizer(w0, loss, tol, max_iters, verbose) {
+            this->lr_policy_ = lr_policy;
+            this->alpha_ = alpha;
+            this->eta0_ = eta0;
+            this->gamma_ = gamma;
+            this->num_inner_ = num_inner;
+            this->random_seed_ = random_seed;
+            this->shuffle_ = shuffle;
+            this->init_random_state();
+            this->init_loss_params();
+        }
 
-    /**
-     * @brief Destructor for the SGD optimizer.
-     *
-     * Default destructor.
-     */
     ~SVRG() = default;
 
-    void optimize(const std::vector<FeatValType>& X,
-                  const std::vector<LabelValType>& y) override {
-
+    void optimize(const sgdlib::ArrayDatasetType& dataset) override {
         // Get the number of samples and features from the input data
-        const std::size_t num_samples = y.size();
-        const std::size_t num_features = this->w0_.size();
-        const FeatValType inv_num_samples = 1.0 / static_cast<FeatValType>(num_samples);
+        const std::size_t num_samples = dataset.nrows();
+        const std::size_t num_features = dataset.ncols();
+        const sgdlib::FeatureScalarType inv_num_samples = 1.0 / static_cast<sgdlib::FeatureScalarType>(num_samples);
         // Initialize iteration counter, sample index, and batch size
         std::size_t iter = 0, sample_index = 0;
 
         // Initialize convergence flag and best loss
         bool is_converged = false;
         bool is_infinity = false;
-        FeatValType wscale = 1.0;
+        sgdlib::FeatureScalarType wscale = 1.0;
 
-        const FeatValType eta_avg = this->eta0_ * inv_num_samples;
-        const FeatValType eta_alpha = this->eta0_ * this->alpha_;
+        const sgdlib::FeatureScalarType eta_avg = this->eta0_ * inv_num_samples;
+        const sgdlib::FeatureScalarType eta_alpha = this->eta0_ * this->alpha_;
 
         //
-        FeatValType reg_dw, fnorm, fnorm_ratio, init_fnorm, alpha_scaled;
+        sgdlib::FeatureScalarType reg_dw, fnorm, fnorm_ratio, init_fnorm, alpha_scaled;
+
+        // init x_i, y_i
+        sgdlib::LabelScalarType y;
+        std::vector<sgdlib::FeatureScalarType> x(num_features);
 
         // initialize a lookup table for training X, y
         this->X_data_index_.resize(num_samples);
@@ -96,73 +61,25 @@ public:
         this->loss_history_.reserve(this->max_iters_ * this->num_inner_);
 
         // initialize gradient,
-        FeatValType y_hat, grad, loss;
-        std::vector<FeatValType> grad_history(num_samples, 0.0);
-        std::vector<FeatValType> full_weight_update(num_features, 0.0);
+        sgdlib::FeatureScalarType y_hat, grad, loss, total_loss;
+        std::vector<sgdlib::FeatureScalarType> grad_history(num_samples, 0.0);
+        std::vector<sgdlib::FeatureScalarType> full_weight_update(num_features, 0.0);
         std::vector<std::size_t> update_history(num_features, 0);
 
         // initialize w0 (weight)
-        std::vector<FeatValType> w0 = this->w0_;
+        std::vector<sgdlib::FeatureScalarType> w0 = this->w0_;
 
         // start iteration
         for (iter = 0; iter < this->max_iters_; ++iter) {
             // Reset the full weight update vector to zero at the beginning of each iteration
-            sgdlib::detail::vecset<FeatValType>(full_weight_update, 0.0);
+            sgdlib::detail::vecset<sgdlib::FeatureScalarType>(full_weight_update, 0.0);
 
-#if defined(USE_OPENMP)
-            int num_threads = 1;
-            #pragma omp parallel
-            {
-                #pragma omp single
-                num_threads = omp_get_max_threads();
-            }
-            // define independant local_grad for each thread
-            std::vector<std::vector<FeatValType>> local_grad(
-                num_threads, std::vector<FeatValType>(num_features, 0.0)
-            );
-            // OpenMP reduction for loss and manual reduction for grad
-            #pragma omp parallel private(y_hat)
-            {
-                int thread_id = omp_get_thread_num();
-                std::vector<FeatValType>& thread_grad = local_grad[thread_id];
-                #pragma omp for nowait
-                for (std::size_t i = 0; i < num_samples; ++i) {
-                    y_hat = sgdlib::detail::vecdot<FeatValType>(
-                        X.data() + (i * num_features),
-                        X.data() + ((i + 1) * num_features),
-                        w0.data()
-                    );
-                    grad_history[i] = this->loss_fn_->derivate(y_hat, y[i]);
-                    sgdlib::detail::vecadd<FeatValType>(
-                        X.data() + (i * num_features),
-                        X.data() + ((i + 1) * num_features),
-                        grad_history[i],
-                        thread_grad
-                    );
-                }
-            }
-            // main thread reduction for grad
-            for (std::size_t t = 0; t < num_threads; ++t) {
-                sgdlib::detail::vecadd<FeatValType>(full_weight_update, local_grad[t], full_weight_update);
-            }
-#else
-            // compute full gradeint for all data
-            for (std::size_t i = 0; i < num_samples; ++i) {
-                y_hat = sgdlib::detail::vecdot<FeatValType>(
-                    X.data() + (i * num_features),
-                    X.data() + ((i + 1) * num_features),
-                    w0.data()
-                );
-                y_hat = y_hat * wscale;
-                grad_history[i] = this->loss_fn_->derivate(y_hat, y[i]);
-                sgdlib::detail::vecadd<FeatValType>(
-                    X.data() + (i * num_features),
-                    X.data() + ((i + 1) * num_features),
-                    grad_history[i],
-                    full_weight_update
-                );
-            }
-#endif
+            // trigger callback function to get grad_history
+            this->loss_fn_->set_callback([&grad_history](const std::vector<sgdlib::FeatureScalarType>& dloss_history){
+                grad_history.assign(dloss_history.begin(), dloss_history.end());
+            })
+            total_loss = this->loss_fn_->evaluate_with_gradient(dataset, w0, full_weight_update);
+
             // inner loop
             for (std::size_t n = 0; n < this->num_inner_; ++n) {
                 // shuffle the samples
@@ -172,6 +89,10 @@ public:
                 else {
                     sample_index = n % num_samples;
                 }
+
+                // get X_i and y_i
+                dataset.X_row_data(sample_index, x);
+                dataset.y_row_data(sample_index, y);
 
                 // just-in-time update for full weight 1/n * sum(d(f_k_w))
                 // n - update_history[j]: weight is not be updated for n - update_history[j] times
@@ -186,29 +107,38 @@ public:
                 }
 
                 // current gradient at sample_index row data
-                y_hat = sgdlib::detail::vecdot<FeatValType>(
-                    X.data() + (sample_index * num_features),
-                    X.data() + ((sample_index + 1) * num_features),
-                    w0.data()
-                );
+                // y_hat = sgdlib::detail::vecdot<sgdlib::FeatureScalarType>(
+                //     X.data() + (sample_index * num_features),
+                //     X.data() + ((sample_index + 1) * num_features),
+                //     w0.data()
+                // );
+                y_hat = sgdlib::detail::vecdot<sgdlib::FeatureScalarType>(x, w0);
+
                 y_hat = y_hat * wscale;
-                loss = this->loss_fn_->evaluate(y_hat, y[sample_index]);
-                grad = this->loss_fn_->derivate(y_hat, y[sample_index]);
+                // loss = this->loss_fn_->evaluate(y_hat, y[sample_index]);
+                // grad = this->loss_fn_->derivate(y_hat, y[sample_index]);
+
+                loss = this->loss_fn_->evaluate(y_hat, y);
+                grad = this->loss_fn_->derivate(y_hat, y);
 
                 // update the weight scale factor based on eta*alpha
                 wscale *= (1 - eta_alpha);
 
                 // update w: old_gradient - new_gradient
-                sgdlib::detail::vecadd<FeatValType>(
-                    X.data() + (sample_index * num_features),
-                    X.data() + ((sample_index + 1) * num_features),
-                    this->eta0_ * (grad_history[sample_index] - grad) / wscale, w0
+                // sgdlib::detail::vecadd<sgdlib::FeatureScalarType>(
+                //     X.data() + (sample_index * num_features),
+                //     X.data() + ((sample_index + 1) * num_features),
+                //     this->eta0_ * (grad_history[sample_index] - grad) / wscale, w0
+                // );
+
+                sgdlib::detail::vecadd<sgdlib::FeatureScalarType>(
+                    x, this->eta0_ * (grad_history[sample_index] - grad) / wscale, w0
                 );
 
                 // check if the weight scale factor is below the threshold
                 // rescale the weights and reset the scale factor
-                if (wscale < WSCALE_THRESHOLD) {
-                    sgdlib::detail::vecscale<FeatValType>(w0, wscale, w0);
+                if (wscale < sgdlib::detail::WSCALE_THRESHOLD) {
+                    sgdlib::detail::vecscale<sgdlib::FeatureScalarType>(w0, wscale, w0);
                     wscale = 1.0;
                 }
 
@@ -249,7 +179,7 @@ public:
                 break;
             }
 
-            if (sgdlib::detail::hasinf<FeatValType>(w0)) {
+            if (sgdlib::detail::hasinf<sgdlib::FeatureScalarType>(w0)) {
                 is_infinity = true;
                 break;
             }
@@ -274,7 +204,7 @@ public:
         this->w_opt_ = w0;
     }
 
-    const FeatValType get_intercept() const override {
+    const sgdlib::FeatureScalarType get_intercept() const override {
         THROW_LOGIC_ERROR("The 'get_intercept' method is not supported for this SVRG optimizer.");
         return 0.0;
     }
