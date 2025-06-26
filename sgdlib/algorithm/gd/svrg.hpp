@@ -77,7 +77,7 @@ public:
             // trigger callback function to get grad_history
             this->loss_fn_->set_callback([&grad_history](const std::vector<sgdlib::FeatureScalarType>& dloss_history){
                 grad_history.assign(dloss_history.begin(), dloss_history.end());
-            })
+            });
             total_loss = this->loss_fn_->evaluate_with_gradient(dataset, w0, full_weight_update);
 
             // inner loop
