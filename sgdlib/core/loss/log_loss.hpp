@@ -64,6 +64,8 @@ public:
         sgdlib::FeatureScalarType loss = 0.0;
         sgdlib::FeatureScalarType dloss, y_hat;
         this->dloss_history_.resize(num_samples);
+        sgdlib::FeatureScalarType wscale;
+        wscale = this->loss_param_.count("wscale") ? this->loss_param_["wscale"] : 1.0;
 
 #if defined(USE_OPENMP)
         int num_threads = 1;
@@ -93,6 +95,7 @@ public:
                 dataset.X_row_data(i, x);
                 dataset.y_row_data(i, y);
                 y_hat = sgdlib::detail::vecdot<sgdlib::FeatureScalarType>(x, w);
+                y_hat = y_hat * wscale;
                 loss += evaluate(y_hat, y);
                 dloss = derivate(y_hat, y);
                 this->dloss_history_[i] = dloss;
@@ -111,7 +114,8 @@ public:
             dataset.X_row_data(i, x);
             dataset.y_row_data(i, y);
             // compute W * X
-            y_hat = sgdlib::detail::vecdot<sgdlib::FeatureScalarType>(x, w);
+            y_hat = sgdlib::detail::vecdot<sgdlib::FeatureScalarType>(x, w) * wscale;
+            y_hat = y_hat * wscale;
             loss += evaluate(y_hat, y);
             dloss = derivate(y_hat, y);
             this->dloss_history_[i] = dloss;
