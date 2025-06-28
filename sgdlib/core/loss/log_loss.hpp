@@ -60,12 +60,12 @@ public:
         // get num samples and features
         const std::size_t num_samples = dataset.nrows();
         const std::size_t num_features = dataset.ncols();
-        const sgdlib::FeatureScalarType inv_num_samples = 1.0 / static_cast<sgdlib::FeatureScalarType>(num_samples);
         sgdlib::FeatureScalarType loss = 0.0;
         sgdlib::FeatureScalarType dloss, y_hat;
         this->dloss_history_.resize(num_samples);
-        sgdlib::FeatureScalarType wscale;
-        wscale = this->loss_param_.count("wscale") ? this->loss_param_["wscale"] : 1.0;
+        sgdlib::ScalarType wscale;
+        auto it = this->loss_param_.find("wscale");
+        wscale = it != this->loss_param_.end() ? it->second : 1.0;
 
 #if defined(USE_OPENMP)
         int num_threads = 1;
@@ -109,12 +109,14 @@ public:
 #else
         sgdlib::LabelScalarType y;
         std::vector<sgdlib::FeatureScalarType> x(num_features);
+
         for (std::size_t i = 0; i < num_samples; ++i) {
             // get x_i, y_i
             dataset.X_row_data(i, x);
             dataset.y_row_data(i, y);
+
             // compute W * X
-            y_hat = sgdlib::detail::vecdot<sgdlib::FeatureScalarType>(x, w) * wscale;
+            y_hat = sgdlib::detail::vecdot<sgdlib::FeatureScalarType>(x, w);
             y_hat = y_hat * wscale;
             loss += evaluate(y_hat, y);
             dloss = derivate(y_hat, y);
@@ -122,9 +124,6 @@ public:
             sgdlib::detail::vecadd<sgdlib::FeatureScalarType>(x, dloss, grad);
         }
 #endif
-        loss *= inv_num_samples;
-        sgdlib::detail::vecscale<sgdlib::FeatureScalarType>(grad, inv_num_samples, grad);
-
         if (callback_) {
             callback_(this->dloss_history_);
         }
