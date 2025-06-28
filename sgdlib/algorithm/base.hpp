@@ -42,9 +42,6 @@ public:
 
     virtual void optimize(const sgdlib::ArrayDatasetType& dataset) = 0;
 
-    virtual void optimize(const std::vector<sgdlib::FeatureScalarType>& X,
-                          const std::vector<sgdlib::LabelScalarType>& y) = 0;
-
     const std::vector<sgdlib::FeatureScalarType> get_weights() const {
         return w_opt_;
     }
