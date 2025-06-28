@@ -104,8 +104,7 @@ public:
     std::unique_ptr<sgdlib::ArrayDatasetType> dataset;
 };
 
-
-TEST_F(SVRGTest, SVRGOptimizerTest) {
+TEST_F(SVRGTest, SVRGOptimizerTest2) {
     optimizer->optimize(*dataset);
     std::vector<double> coef;
     coef = optimizer->get_weights();
