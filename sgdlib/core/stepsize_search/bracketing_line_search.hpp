@@ -25,11 +25,11 @@ public:
                sgdlib::ScalarType &stepsize) override {
 
         // num_features_ = x.size();
+        std::size_t num_samples = this->dataset_.nrows();
         std::size_t num_features = this->dataset_.ncols();
-
         sgdlib::ScalarType dec_factor = this->stepsize_search_params_->dec_factor;
         sgdlib::ScalarType inc_factor = this->stepsize_search_params_->inc_factor;
-
+        sgdlib::FeatureScalarType inv_num_samples = 1.0 / static_cast<sgdlib::FeatureScalarType>(num_samples);
         if (stepsize <= 0.0) {
             // step must be positive
             return LBFGS_ERROR_INVALID_PARAMETERS;
@@ -48,8 +48,8 @@ public:
         sgdlib::ScalarType stepsize_hi = INF;
         sgdlib::ScalarType stepsize_lo = 0.0;
         // define loss and grad vector
-        sgdlib::FeatureScalarType loss;
-        std::vector<sgdlib::FeatureScalarType> grad(num_features, 0.0);
+        sgdlib::FeatureScalarType total_loss;
+        std::vector<sgdlib::FeatureScalarType> total_grad(num_features);
 
         int count = 0;
         while (true) {
@@ -57,12 +57,14 @@ public:
             sgdlib::detail::vecadd<sgdlib::FeatureScalarType>(d, xp, stepsize, x);
 
             // reset gradient vector for ecah loop
-            std::memset(grad.data(), 0, num_features * sizeof(sgdlib::FeatureScalarType));
+            std::memset(total_grad.data(), 0, num_features * sizeof(sgdlib::FeatureScalarType));
 
             // compute the loss value and gradient vector
-            loss = this->loss_fn_->evaluate_with_gradient(this->dataset_, x, grad);
-            fx = loss;
-            g = grad;
+            total_loss = this->loss_fn_->evaluate_with_gradient(this->dataset_, x, total_grad);
+            total_loss *= inv_num_samples;
+            sgdlib::detail::vecscale<sgdlib::FeatureScalarType>(total_grad, inv_num_samples, total_grad);
+            fx = total_loss;
+            g = total_grad;
 
             ++count;
 
