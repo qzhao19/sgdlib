@@ -72,15 +72,16 @@ TEST_F(LossTest, LogLossTest) {
         1.2, 5.5,
         0.3, 1.8};
     std::vector<int> y = {1, 1};
-    std::vector<double> grad(4);
+    std::vector<double> total_grad(4);
 
     sgdlib::ArrayDatasetType dataset(x, y, 2, 4);
 
-    double loss_total = loss_fn->evaluate_with_gradient(dataset, w, grad);
-
-    EXPECT_DOUBLES_EQUAL(loss_total, 2.272473226451872e-05);
+    double total_loss = loss_fn->evaluate_with_gradient(dataset, w, total_grad);
+    total_loss /= 2.0;
+    sgdlib::detail::vecscale<sgdlib::FeatureScalarType>(total_grad, 0.5, total_grad);
+    EXPECT_DOUBLES_EQUAL(total_loss, 2.272473226451872e-05);
     for (std::size_t i = 0; i < g.size(); ++i) {
-        EXPECT_NEAR(grad[i], expect_g[i], tol);
+        EXPECT_NEAR(total_grad[i], expect_g[i], tol);
     }
 
 };
@@ -150,6 +151,7 @@ TEST_F(LossTest, LogLossAllDataTest) {
     std::vector<double> w = {1.0, 1.0, 1.0, 1.0};
     std::size_t num_samples = y_train.size();
     std::size_t num_features = w.size();
+    sgdlib::FeatureScalarType inv_num_samples = 1.0 / static_cast<sgdlib::FeatureScalarType>(num_samples);
     sgdlib::ArrayDatasetType dataset(X_train, y_train, 150, 4);
     double y_hat;
     double loss = 0.0;
@@ -188,12 +190,14 @@ TEST_F(LossTest, LogLossAllDataTest) {
     });
 
     tolerance = 1e-5;
-    std::vector<double> grad_total(num_features);
+    std::vector<double> total_grad(num_features);
     // call evaluate_with_gradient to trigger callback function
-    double loss_total = loss_fn->evaluate_with_gradient(dataset, w, grad_total);
-    EXPECT_NEAR(loss_total, 5.99602, tolerance);
+    double total_loss = loss_fn->evaluate_with_gradient(dataset, w, total_grad);
+    total_loss *= inv_num_samples;
+    sgdlib::detail::vecscale<sgdlib::FeatureScalarType>(total_grad, inv_num_samples, total_grad);
+    EXPECT_NEAR(total_loss, 5.99602, tolerance);
     for (std::size_t i = 0; i < grad.size(); ++i) {
-        EXPECT_NEAR(grad_total[i], expect_grad[i], tolerance);
+        EXPECT_NEAR(total_grad[i], expect_grad[i], tolerance);
     }
 
     // std::cout << "all_dlosses size: " << all_dlosses.size() << std::endl;
