@@ -47,7 +47,7 @@ inline std::unique_ptr<T[], void(*)(void*)> vecalloc(std::size_t n) {
     if (!ptr) {
         throw std::bad_alloc();
     }
-    std::memset(ptr, 0, n * sizeof(T));
+    // std::memset(ptr, 0, n * sizeof(T));
     return std::unique_ptr<T[], void(*)(void*)>(
         static_cast<T*>(ptr),
         [](void* p) { free(p); }
