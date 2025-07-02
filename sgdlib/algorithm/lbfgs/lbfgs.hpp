@@ -5,7 +5,7 @@
 
 namespace sgdlib {
 
-class LBFGS: public BaseOptimizer {
+class LBFGS: public Optimizer {
 private:
     struct LimitedMemoryData {
         sgdlib::FeatureScalarType mem_ys;
@@ -24,14 +24,16 @@ public:
           std::size_t max_iters,
           std::size_t mem_size,
           std::size_t past,
-          StepSizeSearchParamType* stepsize_search_params,
+          std::shared_ptr<sgdlib::StepSizeSearchParamType> stepsize_search_params,
           bool verbose = true): Optimizer(w0, loss, tol, max_iters, verbose) {
         this->search_policy_ = search_policy;
         this->delta_ = delta;
         this->mem_size_ = mem_size;
         this->past_ = past;
         if (stepsize_search_params == nullptr) {
-            stepsize_search_params_ = &sgdlib::detail::DEFAULT_STEPSIZE_SEARCH_PARAMS;
+            this->stepsize_search_params_ = std::make_shared<sgdlib::StepSizeSearchParamType>(
+                sgdlib::detail::DEFAULT_STEPSIZE_SEARCH_PARAMS
+            );
             PRINT_RUNTIME_INFO(1, "Use default search parameters.");
         }
         this->stepsize_search_params_ = stepsize_search_params;
@@ -39,6 +41,7 @@ public:
     };
 
     ~LBFGS() = default;
+
 
     void optimize(const sgdlib::ArrayDatasetType& dataset) override {
 
@@ -68,16 +71,16 @@ public:
         // mem_s: storing changes of parameters in the past
         // mem_y: storing changes of gradient in the past
         // mem_ys: storing value of y_T_k @ s_k
-        auto limited_mem_data = sgdlib::detail::vecalloc<LimitedMemoryDataType>(this->mem_size_);
+        std::vector<LimitedMemoryDataType> limited_mem_data(this->mem_size_);
         for (std::size_t i = 0; i < this->mem_size_; ++i) {
-            limited_mem_data[i].mem_y.resize(num_features, 0.0);
-            limited_mem_data[i].mem_s.resize(num_features, 0.0);
+            limited_mem_data[i].mem_y.resize(num_features);
+            limited_mem_data[i].mem_s.resize(num_features);
             limited_mem_data[i].mem_ys = 0.0;
             limited_mem_data[i].mem_alpha = 0.0;
         }
 
         // vector for storing previous values of the objective function
-        std::vector<sgdlib::FeatureScalarType> pfx(std::max(1, this->past_));
+        std::vector<sgdlib::FeatureScalarType> pfx(std::max(static_cast<std::size_t>(1), this->past_));
 
         // call step search policy
         std::unique_ptr<sgdlib::detail::StepSizeSearch> stepsize_search;
