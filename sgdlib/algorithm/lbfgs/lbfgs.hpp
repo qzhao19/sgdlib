@@ -42,7 +42,6 @@ public:
 
     ~LBFGS() = default;
 
-
     void optimize(const sgdlib::ArrayDatasetType& dataset) override {
 
         const std::size_t num_samples = dataset.nrows();
