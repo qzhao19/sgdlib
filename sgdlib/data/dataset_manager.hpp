@@ -8,7 +8,7 @@
 
 namespace sgdlib {
 
-template <typename sgdlib::FeatureScalarType, typename sgdlib::LabelScalarType>
+template <typename FeatureScalarType, typename LabelScalarType>
 class DatasetManager {
 public:
     static DatasetManager& get_instance(std::size_t num_features = 0) {
@@ -39,22 +39,30 @@ public:
 
         clear_unsafe(); // Clear existing data
 
+        // Temporary row-major cache
+        std::vector<FeatureScalarType> temp_features;
+        temp_features.reserve(max_samples_ > 0 ? max_samples_ * num_features_ : 1024 * num_features_);
+
         std::string line;
         std::size_t samples_loaded = 0;
-        features_.reserve(max_samples_ > 0 ? max_samples_ * num_features_ : 1024 * num_features_);
 
-        while (samples_loaded < max_samples_ && std::getline(file, line)) {
+        while (std::getline(file, line)) {
+            // If the max_samples_ is set, check whether the upper limit has been reached.
+            if (max_samples_ > 0 && samples_loaded >= max_samples_) {
+                break;
+            }
+
             std::istringstream iss(line);
-            sgdlib::LabelScalarType label;
+            LabelScalarType label;
             if (!(iss >> label)) {
                 THROW_RUNTIME_ERROR("Invalid label in: ", line);
             }
 
-            std::vector<sgdlib::FeatureScalarType> sample(num_features_, 0.0);
+            std::vector<FeatureScalarType> sample(num_features_, 0.0);
             parse_features(iss, sample);
 
             labels_.push_back(std::move(label));
-            features_.insert(features_.end(), sample.begin(), sample.end());
+            temp_features.insert(temp_features.end(), sample.begin(), sample.end());
             ++samples_loaded;
         }
 
@@ -62,27 +70,36 @@ public:
             THROW_RUNTIME_ERROR("Empty dataset");
         }
 
+        convert_to_column_major(temp_features, samples_loaded);
+
         loaded_ = true;
     }
 
     // get labels vector (thread-safe)
-    std::vector<sgdlib::LabelScalarType> get_labels() const {
+    std::vector<LabelScalarType> get_labels() const {
         std::lock_guard lock(mutex_);
         return labels_;
     }
 
     // get features vector (thread-safe)
-    std::vector<sgdlib::FeatureScalarType> get_features() const {
+    std::vector<FeatureScalarType> get_features() const {
         std::lock_guard lock(mutex_);
         return features_;
     }
 
     // get single sample (thread-safe)
-    std::vector<sgdlib::FeatureScalarType> get_row_sample(std::size_t index) const {
+    std::vector<FeatureScalarType> get_row_sample(std::size_t index) const {
         std::lock_guard lock(mutex_);
         validate_index(index);
-        return {features_.begin() + index * num_features_,
-                features_.begin() + (index + 1) * num_features_};
+
+        std::vector<FeatureScalarType> sample(num_features_);
+        const std::size_t num_samples = labels_.size();
+
+        for (std::size_t j = 0; j < num_features_; ++j) {
+            sample[j] = features_[j * num_samples + index];
+        }
+
+        return sample;
     }
 
     std::size_t get_num_samples() const {
@@ -118,7 +135,16 @@ private:
 
     ~DatasetManager() = default;
 
-    void parse_features(std::istringstream& iss, std::vector<sgdlib::FeatureScalarType>& sample) {
+    void convert_to_column_major(const std::vector<FeatureScalarType>& row_major, std::size_t num_samples) {
+        features_.resize(num_samples * num_features_);
+        for (std::size_t i = 0; i < num_samples; ++i) {
+            for (std::size_t j = 0; j < num_features_; ++j) {
+                features_[j * num_samples + i] = row_major[i * num_features_ + j];
+            }
+        }
+    }
+
+    void parse_features(std::istringstream& iss, std::vector<FeatureScalarType>& sample) {
         std::string token;
         while (iss >> token) {
             const auto colon_pos = token.find(':');
@@ -128,15 +154,15 @@ private:
 
             try {
                 const std::size_t dim = std::stoul(token.substr(0, colon_pos));
-                const sgdlib::FeatureScalarType value = [&]{
-                    if constexpr (std::is_same_v<sgdlib::FeatureScalarType, float>) {
+                const FeatureScalarType value = [&]{
+                    if constexpr (std::is_same_v<FeatureScalarType, float>) {
                         return std::stof(token.substr(colon_pos + 1));
                     }
-                    else if constexpr (std::is_same_v<sgdlib::FeatureScalarType, double>) {
+                    else if constexpr (std::is_same_v<FeatureScalarType, double>) {
                         return std::stod(token.substr(colon_pos + 1));
                     }
                     else {
-                        return static_cast<sgdlib::FeatureScalarType>(std::stod(token.substr(colon_pos + 1)));
+                        return static_cast<FeatureScalarType>(std::stod(token.substr(colon_pos + 1)));
                     }
                 }();
 
@@ -172,8 +198,8 @@ private:
         loaded_ = false;
     }
 
-    std::vector<sgdlib::LabelScalarType> labels_;
-    std::vector<sgdlib::FeatureScalarType> features_;
+    std::vector<LabelScalarType> labels_;
+    std::vector<FeatureScalarType> features_;
     const std::size_t num_features_;
     bool loaded_ = false;
     std::size_t max_samples_ = 0;
