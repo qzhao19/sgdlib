@@ -1,4 +1,5 @@
 #include "sgdlib/data/dataset_manager.hpp"
+#include "sgdlib/data/continuous_dataset.hpp"
 #include "sgdlib/algorithm/cd/scd.hpp"
 #include "sgdlib/algorithm/gd/sgd.hpp"
 #include "sgdlib/algorithm/gd/sag.hpp"
